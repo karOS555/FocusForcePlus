@@ -1,57 +1,40 @@
 package com.focusforceplus.app.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val FocusForceDarkColorScheme = darkColorScheme(
+    primary               = Blue700,
+    onPrimary             = OnPrimary,
+    primaryContainer      = PrimaryContainer,
+    onPrimaryContainer    = OnPrimaryContainer,
+    secondary             = Blue800,
+    onSecondary           = OnPrimary,
+    secondaryContainer    = SecondaryContainer,
+    onSecondaryContainer  = OnSecondaryContainer,
+    tertiary              = Blue850,
+    onTertiary            = OnPrimary,
+    background            = Background,
+    onBackground          = OnBackground,
+    surface               = Surface,
+    onSurface             = OnSurface,
+    surfaceVariant        = Surface2,
+    onSurfaceVariant      = OnSurfaceVar,
+    error                 = Error,
+    onError               = OnError,
+    errorContainer        = ErrorContainer,
+    onErrorContainer      = OnErrorContainer,
+    outline               = Outline,
+    outlineVariant        = OutlineVariant,
+    scrim                 = Color(0xFF000000),
 )
 
 @Composable
-fun FocusForceTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
+fun FocusForceTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = FocusForceDarkColorScheme,
         typography = Typography,
         content = content
     )
