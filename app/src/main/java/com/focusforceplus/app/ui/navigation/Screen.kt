@@ -20,7 +20,7 @@ sealed class Screen(
     )
     data object Routines : Screen(
         route = "routines",
-        label = "Routinen",
+        label = "Routines",
         icon = Icons.Filled.ViewDay
     )
     data object Todos : Screen(
@@ -35,9 +35,20 @@ sealed class Screen(
     )
     data object Focus : Screen(
         route = "focus",
-        label = "Fokus",
+        label = "Focus",
         icon = Icons.Filled.SelfImprovement
     )
+}
+
+// Sub-screens (not in bottom nav)
+object RoutineRoutes {
+    const val LIST           = "routines"
+    const val CREATE         = "routine/create"
+    const val EDIT           = "routine/edit/{routineId}"
+    const val ACTIVE         = "routine/active/{routineId}"
+
+    fun edit(routineId: Long)   = "routine/edit/$routineId"
+    fun active(routineId: Long) = "routine/active/$routineId"
 }
 
 val bottomNavScreens = listOf(
