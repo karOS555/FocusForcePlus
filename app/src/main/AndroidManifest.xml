@@ -2,6 +2,30 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- ── Notification & alarm permissions ──────────────────────────────── -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Required for startActivity() to work when another app is in the foreground.
+         All alarm apps (Alarmy, Sleep as Android, etc.) need this. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Android 13+: automatically granted, enables setExactAndAllowWhileIdle() for pre-alarms. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Android 12: user must grant this manually; we prompt in MainActivity if needed.
+         setAlarmClock() is always exempt regardless of this permission. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        tools:ignore="ExactAlarm" />
+
+    <!-- Foreground service -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- Boot receiver -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".FocusForcePlusApp"
         android:allowBackup="true"
@@ -12,17 +36,82 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.FocusForce">
+
+        <!-- Full-screen alarm activity — shown over the lock screen when a routine fires -->
+        <activity
+            android:name=".ui.alarm.RoutineAlarmActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.FocusForce" />
+
+        <!-- Main activity — also the target for alarm full-screen intents -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
             android:theme="@style/Theme.FocusForce">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Short-lived service that starts RoutineAlarmActivity from background -->
+        <service
+            android:name=".service.AlarmLaunchService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Foreground service that keeps the process alive during a routine session -->
+        <service
+            android:name=".service.RoutineForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Receives scheduled routine alarms (main alarm + snooze) -->
+        <receiver
+            android:name=".service.RoutineAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Receives the 15-minute pre-alarm and shows a reminder notification -->
+        <receiver
+            android:name=".service.RoutinePreAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Handles "Snooze" actions from the pre-alarm notification -->
+        <receiver
+            android:name=".service.RoutineRescheduleReceiver"
+            android:exported="false" />
+
+        <!-- Handles "Dismiss" taps from alarm and snooze notifications -->
+        <receiver
+            android:name=".service.RoutineDismissReceiver"
+            android:exported="false" />
+
+        <!-- Handles "Done" action from the active-routine foreground notification -->
+        <receiver
+            android:name=".service.RoutineSessionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.focusforceplus.app.SESSION_COMPLETE_TASK" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Restores alarms after device reboot -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

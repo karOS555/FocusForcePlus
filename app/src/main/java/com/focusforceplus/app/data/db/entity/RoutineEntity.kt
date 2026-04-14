@@ -18,5 +18,7 @@ data class RoutineEntity(
     val invincibleMode: Boolean = false,
     val appBlockerEnabled: Boolean = true,
     val maxSnoozeCount: Int = 2,
+    val maxRescheduleCount: Int = 1,
+    val iconKey: String? = null,
     val createdAt: Long
 )

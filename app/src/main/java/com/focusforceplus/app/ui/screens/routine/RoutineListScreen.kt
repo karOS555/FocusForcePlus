@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
@@ -55,10 +56,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.data.db.entity.RoutineEntity
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +71,7 @@ fun RoutineListScreen(
     onStartRoutine: (Long) -> Unit = {},
     viewModel: RoutineListViewModel = hiltViewModel(),
 ) {
-    val routines by viewModel.routines.collectAsState()
+    val routinesWithReschedule by viewModel.routinesWithReschedule.collectAsState()
 
     Scaffold(
         topBar = {
@@ -90,7 +93,7 @@ fun RoutineListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        if (routines.isEmpty()) {
+        if (routinesWithReschedule.isEmpty()) {
             EmptyRoutinesHint(modifier = Modifier.padding(padding))
         } else {
             LazyColumn(
@@ -101,14 +104,15 @@ fun RoutineListScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
             ) {
-                items(routines, key = { it.id }) { routine ->
+                items(routinesWithReschedule, key = { it.routine.id }) { item ->
                     SwipeToDeleteRoutineItem(
-                        routine = routine,
-                        onEdit = { onEditRoutine(routine.id) },
-                        onStart = { onStartRoutine(routine.id) },
-                        onDelete = { viewModel.deleteRoutine(routine) },
-                        onToggleActive = { viewModel.toggleActive(routine) },
-                        modifier = Modifier.animateItem(),
+                        item           = item,
+                        onEdit         = { onEditRoutine(item.routine.id) },
+                        onStart        = { onStartRoutine(item.routine.id) },
+                        onDelete       = { viewModel.deleteRoutine(item.routine) },
+                        onToggleActive = { viewModel.toggleActive(item.routine) },
+                        onCancelReschedule = { viewModel.cancelPendingReschedule(item.routine.id) },
+                        modifier       = Modifier.animateItem(),
                     )
                 }
             }
@@ -121,11 +125,12 @@ fun RoutineListScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeToDeleteRoutineItem(
-    routine: RoutineEntity,
+    item: RoutineWithReschedule,
     onEdit: () -> Unit,
     onStart: () -> Unit,
     onDelete: () -> Unit,
     onToggleActive: () -> Unit,
+    onCancelReschedule: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -145,7 +150,13 @@ private fun SwipeToDeleteRoutineItem(
         enableDismissFromStartToEnd = false,
         backgroundContent = { DeleteBackground() },
     ) {
-        RoutineCard(routine = routine, onEdit = onEdit, onStart = onStart, onToggleActive = onToggleActive)
+        RoutineCard(
+            item               = item,
+            onEdit             = onEdit,
+            onStart            = onStart,
+            onToggleActive     = onToggleActive,
+            onCancelReschedule = onCancelReschedule,
+        )
     }
 
     if (showConfirmDialog) {
@@ -153,7 +164,7 @@ private fun SwipeToDeleteRoutineItem(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Delete routine?") },
             text = {
-                Text("\"${routine.name}\" will be permanently deleted, including all subtasks.")
+                Text("\"${item.routine.name}\" will be permanently deleted, including all subtasks.")
             },
             confirmButton = {
                 Button(
@@ -199,80 +210,123 @@ private fun DeleteBackground() {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RoutineCard(
-    routine: RoutineEntity,
+    item: RoutineWithReschedule,
     onEdit: () -> Unit,
     onStart: () -> Unit,
     onToggleActive: () -> Unit,
+    onCancelReschedule: () -> Unit,
 ) {
+    val routine = item.routine
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = routine.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (routine.invincibleMode) {
-                        Icon(
-                            Icons.Filled.Lock,
-                            contentDescription = "Invincible mode active",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp),
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = routine.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.SemiBold,
                         )
+                        if (routine.invincibleMode) {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = "Invincible mode active",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        text = "%02d:%02d".format(routine.startTimeHour, routine.startTimeMinute),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    val days = routine.activeDays.split(",").filter(String::isNotBlank)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        days.forEach { day -> DayBadge(day = day, active = routine.isActive) }
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.width(4.dp))
 
-                Text(
-                    text = "%02d:%02d".format(routine.startTimeHour, routine.startTimeMinute),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                IconButton(onClick = onStart) {
+                    Icon(
+                        Icons.Filled.PlayArrow,
+                        contentDescription = "Start routine",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
+
+                Switch(
+                    checked = routine.isActive,
+                    onCheckedChange = { onToggleActive() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
                 )
+            }
 
+            // ── Pending reschedule banner ──────────────────────────────────
+            val rescheduleMillis = item.pendingRescheduleMillis
+            if (rescheduleMillis != null) {
                 Spacer(Modifier.height(8.dp))
-
-                val days = routine.activeDays.split(",").filter(String::isNotBlank)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    days.forEach { day -> DayBadge(day = day, active = routine.isActive) }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Rescheduled to ${formatMillis(rescheduleMillis)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(
+                            onClick = onCancelReschedule,
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Cancel reschedule",
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
                 }
             }
-
-            Spacer(Modifier.width(4.dp))
-
-            IconButton(onClick = onStart) {
-                Icon(
-                    Icons.Filled.PlayArrow,
-                    contentDescription = "Start routine",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-
-            Switch(
-                checked = routine.isActive,
-                onCheckedChange = { onToggleActive() },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            )
         }
     }
+}
+
+private fun formatMillis(millis: Long): String {
+    val cal = Calendar.getInstance().apply { timeInMillis = millis }
+    return "%02d:%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
 }
 
 @Composable

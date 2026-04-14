@@ -3,7 +3,9 @@ package com.focusforceplus.app.ui.screens.routine
 import android.content.Context
 import android.media.RingtoneManager
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
+import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -18,6 +20,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,7 +54,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -56,9 +64,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -75,6 +85,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.focusforceplus.app.service.RoutineForegroundService
+import com.focusforceplus.app.ui.common.RoutineIcons
+import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -87,13 +100,33 @@ fun ActiveRoutineScreen(
     val s by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Sound and vibration events
+    // Sound and vibration events — PlayAlarm sound is handled by TaskCompleteOverlay.
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                RoutineEvent.PlayAlarm -> playAlarm(context)
+                RoutineEvent.PlayAlarm -> { /* TaskCompleteOverlay plays + auto-stops the alarm */ }
                 RoutineEvent.VibrateShort -> vibrateShort(context)
+                RoutineEvent.NavigateBack -> onBack()
             }
+        }
+    }
+
+    // Foreground service: start on enter, stop on leave.
+    DisposableEffect(Unit) {
+        onDispose { RoutineForegroundService.stop(context) }
+    }
+
+    // Update foreground service notification when the active task changes.
+    LaunchedEffect(s.currentTaskIndex, s.isLoading) {
+        if (!s.isLoading && !s.isCompleted) {
+            val task = s.currentTask ?: return@LaunchedEffect
+            RoutineForegroundService.start(
+                context                 = context,
+                routineId               = viewModel.routineId,
+                routineName             = s.routineName,
+                taskName                = task.name,
+                initialDurationSeconds  = task.durationMinutes * 60,
+            )
         }
     }
 
@@ -139,6 +172,10 @@ fun ActiveRoutineScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
+        // Track whether notes are dismissed for the current task.
+        var notesDismissed by remember { mutableStateOf(false) }
+        LaunchedEffect(s.currentTaskIndex) { notesDismissed = false }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -150,22 +187,69 @@ fun ActiveRoutineScreen(
             // Overall progress
             OverallProgressSection(
                 currentIndex = s.currentTaskIndex,
-                totalTasks = s.tasks.size,
-                progress = s.overallProgress,
+                totalTasks   = s.tasks.size,
+                progress     = s.overallProgress,
             )
 
             Spacer(Modifier.height(24.dp))
 
+            // Task icon (if set)
+            val taskIcon = RoutineIcons.find(s.currentTask?.iconKey)
+            if (taskIcon != null) {
+                Icon(
+                    imageVector     = taskIcon.vector,
+                    contentDescription = null,
+                    tint            = MaterialTheme.colorScheme.primary,
+                    modifier        = Modifier.size(36.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
             // Task name
             Text(
-                text = s.currentTask?.name ?: "",
-                style = MaterialTheme.typography.titleLarge,
+                text       = s.currentTask?.name ?: "",
+                style      = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onBackground,
+                textAlign  = TextAlign.Center,
+                color      = MaterialTheme.colorScheme.onBackground,
             )
 
-            Spacer(Modifier.height(32.dp))
+            // Task notes card (dismissable)
+            val notes = s.currentTask?.description
+            if (!notes.isNullOrBlank() && !notesDismissed) {
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(10.dp),
+                    colors   = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Text(
+                            text     = notes,
+                            style    = MaterialTheme.typography.bodySmall,
+                            color    = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            imageVector     = Icons.Filled.Close,
+                            contentDescription = "Dismiss note",
+                            tint            = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
+                            modifier        = Modifier
+                                .size(18.dp)
+                                .clickable { notesDismissed = true },
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
 
             // Circular timer
             CircularTimer(
@@ -225,18 +309,11 @@ fun ActiveRoutineScreen(
     }
 
     if (s.showTimeUpDialog) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("Time is up!") },
-            text = { Text("\"${s.currentTask?.name}\" time has ended. What would you like to do?") },
-            confirmButton = {
-                Button(onClick = viewModel::completeCurrentTask) { Text("Done") }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { viewModel.dismissTimeUpDialog(); viewModel.showAddTimeDialog() }) {
-                    Text("Add time")
-                }
-            },
+        TaskCompleteOverlay(
+            taskName      = s.currentTask?.name ?: "",
+            overtimeSeconds = s.overtimeSeconds,
+            onDone        = viewModel::completeCurrentTask,
+            onAddTime     = viewModel::addTime,
         )
     }
 
@@ -295,7 +372,10 @@ fun ActiveRoutineScreen(
         2 -> {
             RescheduleDialog(
                 routineName = s.routineName,
-                onReschedule = { _, _ -> onBack() },
+                onReschedule = { hour, minute, tomorrow ->
+                    viewModel.reschedule(hour, minute, tomorrow)
+                    onBack()
+                },
                 onSkip = onBack,
                 onDismiss = viewModel::dismissCancel,
             )
@@ -502,6 +582,159 @@ private fun RunningActions(
     }
 }
 
+// ── Task-complete full-screen overlay ─────────────────────────────────────────
+
+@Composable
+private fun TaskCompleteOverlay(
+    taskName: String,
+    overtimeSeconds: Int,
+    onDone: () -> Unit,
+    onAddTime: (Int) -> Unit,
+) {
+    val context = LocalContext.current
+
+    // Acquire ringtone once and play for 7 seconds, then stop automatically.
+    val ringtone = remember {
+        try {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            RingtoneManager.getRingtone(context, uri)
+        } catch (_: Exception) { null }
+    }
+    LaunchedEffect(Unit) {
+        try { ringtone?.play() } catch (_: Exception) {}
+        delay(7_000)
+        try { ringtone?.stop() } catch (_: Exception) {}
+    }
+    DisposableEffect(Unit) {
+        onDispose { try { ringtone?.stop() } catch (_: Exception) {} }
+    }
+
+    // Vibration: alarm pattern looping for 7 seconds, works in silent/vibrate mode.
+    DisposableEffect(Unit) {
+        val vib: Vibrator? = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+        } catch (_: Exception) { null }
+        try {
+            val timings    = longArrayOf(0, 800, 400, 800, 800)
+            val amplitudes = intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0,
+                                        VibrationEffect.DEFAULT_AMPLITUDE, 0)
+            val effect = VibrationEffect.createWaveform(timings, amplitudes, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val attrs = VibrationAttributes.Builder()
+                    .setUsage(VibrationAttributes.USAGE_ALARM)
+                    .build()
+                vib?.vibrate(effect, attrs)
+            } else {
+                vib?.vibrate(effect)
+            }
+        } catch (_: Exception) {}
+        onDispose { try { vib?.cancel() } catch (_: Exception) {} }
+    }
+
+    var showAddTimeOptions by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF050508), Color(0xFF0f2847)))),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text      = "Time's up!",
+                style     = MaterialTheme.typography.titleMedium,
+                color     = Color.White.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+            )
+
+            Text(
+                text       = taskName,
+                style      = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color      = Color.White,
+                textAlign  = TextAlign.Center,
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text       = "+${formatSeconds(overtimeSeconds)}",
+                fontSize   = 56.sp,
+                fontWeight = FontWeight.Bold,
+                color      = Color(0xFFef4444),
+            )
+            Text(
+                text  = "overtime",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFFef4444).copy(alpha = 0.7f),
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Button(
+                onClick  = onDone,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp),
+                shape  = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Text(
+                    "Done",
+                    style      = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            if (!showAddTimeOptions) {
+                OutlinedButton(
+                    onClick  = { showAddTimeOptions = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text("+ Add Time", color = Color.White)
+                }
+            } else {
+                Text(
+                    "Add extra time:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    listOf(1, 2, 5, 10, 15).forEach { min ->
+                        FilledTonalButton(
+                            onClick        = { onAddTime(min) },
+                            modifier       = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp),
+                        ) {
+                            Text("${min}m", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ── Dialogs ───────────────────────────────────────────────────────────────────
 
 @Composable
@@ -524,12 +757,13 @@ private fun TimeOptionDialog(
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     options.forEach { min ->
                         FilledTonalButton(
-                            onClick = { onSelect(min) },
-                            modifier = Modifier.weight(1f),
+                            onClick        = { onSelect(min) },
+                            modifier       = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp),
                         ) {
                             Text("${min}m", fontSize = 13.sp)
                         }
@@ -548,26 +782,35 @@ private fun TimeOptionDialog(
 @Composable
 private fun RescheduleDialog(
     routineName: String,
-    onReschedule: (Int, Int) -> Unit,
+    onReschedule: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var selectedTab by remember { mutableIntStateOf(0) }
     val timeState = rememberTimePickerState(is24Hour = true)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Reschedule \"$routineName\"?") },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "Would you like to reschedule this routine for later today?",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                PrimaryTabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick  = { selectedTab = 0 },
+                        text     = { Text("Today") },
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick  = { selectedTab = 1 },
+                        text     = { Text("Tomorrow") },
+                    )
+                }
                 Spacer(Modifier.height(16.dp))
                 TimePicker(state = timeState)
             }
         },
         confirmButton = {
-            Button(onClick = { onReschedule(timeState.hour, timeState.minute) }) {
+            Button(onClick = { onReschedule(timeState.hour, timeState.minute, selectedTab == 1) }) {
                 Text("Reschedule")
             }
         },

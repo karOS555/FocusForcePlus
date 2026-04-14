@@ -1,11 +1,21 @@
 package com.focusforceplus.app.ui.screens.routine
 
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusforceplus.app.MainActivity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
 import com.focusforceplus.app.data.repository.RoutineRepository
+import com.focusforceplus.app.service.RoutineForegroundService
+import com.focusforceplus.app.util.AlarmHelper
+import com.focusforceplus.app.util.NotificationHelper
+import com.focusforceplus.app.util.PendingRescheduleTracker
+import com.focusforceplus.app.util.RoutineSessionAction
+import com.focusforceplus.app.util.RoutineSessionBus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -17,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 enum class TimerState { BEFORE_START, RUNNING, OVERTIME }
@@ -31,6 +42,7 @@ data class ActiveRoutineUiState(
     val routineName: String = "",
     val tasks: List<RoutineTaskEntity> = emptyList(),
     val maxSnoozeCount: Int = 2,
+    val maxRescheduleCount: Int = 1,
     val invincibleMode: Boolean = false,
     // Timer
     val currentTaskIndex: Int = 0,
@@ -38,8 +50,9 @@ data class ActiveRoutineUiState(
     val remainingSeconds: Int = 0,
     val taskTotalSeconds: Int = 0,
     val overtimeSeconds: Int = 0,
-    // Snooze
+    // Snooze / reschedule
     val snoozeCount: Int = 0,
+    val rescheduleCount: Int = 0,
     // Dialogs
     val showThreeMinWarning: Boolean = false,
     val showTimeUpDialog: Boolean = false,
@@ -59,6 +72,7 @@ data class ActiveRoutineUiState(
                 && currentTaskIndex == 0
                 && snoozeCount < maxSnoozeCount
     val remainingSnoozes: Int get() = maxSnoozeCount - snoozeCount
+    val canReschedule: Boolean get() = rescheduleCount < maxRescheduleCount
     val overallProgress: Float
         get() = if (tasks.isEmpty()) 0f
                 else currentTaskIndex.toFloat() / tasks.size.toFloat()
@@ -67,15 +81,21 @@ data class ActiveRoutineUiState(
 sealed class RoutineEvent {
     data object PlayAlarm : RoutineEvent()
     data object VibrateShort : RoutineEvent()
+    data object NavigateBack : RoutineEvent()
 }
 
 @HiltViewModel
 class ActiveRoutineViewModel @Inject constructor(
     private val repository: RoutineRepository,
+    private val alarmHelper: AlarmHelper,
+    private val notificationHelper: NotificationHelper,
+    private val rescheduleTracker: PendingRescheduleTracker,
+    private val sessionBus: RoutineSessionBus,
+    @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val routineId: Long = savedStateHandle.get<Long>("routineId") ?: 0L
+    val routineId: Long = savedStateHandle.get<Long>("routineId") ?: 0L
 
     private val _uiState = MutableStateFlow(ActiveRoutineUiState())
     val uiState: StateFlow<ActiveRoutineUiState> = _uiState.asStateFlow()
@@ -86,7 +106,16 @@ class ActiveRoutineViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var accumulatedOvertimeSeconds = 0
 
-    init { loadRoutine() }
+    init {
+        loadRoutine()
+        viewModelScope.launch {
+            sessionBus.actions.collect { action ->
+                if (action is RoutineSessionAction.CompleteTask && action.routineId == routineId) {
+                    completeCurrentTask()
+                }
+            }
+        }
+    }
 
     private fun loadRoutine() {
         viewModelScope.launch {
@@ -98,6 +127,7 @@ class ActiveRoutineViewModel @Inject constructor(
                     routineName = routine.name,
                     tasks = tasks,
                     maxSnoozeCount = routine.maxSnoozeCount,
+                    maxRescheduleCount = routine.maxRescheduleCount,
                     invincibleMode = routine.invincibleMode,
                     remainingSeconds = totalSec,
                     taskTotalSeconds = totalSec,
@@ -149,6 +179,17 @@ class ActiveRoutineViewModel @Inject constructor(
                             showTimeUpDialog = true,
                         )
                     }
+                    // Update notification to show "Overtime" immediately.
+                    RoutineForegroundService.update(context, routineId, s.currentTask?.name ?: "", -1)
+                    // Bring the app to the foreground so the TaskCompleteOverlay is visible,
+                    // even if the user is currently in another app.
+                    // SYSTEM_ALERT_WINDOW (already granted) allows this startActivity() call
+                    // from the background on all Android versions.
+                    context.startActivity(
+                        Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                        }
+                    )
                 } else {
                     val reminderAt = (s.currentTask?.reminderBeforeEndMinutes ?: 3) * 60
                     _uiState.update {
@@ -157,6 +198,8 @@ class ActiveRoutineViewModel @Inject constructor(
                             showThreeMinWarning = newRemaining == reminderAt,
                         )
                     }
+                    // Keep the foreground notification countdown accurate in the background.
+                    RoutineForegroundService.update(context, routineId, s.currentTask?.name ?: "", newRemaining)
                 }
             }
             TimerState.OVERTIME -> {
@@ -246,7 +289,61 @@ class ActiveRoutineViewModel @Inject constructor(
     fun dismissTimeUpDialog() = _uiState.update { it.copy(showTimeUpDialog = false) }
     fun dismissOvertimeReminder() = _uiState.update { it.copy(showOvertimeReminder = false) }
     fun onCancelFirstClick() = _uiState.update { it.copy(cancelConfirmStep = 1) }
-    fun onCancelConfirmed() = _uiState.update { it.copy(cancelConfirmStep = 2) }
+
+    fun onCancelConfirmed() {
+        val s = _uiState.value
+        if (s.maxRescheduleCount > 0 && s.canReschedule) {
+            _uiState.update { it.copy(cancelConfirmStep = 2) }
+        } else {
+            _uiState.update { it.copy(cancelConfirmStep = 0) }
+            _events.tryEmit(RoutineEvent.NavigateBack)
+        }
+    }
+
+    fun reschedule(hour: Int, minute: Int, tomorrow: Boolean) {
+        val s = _uiState.value
+        if (!s.canReschedule) return
+        _uiState.update { it.copy(rescheduleCount = it.rescheduleCount + 1, cancelConfirmStep = 0) }
+        viewModelScope.launch {
+            try {
+                val routine = repository.getRoutineById(routineId).first() ?: return@launch
+                val triggerAt = absoluteTime(hour, minute, tomorrow)
+
+                alarmHelper.cancelRoutineAlarms(routineId)
+                alarmHelper.scheduleRoutineAlarms(routine)
+                alarmHelper.scheduleRescheduleAlarm(routineId, routine.name, triggerAt)
+                rescheduleTracker.set(routineId, triggerAt)
+
+                notificationHelper.cancelNotification(NotificationHelper.alarmNotificationId(routineId))
+                notificationHelper.showNotification(
+                    NotificationHelper.alarmNotificationId(routineId),
+                    notificationHelper.buildSnoozedNotification(
+                        routineId      = routineId,
+                        routineName    = routine.name,
+                        triggerMillis  = triggerAt,
+                        snoozeCount    = 0,
+                        maxSnoozeCount = routine.maxSnoozeCount,
+                        invincibleMode = routine.invincibleMode,
+                    ),
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun absoluteTime(hour: Int, minute: Int, tomorrow: Boolean): Long {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            if (tomorrow) add(Calendar.DAY_OF_YEAR, 1)
+        }
+        if (!tomorrow && cal.timeInMillis <= System.currentTimeMillis()) {
+            cal.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return cal.timeInMillis
+    }
+
     fun dismissCancel() = _uiState.update { it.copy(cancelConfirmStep = 0) }
 
     override fun onCleared() {

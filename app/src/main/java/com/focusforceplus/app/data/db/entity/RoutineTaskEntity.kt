@@ -28,5 +28,6 @@ data class RoutineTaskEntity(
     /** Erinnerung X Minuten vor Ende des Tasks */
     val reminderBeforeEndMinutes: Int = 3,
     /** Wie oft bei Überschreitung erinnert wird (in Minuten) */
-    val overtimeReminderIntervalMinutes: Int = 5
+    val overtimeReminderIntervalMinutes: Int = 5,
+    val iconKey: String? = null
 )
