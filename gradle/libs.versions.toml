@@ -6,6 +6,7 @@ ksp = "2.2.10-2.0.2"
 # AndroidX Core
 coreKtx = "1.10.1"
 activityCompose = "1.8.0"
+coreSplashscreen = "1.0.1"
 composeBom = "2026.02.01"
 
 # Lifecycle
@@ -38,6 +39,7 @@ espressoCore = "3.5.1"
 # AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 
 # Compose BOM + UI
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }

@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -26,11 +27,16 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.focusforceplus.app.ui.alarm.RoutineAlarmActivity
+import androidx.compose.foundation.layout.Column
+import com.focusforceplus.app.ui.common.AppFooter
+import com.focusforceplus.app.ui.common.FocusForceTopBar
 import com.focusforceplus.app.ui.navigation.BottomNavBar
 import com.focusforceplus.app.ui.navigation.NavGraph
 import com.focusforceplus.app.ui.navigation.RoutineRoutes
+import com.focusforceplus.app.ui.navigation.bottomNavScreens
 import com.focusforceplus.app.ui.theme.FocusForceTheme
 import com.focusforceplus.app.util.AlarmEventBus
 import com.focusforceplus.app.util.PermissionHelper
@@ -48,6 +54,7 @@ class MainActivity : ComponentActivity() {
     ) { /* result handled in UI state */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -117,6 +124,12 @@ private fun AppContent(
     var showExactAlarmDialog  by remember { mutableStateOf(!canScheduleExactAlarms && canDrawOverlays) }
     var showFullScreenDialog  by remember { mutableStateOf(!canFullScreen && canDrawOverlays && canScheduleExactAlarms) }
 
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+    val mainTabRoutes = remember { bottomNavScreens.map { it.route }.toSet() }
+    // null = NavController not yet navigated (first frame) → default to showing the bar
+    val showTopBar = currentRoute == null || currentRoute in mainTabRoutes
+
     // Navigate to active routine when launched from an alarm notification.
     LaunchedEffect(pendingRoutineId) {
         if (pendingRoutineId > 0L) {
@@ -127,7 +140,13 @@ private fun AppContent(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        bottomBar = { BottomNavBar(navController) },
+        topBar = { if (showTopBar) FocusForceTopBar() },
+        bottomBar = {
+            Column {
+                BottomNavBar(navController)
+                AppFooter()
+            }
+        },
     ) { innerPadding ->
         NavGraph(
             navController = navController,
@@ -144,7 +163,7 @@ private fun AppContent(
             text  = {
                 Text(
                     "For FocusForce+ to show the full alarm screen when you are using another " +
-                    "app (e.g. Instagram), it needs the \"Display over other apps\" permission.\n\n" +
+                    "app, it needs the \"Display over other apps\" permission.\n\n" +
                     "Tap \"Open settings\" and enable the toggle for FocusForce+, then come back.",
                 )
             },

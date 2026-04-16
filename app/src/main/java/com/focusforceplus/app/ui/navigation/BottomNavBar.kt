@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -20,7 +21,8 @@ fun BottomNavBar(navController: NavController) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 0.dp
+        tonalElevation = 0.dp,
+        windowInsets = WindowInsets(0),
     ) {
         bottomNavScreens.forEach { screen ->
             val selected = currentRoute == screen.route

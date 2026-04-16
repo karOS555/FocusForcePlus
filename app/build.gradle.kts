@@ -44,6 +44,7 @@ android {
 dependencies {
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
 
     // Compose BOM — steuert alle Compose-Versionen zentral
