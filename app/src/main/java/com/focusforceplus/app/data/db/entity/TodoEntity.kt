@@ -21,7 +21,10 @@ data class TodoEntity(
     val recurringPattern: String? = null,
     val snoozeCount: Int = 0,
     val maxSnoozeCount: Int = 2,
+    val rescheduleCount: Int = 0,
+    val maxRescheduleCount: Int = 1,
     val createdAt: Long,
     val completedAt: Long? = null,
-    val postponedTo: Long? = null
+    val postponedTo: Long? = null,
+    val checklistJson: String? = null,
 )

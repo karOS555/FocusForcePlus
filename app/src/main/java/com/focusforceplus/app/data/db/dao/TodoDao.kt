@@ -49,4 +49,19 @@ interface TodoDao {
 
     @Query("UPDATE todos SET snoozeCount = :count WHERE id = :id")
     suspend fun updateSnoozeCount(id: Long, count: Int)
+
+    @Query("UPDATE todos SET rescheduleCount = :count WHERE id = :id")
+    suspend fun updateRescheduleCount(id: Long, count: Int)
+
+    @Query("UPDATE todos SET checklistJson = :json WHERE id = :id")
+    suspend fun updateChecklistJson(id: Long, json: String?)
+
+    @Query("SELECT * FROM todos WHERE isCompleted = 1 ORDER BY completedAt DESC")
+    fun getCompleted(): Flow<List<TodoEntity>>
+
+    @Query("SELECT * FROM todos WHERE id = :id")
+    suspend fun getById(id: Long): TodoEntity?
+
+    @Query("DELETE FROM todos WHERE isCompleted = 1 AND completedAt < :beforeTimestamp")
+    suspend fun deleteCompletedBefore(beforeTimestamp: Long)
 }

@@ -37,4 +37,19 @@ class TodoRepository @Inject constructor(
 
     suspend fun updateSnoozeCount(id: Long, count: Int) =
         todoDao.updateSnoozeCount(id, count)
+
+    suspend fun updateRescheduleCount(id: Long, count: Int) =
+        todoDao.updateRescheduleCount(id, count)
+
+    suspend fun updateChecklistJson(id: Long, json: String?) =
+        todoDao.updateChecklistJson(id, json)
+
+    fun getCompletedTodos(): Flow<List<TodoEntity>> =
+        todoDao.getCompleted()
+
+    suspend fun getTodoById(id: Long): TodoEntity? =
+        todoDao.getById(id)
+
+    suspend fun deleteCompletedBefore(beforeTimestamp: Long) =
+        todoDao.deleteCompletedBefore(beforeTimestamp)
 }

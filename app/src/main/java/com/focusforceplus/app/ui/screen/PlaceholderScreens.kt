@@ -12,16 +12,13 @@ import androidx.compose.ui.Modifier
 fun HomeScreen() = PlaceholderScreen("Home")
 
 @Composable
-fun RoutinesScreen() = PlaceholderScreen("Routinen")
-
-@Composable
-fun TodosScreen() = PlaceholderScreen("Todos")
+fun RoutinesScreen() = PlaceholderScreen("Routines")
 
 @Composable
 fun BlockerScreen() = PlaceholderScreen("App Blocker")
 
 @Composable
-fun FocusScreen() = PlaceholderScreen("Fokus")
+fun FocusScreen() = PlaceholderScreen("Focus")
 
 @Composable
 private fun PlaceholderScreen(name: String) {

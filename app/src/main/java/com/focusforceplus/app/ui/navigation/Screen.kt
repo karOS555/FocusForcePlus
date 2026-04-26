@@ -41,6 +41,10 @@ sealed class Screen(
 }
 
 // Sub-screens (not in bottom nav)
+object SettingsRoutes {
+    const val SETTINGS = "settings"
+}
+
 object RoutineRoutes {
     const val LIST           = "routines"
     const val CREATE         = "routine/create"
@@ -49,6 +53,14 @@ object RoutineRoutes {
 
     fun edit(routineId: Long)   = "routine/edit/$routineId"
     fun active(routineId: Long) = "routine/active/$routineId"
+}
+
+object TodoRoutes {
+    const val LIST   = "todos"
+    const val CREATE = "todo/create"
+    const val EDIT   = "todo/edit/{todoId}"
+
+    fun edit(todoId: Long) = "todo/edit/$todoId"
 }
 
 val bottomNavScreens = listOf(

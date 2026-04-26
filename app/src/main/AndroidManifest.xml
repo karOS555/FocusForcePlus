@@ -47,6 +47,16 @@
             android:launchMode="singleTask"
             android:theme="@style/Theme.FocusForce" />
 
+        <!-- Full-screen alarm activity for scheduled todos -->
+        <activity
+            android:name=".ui.alarm.TodoAlarmActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.FocusForce" />
+
         <!-- Main activity — also the target for alarm full-screen intents -->
         <activity
             android:name=".MainActivity"
@@ -111,6 +121,43 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Fires when a scheduled todo reaches its due time -->
+        <receiver
+            android:name=".service.TodoAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Handles "Snooze" actions from todo alarm notifications -->
+        <receiver
+            android:name=".service.TodoSnoozeReceiver"
+            android:exported="false" />
+
+        <!-- Handles "Done" and "Dismiss" actions from todo alarm notifications -->
+        <receiver
+            android:name=".service.TodoDismissReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.focusforceplus.app.TODO_DONE" />
+                <action android:name="com.focusforceplus.app.TODO_DISMISS" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Fires 3x daily (8:00, 14:00, 20:00) to show todo digest notifications -->
+        <receiver
+            android:name=".service.TodoDigestReceiver"
+            android:exported="false" />
+
+        <!-- Foreground service that keeps the alarm notification non-dismissable (High + Medium) -->
+        <service
+            android:name=".service.TodoAlarmForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Foreground service that keeps the overdue-todos notification non-dismissable -->
+        <service
+            android:name=".service.TodoReminderForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

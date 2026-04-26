@@ -24,7 +24,7 @@ import com.focusforceplus.app.data.db.entity.TodoEntity
         BlockedAppEntity::class,
         FocusSessionEntity::class,
     ],
-    version = 3,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(AppTypeConverters::class)
@@ -48,6 +48,19 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE routines ADD COLUMN iconKey TEXT")
                 db.execSQL("ALTER TABLE routine_tasks ADD COLUMN iconKey TEXT")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE todos ADD COLUMN rescheduleCount INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE todos ADD COLUMN maxRescheduleCount INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE todos ADD COLUMN checklistJson TEXT")
             }
         }
     }

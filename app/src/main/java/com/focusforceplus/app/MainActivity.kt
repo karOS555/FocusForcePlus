@@ -36,6 +36,7 @@ import com.focusforceplus.app.ui.common.FocusForceTopBar
 import com.focusforceplus.app.ui.navigation.BottomNavBar
 import com.focusforceplus.app.ui.navigation.NavGraph
 import com.focusforceplus.app.ui.navigation.RoutineRoutes
+import com.focusforceplus.app.ui.navigation.SettingsRoutes
 import com.focusforceplus.app.ui.navigation.bottomNavScreens
 import com.focusforceplus.app.ui.theme.FocusForceTheme
 import com.focusforceplus.app.util.AlarmEventBus
@@ -140,7 +141,11 @@ private fun AppContent(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { if (showTopBar) FocusForceTopBar() },
+        topBar = {
+            if (showTopBar) FocusForceTopBar(
+                onSettingsClick = { navController.navigate(SettingsRoutes.SETTINGS) },
+            )
+        },
         bottomBar = {
             Column {
                 BottomNavBar(navController)

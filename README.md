@@ -31,7 +31,7 @@
 
 FocusForce+ is a free and open source Android app built for people struggling with ADHD, poor self-discipline, or smartphone addiction. It's something I'm building in part because I deal with these things myself and couldn't find a tool that actually fit. There are plenty of apps that do one piece well, but none of them tie it all together, and most of them are too easy to wriggle out of the moment motivation dips.
 
-So FocusForce+ combines the features of several existing tools — routine tracker, to-do planner, app blocker, and focus mode — into one cohesive, intentionally persistent system. Where other apps let you cancel with one tap, FocusForce+ is designed to hold you accountable. Snoozes are limited. Cancellations require confirmation. An optional **Invincible Mode** locks features so your future self can't undo what your present self committed to.
+So FocusForce+ combines the features of several existing tools (routine tracker, to-do planner, app blocker, and focus mode) into one cohesive, intentionally persistent system. Where other apps let you cancel with one tap, FocusForce+ is designed to hold you accountable. Snoozes are limited. Cancellations require confirmation. An optional **Invincible Mode** locks features so your future self can't undo what your present self committed to.
 
 All data stays 100% on your device. No tracking, no cloud, no ads.
 
@@ -119,8 +119,8 @@ One toggle that combines Do Not Disturb, notification blocking, and the app bloc
 
 ## Roadmap
 
-- [ ] **Phase 1** — Project foundation: Room DB, Hilt, navigation, dark theme
-- [ ] **Phase 2** — Routines system with timers, snooze logic, and invincible mode
+- [x] **Phase 1** — Project foundation: Room DB, Hilt, navigation, dark theme
+- [x] **Phase 2** — Routines system with timers, snooze logic, and invincible mode
 - [ ] **Phase 3** — Todo planner with persistent reminder system
 - [ ] **Phase 4** — App blocker via AccessibilityService
 - [ ] **Phase 5** — Focus mode with DND integration
