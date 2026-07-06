@@ -2,6 +2,19 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.9.2-beta] - 2026-07-07
+
+More fixes and polish from testing the beta on a real device.
+
+### Added
+- Onboarding now has a page explaining how to keep the app updated, since it has no internet access to check on its own: manually from the releases page, or automatically through Obtainium
+- Settings > About: a "Check for updates" link that opens the latest release, and a "Report a bug or suggest an idea" link for beta feedback
+
+### Fixed
+- Full-screen alarm permission on phones that don't ship that dedicated settings screen (Samsung One UI, for one) now opens the app-info page instead of the plain notification screen that has no such toggle; the prompt also makes clear the permission is optional and alarms still work without it
+
+[0.9.2-beta]: https://github.com/karOs555/FocusForcePlus/releases/tag/v0.9.2-beta
+
 ## [0.9.1-beta] - 2026-07-06
 
 First round of fixes from testing the beta on a real device.
