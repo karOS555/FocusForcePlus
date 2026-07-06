@@ -45,10 +45,12 @@ Everything stays on your phone. No account, no cloud, no ads, no tracking. The a
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/home.png" alt="Home dashboard" width="200"/><br/><sub>Home</sub></td>
-    <td align="center"><img src="docs/screenshots/routine.png" alt="Active routine" width="200"/><br/><sub>Routine timer</sub></td>
-    <td align="center"><img src="docs/screenshots/blocker.png" alt="App blocker" width="200"/><br/><sub>App blocker</sub></td>
-    <td align="center"><img src="docs/screenshots/focus.png" alt="Focus session" width="200"/><br/><sub>Focus mode</sub></td>
+    <td align="center"><img src="docs/screenshots/home.png" alt="Home dashboard" width="185"/><br/><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshots/routine.png" alt="Active routine" width="185"/><br/><sub>Routine timer</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/blocker.png" alt="App blocker" width="185"/><br/><sub>App blocker</sub></td>
+    <td align="center"><img src="docs/screenshots/focus.png" alt="Focus session" width="185"/><br/><sub>Focus mode</sub></td>
   </tr>
 </table>
 
@@ -56,14 +58,17 @@ Everything stays on your phone. No account, no cloud, no ads, no tracking. The a
 
 ## What's inside
 
-| | |
-|---|---|
-| **Routines** | Multi-step routines with a real alarm at the start time, a countdown for every step, and a heads-up before each one ends. Run over time and the timer keeps going into the negative and keeps reminding you. |
-| **To-dos** | A planner that won't let things quietly slip. Timed to-dos alarm you like a routine does. Loose ones resurface a few times a day. Overdue ones stay pinned until you deal with them. |
-| **App blocker** | Block distracting apps by a daily time limit, a fixed time window (overnight works too), or automatically during routines and focus sessions. Bundle apps into groups with one shared limit. |
-| **Focus mode** | One session that turns on Do Not Disturb, silences notifications, and blocks the apps or groups you pick, for a set stretch of time. Start one on the spot or schedule it. |
-| **Home dashboard** | Your day at a glance: today's routines and their status, the to-dos that need you next, screen time, and quick actions. |
-| **Statistics** | A simple weekly view of routines completed and focus minutes logged. |
+**Routines.** Multi-step routines with a real alarm at the start time, a countdown for every step, and a heads-up before each one ends. Run over time and the timer keeps going into the negative and keeps reminding you.
+
+**To-dos.** A planner that won't let things quietly slip. Timed to-dos alarm you like a routine does. Loose ones resurface a few times a day. Overdue ones stay pinned until you deal with them.
+
+**App blocker.** Block distracting apps by a daily time limit, a fixed time window (overnight works too), or automatically during routines and focus sessions. Bundle apps into groups with one shared limit.
+
+**Focus mode.** One session that turns on Do Not Disturb, silences notifications, and blocks the apps or groups you pick, for a set stretch of time. Start one on the spot or schedule it.
+
+**Home dashboard.** Your day at a glance: today's routines and their status, the to-dos that need you next, screen time, and quick actions.
+
+**Statistics.** A simple weekly view of routines completed and focus minutes logged.
 
 <br/>
 
