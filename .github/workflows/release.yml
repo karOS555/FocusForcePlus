@@ -29,7 +29,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build release APK
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleRelease --no-daemon
 
       # Signs the unsigned release APK when the four signing secrets are present.
       # Set them under Settings > Secrets and variables > Actions. See the README /
