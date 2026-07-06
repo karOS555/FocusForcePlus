@@ -567,6 +567,25 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
 
+                        // Beta feedback channel — opens the GitHub "new issue" chooser.
+                        TextButton(
+                            onClick = {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse("https://github.com/karOS555/FocusForcePlus/issues/new/choose"),
+                                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            },
+                            contentPadding = PaddingValues(0.dp),
+                        ) { Text("Report a bug or suggest an idea") }
+
+                        Text(
+                            "FocusForce+ is in beta. Bug reports and ideas on GitHub genuinely help.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
                         Text(
