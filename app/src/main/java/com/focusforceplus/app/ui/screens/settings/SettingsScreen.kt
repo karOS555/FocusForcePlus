@@ -2,6 +2,7 @@ package com.focusforceplus.app.ui.screens.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +62,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -567,7 +570,25 @@ fun SettingsScreen(
                 }
             }
 
-            item { Spacer(Modifier.height(16.dp)) }
+            item {
+                Spacer(Modifier.height(22.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 110.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color(0xFFE40303), Color(0xFFFF8C00), Color(0xFFFFED00),
+                                    Color(0xFF008026), Color(0xFF004DFF), Color(0xFF750787),
+                                )
+                            )
+                        ),
+                )
+                Spacer(Modifier.height(18.dp))
+            }
         }
     }
 

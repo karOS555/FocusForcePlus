@@ -64,9 +64,11 @@ class TodoOverdueWorker(
 
         val pinnedCount = (overdue + undated).count { it.priority > 0 }
         if (pinnedCount > 0) {
-            applicationContext.startForegroundService(
-                TodoReminderForegroundService.startIntent(applicationContext, pinnedCount)
-            )
+            runCatching {
+                applicationContext.startForegroundService(
+                    TodoReminderForegroundService.startIntent(applicationContext, pinnedCount)
+                )
+            }
         } else {
             notifHelper.cancelNotification(TodoNotificationHelper.NOTIFICATION_ID_OVERDUE)
             runCatching {

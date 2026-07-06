@@ -40,11 +40,13 @@ class TodoSnoozeReceiver : BroadcastReceiver() {
                 )
 
                 // Transition FGS to snoozed notification so it stays pinned for Medium/High
-                context.startForegroundService(
-                    TodoAlarmForegroundService.startSnoozedIntent(
-                        context, todoId, todo.title, triggerMillis, newCount, todo.maxSnoozeCount, todo.priority,
+                runCatching {
+                    context.startForegroundService(
+                        TodoAlarmForegroundService.startSnoozedIntent(
+                            context, todoId, todo.title, triggerMillis, newCount, todo.maxSnoozeCount, todo.priority,
+                        )
                     )
-                )
+                }
             } finally {
                 pendingResult.finish()
             }

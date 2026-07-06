@@ -263,13 +263,20 @@ private fun RestrictedSettingsCard(onOpenAppInfo: () -> Unit) {
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                "Because you installed FocusForce+ directly instead of from the Play " +
-                    "Store, Android blocks the accessibility toggle the first time. To " +
-                    "unblock it: open the app info page below, tap the three-dot menu in " +
-                    "the top corner, and choose \"Allow restricted settings\". Then come " +
-                    "back and turn the service on.",
+                "Because you installed FocusForce+ directly (not from the Play Store), " +
+                    "Android blocks the accessibility toggle the first time. It's a quick " +
+                    "one-time unlock. Tap \"Open app info\" below, then:",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                "• Most phones: tap the three-dot menu (top-right) and choose " +
+                    "\"Allow restricted settings\".\n" +
+                    "• Samsung: open Permissions, tap the three-dot menu (top-right), " +
+                    "then \"Allow restricted settings\".\n\n" +
+                    "After that, come back here and turn the service on.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(
                 onClick = onOpenAppInfo,

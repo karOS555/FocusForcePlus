@@ -42,13 +42,18 @@ class TodoAlarmReceiver : BroadcastReceiver() {
                         }
                     )
                 }
-                // Both High (2) and Medium (1) use a foreground service so the
-                // alarm notification cannot be swiped away on any Android version.
-                context.startForegroundService(
-                    TodoAlarmForegroundService.startIntent(
-                        context, todoId, title, snoozeCount, maxSnooze, priority,
+                // Both High (2) and Medium (1) use a foreground service that pins the
+                // alarm notification (non-dismissable up to Android 13; on 14+ the system
+                // lets users swipe FGS notifications, so the full-screen alarm above is the
+                // real attention-grabber). Wrapped so an OEM refusing the background FGS
+                // start never crashes the alarm.
+                runCatching {
+                    context.startForegroundService(
+                        TodoAlarmForegroundService.startIntent(
+                            context, todoId, title, snoozeCount, maxSnooze, priority,
+                        )
                     )
-                )
+                }
             }
         }
     }

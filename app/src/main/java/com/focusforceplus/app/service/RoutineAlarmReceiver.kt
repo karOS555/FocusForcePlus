@@ -49,12 +49,16 @@ class RoutineAlarmReceiver : BroadcastReceiver() {
         // AlarmLaunchService calls startForeground() + startActivity() from within the service.
         // On Android 12+ this is a no-op in practice (the activity is already running from Path A),
         // but having the service post the notification ensures it survives stopForeground(detach).
-        context.startForegroundService(
-            Intent(context, AlarmLaunchService::class.java).apply {
-                putExtra("routineId", routineId)
-                putExtra("routineName", routineName)
-            }
-        )
+        // Wrapped: some OEMs (e.g. Samsung) can still refuse a background FGS start, and that
+        // must not take down the whole alarm — the full-screen activity from Path A already ran.
+        runCatching {
+            context.startForegroundService(
+                Intent(context, AlarmLaunchService::class.java).apply {
+                    putExtra("routineId", routineId)
+                    putExtra("routineName", routineName)
+                }
+            )
+        }
 
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {

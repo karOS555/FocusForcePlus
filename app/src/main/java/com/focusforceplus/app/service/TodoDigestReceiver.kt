@@ -53,9 +53,11 @@ class TodoDigestReceiver : BroadcastReceiver() {
                 // Anchor FGS: keeps Medium/High group notifications stable
                 val pinnedCount = (overdue + undated).count { it.priority > 0 }
                 if (pinnedCount > 0) {
-                    context.startForegroundService(
-                        TodoReminderForegroundService.startIntent(context, pinnedCount)
-                    )
+                    runCatching {
+                        context.startForegroundService(
+                            TodoReminderForegroundService.startIntent(context, pinnedCount)
+                        )
+                    }
                 } else {
                     notifHelper.cancelNotification(TodoNotificationHelper.NOTIFICATION_ID_OVERDUE)
                     runCatching {
