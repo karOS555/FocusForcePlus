@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -79,7 +81,7 @@ fun OnboardingScreen(
     onOpenDisclosure: (String) -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val pagerState = rememberPagerState(pageCount = { 5 })
     val scope = rememberCoroutineScope()
 
     // Re-check grants whenever the user returns from system settings.
@@ -110,7 +112,8 @@ fun OnboardingScreen(
                     onOpenDisclosure = onOpenDisclosure,
                     onContinue = { scope.launch { pagerState.animateScrollToPage(3) } },
                 )
-                3 -> FirstRoutinePage(
+                3 -> UpdatesPage(onContinue = { scope.launch { pagerState.animateScrollToPage(4) } })
+                4 -> FirstRoutinePage(
                     onCreateRoutine = { viewModel.completeOnboarding { onFinish(true) } },
                     onLater = { viewModel.completeOnboarding { onFinish(false) } },
                 )
@@ -124,7 +127,7 @@ fun OnboardingScreen(
                 .padding(bottom = 24.dp),
             horizontalArrangement = Arrangement.Center,
         ) {
-            repeat(4) { index ->
+            repeat(5) { index ->
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 4.dp)
@@ -448,7 +451,99 @@ private fun ChecklistRow(
     }
 }
 
-// ── Page 4: First routine ─────────────────────────────────────────────────────
+// ── Page 4: Updates ───────────────────────────────────────────────────────────
+
+@Composable
+private fun UpdatesPage(onContinue: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            Icons.Filled.SystemUpdate,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(56.dp),
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Keeping the app updated",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "FocusForce+ isn't on the Play Store yet, so updates don't arrive on their own. " +
+                "And because the app has no internet access, it can't check for them itself. " +
+                "Two easy ways to stay current:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(20.dp))
+
+        UpdateOptionCard(
+            title = "Check it yourself",
+            body = "Settings > About > Check for updates opens the releases page, where " +
+                "you can see if there's a newer version. Or just watch the GitHub repo.",
+        )
+        Spacer(Modifier.height(12.dp))
+        UpdateOptionCard(
+            title = "Or let it update automatically",
+            body = "Install FocusForce+ through Obtainium, an app that watches GitHub " +
+                "releases and updates directly-installed apps for you. Set it once and " +
+                "forget it. FocusForce+ still never goes online, Obtainium does the checking.",
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = { uriHandler.openUri("https://github.com/ImranR98/Obtainium") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        ) { Text("Get Obtainium") }
+
+        Spacer(Modifier.height(24.dp))
+        Button(
+            onClick = onContinue,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) { Text("Continue") }
+    }
+}
+
+@Composable
+private fun UpdateOptionCard(title: String, body: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// ── Page 5: First routine ─────────────────────────────────────────────────────
 
 @Composable
 private fun FirstRoutinePage(
