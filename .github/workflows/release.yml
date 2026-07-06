@@ -1,0 +1,66 @@
+name: Build and publish APK
+
+# Runs when you push a version tag like v1.0.0-beta, or when triggered by hand.
+# It builds the release APK, signs it (if signing secrets are set), and attaches
+# it to the matching GitHub Release so people can download and sideload it.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      # Signs the unsigned release APK when the four signing secrets are present.
+      # Set them under Settings > Secrets and variables > Actions. See the README /
+      # docs for how to generate the keystore. Without them this step is skipped and
+      # the unsigned APK is published instead (fine for a first internal test).
+      - name: Sign APK
+        id: sign
+        if: ${{ env.SIGNING_KEY != '' }}
+        uses: r0adkll/sign-android-release@v1
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          if [ -n "${{ steps.sign.outputs.signedReleaseFile }}" ]; then
+            cp "${{ steps.sign.outputs.signedReleaseFile }}" out/FocusForcePlus-${{ github.ref_name }}.apk
+          else
+            cp app/build/outputs/apk/release/app-release-unsigned.apk out/FocusForcePlus-${{ github.ref_name }}-unsigned.apk
+          fi
+
+      - name: Publish to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.apk
+          draft: false
+          prerelease: true
+          generate_release_notes: true
