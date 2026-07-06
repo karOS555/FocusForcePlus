@@ -29,19 +29,23 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.ui.alarm.RoutineAlarmActivity
 import androidx.compose.foundation.layout.Column
 import com.focusforceplus.app.ui.common.AppFooter
 import com.focusforceplus.app.ui.common.FocusForceTopBar
 import com.focusforceplus.app.ui.navigation.BottomNavBar
 import com.focusforceplus.app.ui.navigation.NavGraph
+import com.focusforceplus.app.ui.navigation.OnboardingRoutes
 import com.focusforceplus.app.ui.navigation.RoutineRoutes
+import com.focusforceplus.app.ui.navigation.Screen
 import com.focusforceplus.app.ui.navigation.SettingsRoutes
 import com.focusforceplus.app.ui.navigation.bottomNavScreens
 import com.focusforceplus.app.ui.theme.FocusForceTheme
 import com.focusforceplus.app.util.AlarmEventBus
 import com.focusforceplus.app.util.PermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -49,21 +53,33 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var alarmEventBus: AlarmEventBus
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     private val notifPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* result handled in UI state */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Request POST_NOTIFICATIONS on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !PermissionHelper.canPostNotifications(this)
-        ) {
-            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        // Keep the splash visible until we know whether onboarding is needed.
+        // Compose state so setContent recomposes once the value arrives.
+        val onboardingState = androidx.compose.runtime.mutableStateOf<Boolean?>(null)
+        splashScreen.setKeepOnScreenCondition { onboardingState.value == null }
+        lifecycleScope.launch {
+            val completed = settingsRepository.onboardingCompleted.first()
+            onboardingState.value = completed
+            // Prominent disclosure first (Golden Rule #10): new users learn about
+            // notifications in onboarding; only returning users get the system
+            // prompt directly.
+            if (completed &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !PermissionHelper.canPostNotifications(this@MainActivity)
+            ) {
+                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
 
         // When an alarm fires while the app is in the foreground, open the alarm screen directly.
@@ -86,15 +102,20 @@ class MainActivity : ComponentActivity() {
         val alarmRoutineId = intent.routineId()
         setContent {
             FocusForceTheme {
-                AppContent(
-                    initialRoutineId          = alarmRoutineId,
-                    canDrawOverlays           = PermissionHelper.canDrawOverlays(this),
-                    canScheduleExactAlarms    = PermissionHelper.canScheduleExactAlarms(this),
-                    canFullScreen             = PermissionHelper.canUseFullScreenIntent(this),
-                    onOpenOverlaySettings     = { PermissionHelper.openOverlaySettings(this) },
-                    onOpenExactAlarmSettings  = { PermissionHelper.openExactAlarmSettings(this) },
-                    onOpenFullScreenSettings  = { PermissionHelper.openFullScreenIntentSettings(this) },
-                )
+                // Direct .value read is tracked by composition; the local val allows smart-cast.
+                val completed = onboardingState.value
+                if (completed != null) {
+                    AppContent(
+                        onboardingCompleted       = completed,
+                        initialRoutineId          = alarmRoutineId,
+                        canDrawOverlays           = PermissionHelper.canDrawOverlays(this),
+                        canScheduleExactAlarms    = PermissionHelper.canScheduleExactAlarms(this),
+                        canFullScreen             = PermissionHelper.canUseFullScreenIntent(this),
+                        onOpenOverlaySettings     = { PermissionHelper.openOverlaySettings(this) },
+                        onOpenExactAlarmSettings  = { PermissionHelper.openExactAlarmSettings(this) },
+                        onOpenFullScreenSettings  = { PermissionHelper.openFullScreenIntentSettings(this) },
+                    )
+                }
             }
         }
     }
@@ -110,6 +131,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppContent(
+    onboardingCompleted: Boolean,
     initialRoutineId: Long = 0L,
     canDrawOverlays: Boolean = true,
     canScheduleExactAlarms: Boolean = true,
@@ -120,16 +142,20 @@ private fun AppContent(
 ) {
     val navController = rememberNavController()
     var pendingRoutineId by remember { mutableLongStateOf(initialRoutineId) }
-    // Show dialogs in priority order: overlay first, then exact alarms, then full-screen intent.
-    var showOverlayDialog     by remember { mutableStateOf(!canDrawOverlays) }
-    var showExactAlarmDialog  by remember { mutableStateOf(!canScheduleExactAlarms && canDrawOverlays) }
-    var showFullScreenDialog  by remember { mutableStateOf(!canFullScreen && canDrawOverlays && canScheduleExactAlarms) }
+    // Show dialogs in priority order — but never during onboarding, which has its
+    // own permission checklist with proper disclosures.
+    var showOverlayDialog     by remember { mutableStateOf(onboardingCompleted && !canDrawOverlays) }
+    var showExactAlarmDialog  by remember { mutableStateOf(onboardingCompleted && !canScheduleExactAlarms && canDrawOverlays) }
+    var showFullScreenDialog  by remember { mutableStateOf(onboardingCompleted && !canFullScreen && canDrawOverlays && canScheduleExactAlarms) }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val mainTabRoutes = remember { bottomNavScreens.map { it.route }.toSet() }
-    // null = NavController not yet navigated (first frame) → default to showing the bar
-    val showTopBar = currentRoute == null || currentRoute in mainTabRoutes
+    // null = NavController not yet navigated (first frame) → default by onboarding state
+    val showTopBar = if (currentRoute == null) onboardingCompleted else currentRoute in mainTabRoutes
+    val hideChrome = currentRoute == OnboardingRoutes.ONBOARDING ||
+        (currentRoute == null && !onboardingCompleted) ||
+        currentRoute?.startsWith("blocker/disclosure") == true
 
     // Navigate to active routine when launched from an alarm notification.
     LaunchedEffect(pendingRoutineId) {
@@ -142,20 +168,24 @@ private fun AppContent(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            if (showTopBar) FocusForceTopBar(
+            if (showTopBar && !hideChrome) FocusForceTopBar(
                 onSettingsClick = { navController.navigate(SettingsRoutes.SETTINGS) },
             )
         },
         bottomBar = {
-            Column {
-                BottomNavBar(navController)
-                AppFooter()
+            if (!hideChrome) {
+                Column {
+                    BottomNavBar(navController)
+                    AppFooter()
+                }
             }
         },
     ) { innerPadding ->
         NavGraph(
-            navController = navController,
-            modifier      = Modifier.padding(innerPadding),
+            navController    = navController,
+            modifier         = Modifier.padding(innerPadding),
+            startDestination = if (onboardingCompleted) Screen.Home.route
+                               else OnboardingRoutes.ONBOARDING,
         )
     }
 

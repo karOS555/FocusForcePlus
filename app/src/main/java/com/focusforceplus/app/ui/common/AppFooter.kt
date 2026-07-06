@@ -14,12 +14,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +41,7 @@ private const val GITHUB_URL = "https://github.com/karOS555/FocusForcePlus"
 @Composable
 fun AppFooter(modifier: Modifier = Modifier) {
     val uriHandler = LocalUriHandler.current
+    var showRateComingSoon by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -91,6 +98,7 @@ fun AppFooter(modifier: Modifier = Modifier) {
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
+                        .clickable { showRateComingSoon = true }
                         .padding(horizontal = 8.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -109,5 +117,21 @@ fun AppFooter(modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+
+    if (showRateComingSoon) {
+        AlertDialog(
+            onDismissRequest = { showRateComingSoon = false },
+            title = { Text("Coming soon") },
+            text = {
+                Text(
+                    "FocusForce+ isn't on the Play Store yet. This link will go live " +
+                        "with the first release - thanks for wanting to rate it already!",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showRateComingSoon = false }) { Text("OK") }
+            },
+        )
     }
 }

@@ -64,4 +64,11 @@ interface TodoDao {
 
     @Query("DELETE FROM todos WHERE isCompleted = 1 AND completedAt < :beforeTimestamp")
     suspend fun deleteCompletedBefore(beforeTimestamp: Long)
+
+    // Backup / restore
+    @Query("SELECT * FROM todos")
+    suspend fun getAllOnce(): List<TodoEntity>
+
+    @Query("DELETE FROM todos")
+    suspend fun deleteAll()
 }

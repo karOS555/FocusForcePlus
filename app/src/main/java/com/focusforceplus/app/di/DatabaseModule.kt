@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.room.Room
 import com.focusforceplus.app.data.db.AppDatabase
 import com.focusforceplus.app.data.db.dao.BlockedAppDao
+import com.focusforceplus.app.data.db.dao.BlockerGroupDao
+import com.focusforceplus.app.data.db.dao.FocusCompletionDao
 import com.focusforceplus.app.data.db.dao.FocusSessionDao
+import com.focusforceplus.app.data.db.dao.RoutineCompletionDao
 import com.focusforceplus.app.data.db.dao.RoutineDao
 import com.focusforceplus.app.data.db.dao.RoutineTaskDao
 import com.focusforceplus.app.data.db.dao.TodoDao
@@ -27,7 +30,15 @@ object DatabaseModule {
             AppDatabase::class.java,
             "focusforceplus.db"
         )
-        .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5)
+        .addMigrations(
+            AppDatabase.MIGRATION_1_2,
+            AppDatabase.MIGRATION_2_3,
+            AppDatabase.MIGRATION_3_4,
+            AppDatabase.MIGRATION_4_5,
+            AppDatabase.MIGRATION_5_6,
+            AppDatabase.MIGRATION_6_7,
+            AppDatabase.MIGRATION_7_8,
+        )
         .build()
 
     @Provides
@@ -43,5 +54,14 @@ object DatabaseModule {
     fun provideBlockedAppDao(db: AppDatabase): BlockedAppDao = db.blockedAppDao()
 
     @Provides
+    fun provideBlockerGroupDao(db: AppDatabase): BlockerGroupDao = db.blockerGroupDao()
+
+    @Provides
     fun provideFocusSessionDao(db: AppDatabase): FocusSessionDao = db.focusSessionDao()
+
+    @Provides
+    fun provideRoutineCompletionDao(db: AppDatabase): RoutineCompletionDao = db.routineCompletionDao()
+
+    @Provides
+    fun provideFocusCompletionDao(db: AppDatabase): FocusCompletionDao = db.focusCompletionDao()
 }

@@ -171,6 +171,7 @@ class RoutineAlarmActivity : ComponentActivity() {
     // ── Audio ─────────────────────────────────────────────────────────────────
 
     private fun playAlarmSound() {
+        if (!com.focusforceplus.app.util.AlarmSoundPolicy.soundEnabled) return
         try {
             val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
@@ -213,6 +214,7 @@ class RoutineAlarmActivity : ComponentActivity() {
     // ── Vibration ─────────────────────────────────────────────────────────────
 
     private fun startVibration() {
+        if (!com.focusforceplus.app.util.AlarmSoundPolicy.vibrationEnabled) return
         try {
             val vib: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator

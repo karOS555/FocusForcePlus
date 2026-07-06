@@ -1,11 +1,15 @@
 package com.focusforceplus.app.util
 
 import android.app.AlarmManager
+import android.app.AppOpsManager
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.os.Process
 import android.provider.Settings
 
 object PermissionHelper {
@@ -65,5 +69,98 @@ object PermissionHelper {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
                android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    // ── App blocker permissions ───────────────────────────────────────────────
+
+    /** True if the app-blocker AccessibilityService is enabled in system settings. */
+    fun isAccessibilityServiceEnabled(context: Context): Boolean {
+        val expected = ComponentName(
+            context,
+            "com.focusforceplus.app.service.AppBlockerAccessibilityService",
+        ).flattenToString()
+        val enabled = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ) ?: return false
+        return enabled.split(':').any {
+            it.equals(expected, ignoreCase = true) ||
+                ComponentName.unflattenFromString(it)?.flattenToString()
+                    .equals(expected, ignoreCase = true)
+        }
+    }
+
+    /** Opens the system accessibility settings (the service must be enabled there).
+     *  Only call this AFTER the in-app prominent disclosure has been confirmed. */
+    fun openAccessibilitySettings(context: Context) {
+        context.startActivity(
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+
+    /** True if Usage Access (PACKAGE_USAGE_STATS) has been granted. */
+    fun hasUsageStatsPermission(context: Context): Boolean {
+        val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName,
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName,
+            )
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+
+    /** Opens the system Usage Access settings.
+     *  Only call this AFTER the in-app prominent disclosure has been confirmed. */
+    fun openUsageAccessSettings(context: Context) {
+        val direct = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            .setData(Uri.parse("package:${context.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(direct) }.onFailure {
+            // Some OEMs reject the package URI form; fall back to the list page.
+            context.startActivity(
+                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
+
+    // ── Focus mode (Do Not Disturb) ───────────────────────────────────────────
+
+    /** True if the app may toggle Do Not Disturb. */
+    fun hasDndAccess(context: Context): Boolean {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        return nm.isNotificationPolicyAccessGranted
+    }
+
+    /** Opens the system page where the user can grant DND access. */
+    fun openDndAccessSettings(context: Context) {
+        context.startActivity(
+            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+
+    // ── Battery optimization ──────────────────────────────────────────────────
+
+    /** True when the app is exempt from battery optimization (reminders fire reliably). */
+    fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        return pm.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    /** Opens the battery optimization list — the user picks FocusForce+ manually.
+     *  We deliberately use the non-prompting list intent: REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+     *  is restricted and per compliance guide (3.5) not to be forced. */
+    fun openBatteryOptimizationSettings(context: Context) {
+        context.startActivity(
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }

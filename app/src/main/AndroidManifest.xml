@@ -19,12 +19,41 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
         tools:ignore="ExactAlarm" />
 
-    <!-- Foreground service -->
+    <!-- Foreground services. All our services are user-initiated session holders
+         (routine/focus timers, pinned alarm notifications) — none of the specific
+         FGS types fit, so each declares specialUse with an explanatory subtype
+         property (see the <service> tags). Google requires a Play Console
+         declaration for specialUse; the subtype values below are written for it. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Boot receiver -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Focus mode: toggle Do Not Disturb during sessions. Declaring this is what
+         makes FocusForce+ appear in Android's "Do Not Disturb access" list — the
+         actual grant still happens there, by the user. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
+    <!-- App blocker: measure per-app usage for daily limits. Special-access permission,
+         granted by the user in system settings after an in-app prominent disclosure. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Package visibility: only apps with a launcher entry (the blockable ones).
+         Deliberately NOT QUERY_ALL_PACKAGES — see .claude/PLAY_STORE_COMPLIANCE.md,
+         Golden Rule #6. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+    </queries>
 
     <application
         android:name=".FocusForcePlusApp"
@@ -76,13 +105,21 @@
         <service
             android:name=".service.AlarmLaunchService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Launches the full-screen routine alarm the user scheduled; alive for under a second." />
+        </service>
 
         <!-- Foreground service that keeps the process alive during a routine session -->
         <service
             android:name=".service.RoutineForegroundService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the user-started routine timer running with a live countdown notification until the routine ends." />
+        </service>
 
         <!-- Receives scheduled routine alarms (main alarm + snooze) -->
         <receiver
@@ -151,13 +188,87 @@
         <service
             android:name=".service.TodoAlarmForegroundService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Pins the alarm notification of a due todo the user scheduled, until the user acts on it." />
+        </service>
 
         <!-- Foreground service that keeps the overdue-todos notification non-dismissable -->
         <service
             android:name=".service.TodoReminderForegroundService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Pins the overdue-todo summary notification the user opted into, until the todos are handled." />
+        </service>
+
+        <!-- App blocker: detects which app is in the foreground (window state changes
+             only, no content access) and shows the blocked screen. Config is minimal
+             by design — see res/xml/accessibility_service_config.xml. -->
+        <service
+            android:name=".service.AppBlockerAccessibilityService"
+            android:exported="false"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Full-screen cover for blocked apps. Isolated task, never in recents,
+             disappears once left — the user can always reach Home. -->
+        <activity
+            android:name=".ui.screens.blocker.BlockedAppActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.FocusForce" />
+
+        <!-- Owns a running focus session: countdown, ongoing notification, DND -->
+        <service
+            android:name=".service.FocusForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the user-started focus session countdown and restores Do Not Disturb when it ends." />
+        </service>
+
+        <!-- Fires at a focus session's scheduled time (reminder, no auto-start) -->
+        <receiver
+            android:name=".service.FocusAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Handles "End session" / "Start now" actions from focus notifications -->
+        <receiver
+            android:name=".service.FocusSessionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.focusforceplus.app.FOCUS_END_SESSION" />
+                <action android:name="com.focusforceplus.app.FOCUS_START_SCHEDULED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Quick-settings tile: start a 25-min quick focus with one tap.
+             exported=true is required for system binding; the BIND permission
+             restricts callers to the system. -->
+        <service
+            android:name=".service.FocusTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_focus"
+            android:label="Quick focus"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
     </application>
 

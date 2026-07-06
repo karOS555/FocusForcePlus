@@ -64,7 +64,9 @@ class TodoAlarmViewModel @Inject constructor(
                         todoTitle        = todo.title,
                         todoDescription  = todo.description,
                         priority         = todo.priority,
-                        snoozeCount      = initialSnoozeCount,
+                        // DB is authoritative; the intent extra can be stale (e.g. when the
+                        // screen is opened from a notification action posted before a snooze).
+                        snoozeCount      = maxOf(initialSnoozeCount, todo.snoozeCount),
                         maxSnoozeCount   = todo.maxSnoozeCount,
                         rescheduleCount  = todo.rescheduleCount,
                         maxRescheduleCount = todo.maxRescheduleCount,
@@ -145,8 +147,14 @@ class TodoAlarmViewModel @Inject constructor(
 
     fun reschedule(epochMillis: Long, onSuccess: () -> Unit) {
         viewModelScope.launch {
+            val todo = repository.getTodoById(todoId)
+            // High priority enforces the reschedule cap. The UI disables the button;
+            // this also guards the notification-action path. Blocked = the screen stays
+            // open so the user can pick another action.
+            if (todo != null && todo.priority == 2 && todo.rescheduleCount >= todo.maxRescheduleCount) {
+                return@launch
+            }
             try {
-                val todo = repository.getTodoById(todoId)
                 if (todo != null) {
                     val updated = todo.copy(
                         dueDateTime     = epochMillis,

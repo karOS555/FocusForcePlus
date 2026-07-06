@@ -1,0 +1,662 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 8,
+    "identityHash": "f07986c76c76fe519ea279a7165290f0",
+    "entities": [
+      {
+        "tableName": "routines",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `startTimeHour` INTEGER NOT NULL, `startTimeMinute` INTEGER NOT NULL, `activeDays` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `invincibleMode` INTEGER NOT NULL, `appBlockerEnabled` INTEGER NOT NULL, `maxSnoozeCount` INTEGER NOT NULL, `maxRescheduleCount` INTEGER NOT NULL, `iconKey` TEXT, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startTimeHour",
+            "columnName": "startTimeHour",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTimeMinute",
+            "columnName": "startTimeMinute",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeDays",
+            "columnName": "activeDays",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "invincibleMode",
+            "columnName": "invincibleMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appBlockerEnabled",
+            "columnName": "appBlockerEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxSnoozeCount",
+            "columnName": "maxSnoozeCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxRescheduleCount",
+            "columnName": "maxRescheduleCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "iconKey",
+            "columnName": "iconKey",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "routine_tasks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `routineId` INTEGER NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `durationMinutes` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `reminderBeforeEndMinutes` INTEGER NOT NULL, `overtimeReminderIntervalMinutes` INTEGER NOT NULL, `iconKey` TEXT, FOREIGN KEY(`routineId`) REFERENCES `routines`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "routineId",
+            "columnName": "routineId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reminderBeforeEndMinutes",
+            "columnName": "reminderBeforeEndMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "overtimeReminderIntervalMinutes",
+            "columnName": "overtimeReminderIntervalMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "iconKey",
+            "columnName": "iconKey",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_routine_tasks_routineId",
+            "unique": false,
+            "columnNames": [
+              "routineId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_routine_tasks_routineId` ON `${TABLE_NAME}` (`routineId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "routines",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "routineId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "todos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `dueDateTime` INTEGER, `priority` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `isRecurring` INTEGER NOT NULL, `recurringPattern` TEXT, `snoozeCount` INTEGER NOT NULL, `maxSnoozeCount` INTEGER NOT NULL, `rescheduleCount` INTEGER NOT NULL, `maxRescheduleCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER, `postponedTo` INTEGER, `checklistJson` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dueDateTime",
+            "columnName": "dueDateTime",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isCompleted",
+            "columnName": "isCompleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRecurring",
+            "columnName": "isRecurring",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recurringPattern",
+            "columnName": "recurringPattern",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "snoozeCount",
+            "columnName": "snoozeCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxSnoozeCount",
+            "columnName": "maxSnoozeCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rescheduleCount",
+            "columnName": "rescheduleCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxRescheduleCount",
+            "columnName": "maxRescheduleCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "postponedTo",
+            "columnName": "postponedTo",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "checklistJson",
+            "columnName": "checklistJson",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "blocked_apps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `packageName` TEXT NOT NULL, `appName` TEXT NOT NULL, `dailyLimitMinutes` INTEGER, `usedTodayMinutes` INTEGER NOT NULL, `isBlocked` INTEGER NOT NULL, `blockDuringRoutines` INTEGER NOT NULL, `blockDuringFocus` INTEGER NOT NULL, `invincibleMode` INTEGER NOT NULL, `windowStartMinutes` INTEGER, `windowEndMinutes` INTEGER, `exceptionUntilMillis` INTEGER NOT NULL, `exceptionsUsedToday` INTEGER NOT NULL, `groupName` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "packageName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appName",
+            "columnName": "appName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyLimitMinutes",
+            "columnName": "dailyLimitMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "usedTodayMinutes",
+            "columnName": "usedTodayMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isBlocked",
+            "columnName": "isBlocked",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockDuringRoutines",
+            "columnName": "blockDuringRoutines",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockDuringFocus",
+            "columnName": "blockDuringFocus",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "invincibleMode",
+            "columnName": "invincibleMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "windowStartMinutes",
+            "columnName": "windowStartMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "windowEndMinutes",
+            "columnName": "windowEndMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "exceptionUntilMillis",
+            "columnName": "exceptionUntilMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exceptionsUsedToday",
+            "columnName": "exceptionsUsedToday",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupName",
+            "columnName": "groupName",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_blocked_apps_packageName",
+            "unique": true,
+            "columnNames": [
+              "packageName"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_blocked_apps_packageName` ON `${TABLE_NAME}` (`packageName`)"
+          }
+        ]
+      },
+      {
+        "tableName": "blocker_groups",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `sharedDailyLimitMinutes` INTEGER, `invincibleMode` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sharedDailyLimitMinutes",
+            "columnName": "sharedDailyLimitMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "invincibleMode",
+            "columnName": "invincibleMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_blocker_groups_name",
+            "unique": true,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_blocker_groups_name` ON `${TABLE_NAME}` (`name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "focus_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `durationMinutes` INTEGER NOT NULL, `enableDnd` INTEGER NOT NULL, `blockNotifications` INTEGER NOT NULL, `appBlockerEnabled` INTEGER NOT NULL, `invincibleMode` INTEGER NOT NULL, `blockedGroupsCsv` TEXT, `scheduledDays` TEXT, `scheduledTimeHour` INTEGER, `scheduledTimeMinute` INTEGER, `isActive` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enableDnd",
+            "columnName": "enableDnd",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockNotifications",
+            "columnName": "blockNotifications",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appBlockerEnabled",
+            "columnName": "appBlockerEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "invincibleMode",
+            "columnName": "invincibleMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockedGroupsCsv",
+            "columnName": "blockedGroupsCsv",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "scheduledDays",
+            "columnName": "scheduledDays",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "scheduledTimeHour",
+            "columnName": "scheduledTimeHour",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "scheduledTimeMinute",
+            "columnName": "scheduledTimeMinute",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "routine_completions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `routineId` INTEGER NOT NULL, `routineName` TEXT NOT NULL, `completedAt` INTEGER NOT NULL, `scheduledMinutes` INTEGER NOT NULL, `overtimeMinutes` INTEGER NOT NULL, `tasksCompleted` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "routineId",
+            "columnName": "routineId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "routineName",
+            "columnName": "routineName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scheduledMinutes",
+            "columnName": "scheduledMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "overtimeMinutes",
+            "columnName": "overtimeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tasksCompleted",
+            "columnName": "tasksCompleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_routine_completions_completedAt",
+            "unique": false,
+            "columnNames": [
+              "completedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_routine_completions_completedAt` ON `${TABLE_NAME}` (`completedAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "focus_completions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `focusedMinutes` INTEGER NOT NULL, `completedAt` INTEGER NOT NULL, `endedEarly` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "focusedMinutes",
+            "columnName": "focusedMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedEarly",
+            "columnName": "endedEarly",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_focus_completions_completedAt",
+            "unique": false,
+            "columnNames": [
+              "completedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_focus_completions_completedAt` ON `${TABLE_NAME}` (`completedAt`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f07986c76c76fe519ea279a7165290f0')"
+    ]
+  }
+}

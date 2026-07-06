@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.routine
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -79,8 +80,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.focusforceplus.app.ui.common.DiscardChangesDialog
 import com.focusforceplus.app.ui.common.IconPickerButton
 import com.focusforceplus.app.ui.common.IconPickerDialog
+import com.focusforceplus.app.ui.common.routineDayLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +93,11 @@ fun CreateRoutineScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val attemptClose = {
+        if (viewModel.hasUnsavedChanges) showDiscardDialog = true else onNavigateBack()
+    }
+    BackHandler { attemptClose() }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { snackbarHostState.showSnackbar(it) }
@@ -103,7 +111,7 @@ fun CreateRoutineScreen(
                     Text(if (viewModel.isEditMode) "Edit Routine" else "New Routine")
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = attemptClose) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -133,6 +141,10 @@ fun CreateRoutineScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (viewModel.isCurrentlyRunning) {
+                RunningRoutineBanner()
+            }
+
             // ── Name + Icon row ───────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -182,9 +194,14 @@ fun CreateRoutineScreen(
 
             SettingsToggleRow(
                 title    = "Invincible Mode",
-                subtitle = "Routine cannot be stopped or skipped",
+                subtitle = if (viewModel.isCurrentlyRunning) {
+                    "Locked while the routine is running. Complete or reschedule it first."
+                } else {
+                    "Once started, can only be completed or rescheduled — not cancelled."
+                },
                 checked  = uiState.invincibleMode,
                 onCheckedChange = viewModel::updateInvincibleMode,
+                enabled  = !viewModel.isCurrentlyRunning,
             )
 
             SettingsToggleRow(
@@ -194,11 +211,19 @@ fun CreateRoutineScreen(
                 onCheckedChange = viewModel::updateAppBlocker,
             )
 
-            SnoozeDropdown(value = uiState.maxSnoozeCount, onChange = viewModel::updateMaxSnooze)
+            SnoozeDropdown(
+                value    = uiState.maxSnoozeCount,
+                onChange = viewModel::updateMaxSnooze,
+                enabled  = !viewModel.isCurrentlyRunning,
+            )
 
             Spacer(Modifier.height(0.dp))
 
-            RescheduleDropdown(value = uiState.maxRescheduleCount, onChange = viewModel::updateMaxReschedule)
+            RescheduleDropdown(
+                value    = uiState.maxRescheduleCount,
+                onChange = viewModel::updateMaxReschedule,
+                enabled  = !viewModel.isCurrentlyRunning,
+            )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -240,6 +265,13 @@ fun CreateRoutineScreen(
             Spacer(Modifier.height(16.dp))
         }
     }
+
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            onDiscard = { showDiscardDialog = false; onNavigateBack() },
+            onKeepEditing = { showDiscardDialog = false },
+        )
+    }
 }
 
 // ─── Section helpers ──────────────────────────────────────────────────────────
@@ -254,11 +286,31 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
+private fun RunningRoutineBanner() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor   = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Text(
+            text  = "This routine is currently running. Changes apply to future runs. " +
+                    "Invincible Mode and the snooze/reschedule limits are locked until " +
+                    "the current session ends.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+    }
+}
+
+@Composable
 private fun SettingsToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -274,6 +326,7 @@ private fun SettingsToggleRow(
         Switch(
             checked        = checked,
             onCheckedChange = onCheckedChange,
+            enabled        = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary,
@@ -298,7 +351,7 @@ private fun WeekdaySelectorRow(
                 FilterChip(
                     selected = day in selectedDays,
                     onClick  = { onToggle(day) },
-                    label    = { Text(day) },
+                    label    = { Text(routineDayLabel(day)) },
                     colors   = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor     = MaterialTheme.colorScheme.onPrimary,
@@ -368,15 +421,20 @@ private fun TimeSection(hour: Int, minute: Int, onTimeSelected: (Int, Int) -> Un
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SnoozeDropdown(value: Int, onChange: (Int) -> Unit) {
+private fun SnoozeDropdown(value: Int, onChange: (Int) -> Unit, enabled: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
 
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = it },
+    ) {
         OutlinedTextField(
             value         = "${value}x  snooze allowed",
             onValueChange = {},
             readOnly      = true,
+            enabled       = enabled,
             label         = { Text("Snooze limit") },
+            supportingText = { Text("How often the alarm can be delayed by a few minutes per run.") },
             trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             colors        = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier      = Modifier.fillMaxWidth()
@@ -395,15 +453,20 @@ private fun SnoozeDropdown(value: Int, onChange: (Int) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RescheduleDropdown(value: Int, onChange: (Int) -> Unit) {
+private fun RescheduleDropdown(value: Int, onChange: (Int) -> Unit, enabled: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
 
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = it },
+    ) {
         OutlinedTextField(
             value         = "${value}x reschedule allowed",
             onValueChange = {},
             readOnly      = true,
+            enabled       = enabled,
             label         = { Text("Reschedule limit") },
+            supportingText = { Text("How often a run can be moved to another time (today or tomorrow).") },
             trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             colors        = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier      = Modifier.fillMaxWidth()

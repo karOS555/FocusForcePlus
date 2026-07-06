@@ -36,6 +36,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -50,6 +52,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +62,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.data.db.entity.RoutineEntity
+import com.focusforceplus.app.ui.common.FeatureHeader
+import com.focusforceplus.app.ui.common.FeatureHelpContent
+import com.focusforceplus.app.ui.common.routineDayLabel
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +77,10 @@ fun RoutineListScreen(
     viewModel: RoutineListViewModel = hiltViewModel(),
 ) {
     val routinesWithReschedule by viewModel.routinesWithReschedule.collectAsState()
+    val activeRoutineId by viewModel.activeRoutineId.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var pausePromptRoutine by remember { mutableStateOf<RoutineEntity?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -81,32 +92,88 @@ fun RoutineListScreen(
                 Icon(Icons.Filled.Add, contentDescription = "New routine")
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        if (routinesWithReschedule.isEmpty()) {
-            EmptyRoutinesHint(modifier = Modifier.padding(padding))
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            FeatureHeader(
+                title = "Routines",
+                help = FeatureHelpContent.ROUTINES,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            if (routinesWithReschedule.isEmpty()) {
+                EmptyRoutinesHint(modifier = Modifier.weight(1f))
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
+                ) {
                 items(routinesWithReschedule, key = { it.routine.id }) { item ->
                     SwipeToDeleteRoutineItem(
                         item           = item,
                         onEdit         = { onEditRoutine(item.routine.id) },
                         onStart        = { onStartRoutine(item.routine.id) },
-                        onDelete       = { viewModel.deleteRoutine(item.routine) },
-                        onToggleActive = { viewModel.toggleActive(item.routine) },
+                        onDelete       = {
+                            val deleted = viewModel.deleteRoutine(item.routine)
+                            if (!deleted) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        "Cannot delete a running routine. Complete or reschedule it first.",
+                                    )
+                                }
+                            }
+                        },
+                        onToggleActive = {
+                            val r = item.routine
+                            // Pausing a running, invincible routine: we keep the live
+                            // session running (V4 / G2 option b — toggle pauses future
+                            // runs only) but prompt so the user understands the split.
+                            val isPausing = r.isActive
+                            val isRunning = activeRoutineId == r.id
+                            if (isPausing && isRunning && r.invincibleMode) {
+                                pausePromptRoutine = r
+                            } else {
+                                viewModel.toggleActive(r)
+                            }
+                        },
                         onCancelReschedule = { viewModel.cancelPendingReschedule(item.routine.id) },
                         modifier       = Modifier.animateItem(),
                     )
                 }
+                }
             }
         }
+    }
+
+    pausePromptRoutine?.let { routine ->
+        AlertDialog(
+            onDismissRequest = { pausePromptRoutine = null },
+            title = { Text("Pause future runs?") },
+            text = {
+                Text(
+                    "Future scheduled runs of \"${routine.name}\" will be paused. " +
+                            "The current session continues until you complete or reschedule it.",
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.toggleActive(routine)
+                        pausePromptRoutine = null
+                    },
+                ) { Text("Pause future runs") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pausePromptRoutine = null }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -327,7 +394,7 @@ private fun DayBadge(day: String, active: Boolean) {
                 else MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Text(
-            text = day,
+            text = routineDayLabel(day),
             style = MaterialTheme.typography.labelSmall,
             color = if (active) MaterialTheme.colorScheme.onPrimaryContainer
                     else MaterialTheme.colorScheme.onSurfaceVariant,

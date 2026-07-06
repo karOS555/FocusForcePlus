@@ -82,7 +82,7 @@ class NotificationHelper @Inject constructor(
                                             (RC_START_ALARM + routineId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Time to start your routine!")
             .setContentText(routineName)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -113,7 +113,7 @@ class NotificationHelper @Inject constructor(
                                           (RC_START_PRE + routineId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("\"$routineName\" starts at $timeStr")
             .setContentText("Your routine starts in 15 minutes.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -145,7 +145,7 @@ class NotificationHelper @Inject constructor(
         val subText = if (remaining > 0) "$remaining snooze(s) remaining" else "No snoozes left"
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("\"$routineName\" snoozed")
             .setContentText("Starts at $timeStr \u00b7 $subText")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -187,7 +187,7 @@ class NotificationHelper @Inject constructor(
             "$taskName \u2014 Overtime"
         }
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(routineName)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_LOW)

@@ -38,11 +38,12 @@ class TodoReminderForegroundService : Service() {
             ACTION_START -> {
                 val count = intent.getIntExtra("count", 1)
                 val notif = notifHelper.buildOverdueGroupSummary(count)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // specialUse type exists from API 34; below that the manifest type applies.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     startForeground(
                         TodoNotificationHelper.NOTIFICATION_ID_OVERDUE,
                         notif,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
                     )
                 } else {
                     startForeground(TodoNotificationHelper.NOTIFICATION_ID_OVERDUE, notif)

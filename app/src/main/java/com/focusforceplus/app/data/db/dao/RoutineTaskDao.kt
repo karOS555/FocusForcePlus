@@ -29,4 +29,11 @@ interface RoutineTaskDao {
 
     @Query("DELETE FROM routine_tasks WHERE routineId = :routineId")
     suspend fun deleteTasksForRoutine(routineId: Long)
+
+    // Backup / restore
+    @Query("SELECT * FROM routine_tasks")
+    suspend fun getAllOnce(): List<RoutineTaskEntity>
+
+    @Query("DELETE FROM routine_tasks")
+    suspend fun deleteAll()
 }

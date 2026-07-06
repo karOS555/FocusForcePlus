@@ -1,7 +1,9 @@
 package com.focusforceplus.app.data.repository
 
+import com.focusforceplus.app.data.db.dao.RoutineCompletionDao
 import com.focusforceplus.app.data.db.dao.RoutineDao
 import com.focusforceplus.app.data.db.dao.RoutineTaskDao
+import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineEntity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
 import kotlinx.coroutines.flow.Flow
@@ -11,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class RoutineRepository @Inject constructor(
     private val routineDao: RoutineDao,
-    private val routineTaskDao: RoutineTaskDao
+    private val routineTaskDao: RoutineTaskDao,
+    private val routineCompletionDao: RoutineCompletionDao,
 ) {
 
     // --- Routines ---
@@ -59,4 +62,12 @@ class RoutineRepository @Inject constructor(
         routineTaskDao.deleteTasksForRoutine(routineId)
         routineTaskDao.insertAll(tasks)
     }
+
+    // --- Completion history ---
+
+    suspend fun recordCompletion(completion: RoutineCompletionEntity) =
+        routineCompletionDao.insert(completion)
+
+    fun getCompletionsSince(since: Long): Flow<List<RoutineCompletionEntity>> =
+        routineCompletionDao.getSince(since)
 }

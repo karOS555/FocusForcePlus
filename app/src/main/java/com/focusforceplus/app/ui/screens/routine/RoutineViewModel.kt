@@ -4,9 +4,12 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusforceplus.app.compliance.TamperProtectionGuard
+import com.focusforceplus.app.compliance.validateRoutineDuration
 import com.focusforceplus.app.data.db.entity.RoutineEntity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
 import com.focusforceplus.app.data.repository.RoutineRepository
+import com.focusforceplus.app.service.ActiveRoutineRegistry
 import com.focusforceplus.app.util.AlarmHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,24 +54,54 @@ data class RoutineUiState(
 class RoutineViewModel @Inject constructor(
     private val repository: RoutineRepository,
     private val alarmHelper: AlarmHelper,
+    private val activeRegistry: ActiveRoutineRegistry,
+    private val tamperGuard: TamperProtectionGuard,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val editRoutineId: Long = savedStateHandle.get<Long>("routineId") ?: 0L
     val isEditMode: Boolean get() = editRoutineId != 0L
 
+    /** True when the routine being edited is currently running.
+     *  Goldene Regel #11: while ACTIVE, Invincible Mode must not be togglable. */
+    val isCurrentlyRunning: Boolean
+        get() = isEditMode && activeRegistry.isActive(editRoutineId)
+
     private val _uiState = MutableStateFlow(RoutineUiState())
     val uiState: StateFlow<RoutineUiState> = _uiState.asStateFlow()
 
     val tasks = mutableStateListOf<TaskUiItem>()
 
+    // Preserved across edits — otherwise every save would reset the creation date.
+    private var originalCreatedAt: Long? = null
+
+    // Baseline for the discard-changes warning: state as loaded (edit) or default (create).
+    private var snapshotState: RoutineUiState? = null
+    private var snapshotTasks: List<TaskUiItem> = emptyList()
+
+    /** True when the user edited anything since opening the screen. */
+    val hasUnsavedChanges: Boolean
+        get() = snapshotState?.let { snap ->
+            normalized(_uiState.value) != normalized(snap) || tasks.toList() != snapshotTasks
+        } ?: false
+
+    private fun normalized(s: RoutineUiState) = s.copy(
+        isSaving = false, nameError = false, daysError = false, tasksError = false, error = null,
+    )
+
+    private fun takeSnapshot() {
+        snapshotState = _uiState.value
+        snapshotTasks = tasks.toList()
+    }
+
     init {
-        if (isEditMode) loadRoutine(editRoutineId)
+        if (isEditMode) loadRoutine(editRoutineId) else takeSnapshot()
     }
 
     private fun loadRoutine(id: Long) {
         viewModelScope.launch {
             repository.getRoutineById(id).first()?.let { e ->
+                originalCreatedAt = e.createdAt
                 _uiState.update {
                     it.copy(
                         name = e.name,
@@ -98,6 +131,7 @@ class RoutineViewModel @Inject constructor(
                     )
                 })
             }
+            takeSnapshot()
         }
     }
 
@@ -111,10 +145,37 @@ class RoutineViewModel @Inject constructor(
         if (day in days) days.remove(day) else days.add(day)
         it.copy(activeDays = days, daysError = false)
     }
-    fun updateInvincibleMode(v: Boolean) = _uiState.update { it.copy(invincibleMode = v) }
+    fun updateInvincibleMode(v: Boolean) {
+        if (isCurrentlyRunning) return
+        // Turning a persisted-on flag OFF is a protected change under Tamper
+        // Protection (guide 2.2). Turning ON is always allowed.
+        val persistedOn = snapshotState?.invincibleMode == true
+        if (!v && persistedOn) {
+            viewModelScope.launch {
+                val verdict = tamperGuard.checkProtectedChange()
+                if (verdict.allowed) {
+                    _uiState.update { it.copy(invincibleMode = false) }
+                } else {
+                    _uiState.update { it.copy(error = verdict.message) }
+                }
+            }
+        } else {
+            _uiState.update { it.copy(invincibleMode = v) }
+        }
+    }
     fun updateAppBlocker(v: Boolean) = _uiState.update { it.copy(appBlockerEnabled = v) }
-    fun updateMaxSnooze(v: Int) = _uiState.update { it.copy(maxSnoozeCount = v) }
-    fun updateMaxReschedule(v: Int) = _uiState.update { it.copy(maxRescheduleCount = v) }
+    fun updateMaxSnooze(v: Int) {
+        // Compliance: snooze cap must not be raised mid-run. The active session reads
+        // the cap at start; allowing edits here would let the user lift the lock from
+        // the side door.
+        if (isCurrentlyRunning) return
+        _uiState.update { it.copy(maxSnoozeCount = v) }
+    }
+    fun updateMaxReschedule(v: Int) {
+        // Same rationale as updateMaxSnooze.
+        if (isCurrentlyRunning) return
+        _uiState.update { it.copy(maxRescheduleCount = v) }
+    }
 
     fun addTask() {
         tasks.add(TaskUiItem())
@@ -142,6 +203,12 @@ class RoutineViewModel @Inject constructor(
         if (tasks.isEmpty()) { _uiState.update { it.copy(tasksError = true) }; hasError = true }
         if (hasError) return
 
+        val durationError = validateRoutineDuration(tasks.sumOf { it.durationMinutes })
+        if (durationError != null) {
+            _uiState.update { it.copy(error = durationError) }
+            return
+        }
+
         _uiState.update { it.copy(isSaving = true, error = null) }
         viewModelScope.launch {
             try {
@@ -157,7 +224,8 @@ class RoutineViewModel @Inject constructor(
                     appBlockerEnabled = state.appBlockerEnabled,
                     maxSnoozeCount = state.maxSnoozeCount,
                     maxRescheduleCount = state.maxRescheduleCount,
-                    createdAt = System.currentTimeMillis(),
+                    createdAt = if (isEditMode) originalCreatedAt ?: System.currentTimeMillis()
+                                else System.currentTimeMillis(),
                 )
                 val savedId = if (isEditMode) {
                     repository.updateRoutine(entity); editRoutineId
@@ -194,6 +262,12 @@ class RoutineViewModel @Inject constructor(
 
     fun deleteRoutine(onSuccess: () -> Unit) {
         if (!isEditMode) return
+        if (isCurrentlyRunning) {
+            _uiState.update {
+                it.copy(error = "Cannot delete a running routine. Complete or reschedule it first.")
+            }
+            return
+        }
         viewModelScope.launch {
             try {
                 repository.getRoutineById(editRoutineId).first()?.let { entity ->

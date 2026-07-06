@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.todo
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -70,7 +71,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.focusforceplus.app.compliance.ComplianceLimits
 import com.focusforceplus.app.data.model.ChecklistItem
+import com.focusforceplus.app.ui.common.DiscardChangesDialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.ui.theme.Error
 import com.focusforceplus.app.ui.theme.Warning
@@ -94,6 +97,11 @@ fun CreateTodoScreen(
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val attemptClose = {
+        if (viewModel.hasUnsavedChanges) showDiscardDialog = true else onNavigateBack()
+    }
+    BackHandler { attemptClose() }
     // Holds the date chosen in DatePickerDialog before the TimePicker is shown.
     // Pre-seeded with the existing dueDateTime so it's never null for edit mode.
     var pendingDateMillis by remember { mutableStateOf<Long?>(uiState.dueDateTime) }
@@ -127,7 +135,7 @@ fun CreateTodoScreen(
             TopAppBar(
                 title = { Text(if (viewModel.isEditMode) "Edit Todo" else "New Todo") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = attemptClose) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -382,6 +390,13 @@ fun CreateTodoScreen(
             },
         )
     }
+
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            onDiscard = { showDiscardDialog = false; onNavigateBack() },
+            onKeepEditing = { showDiscardDialog = false },
+        )
+    }
 }
 
 // ── Priority selector with description cards ──────────────────────────────────
@@ -409,7 +424,7 @@ private fun PrioritySelector(selected: Int, onSelect: (Int) -> Unit) {
             value = 2,
             label = "High",
             accentColor = HighColor,
-            description = "Loud alarm screen with sound and vibration. No dismiss. Done requires confirmation. Non-dismissable ongoing notification until completed.",
+            description = "Loud alarm screen with sound and vibration. No dismiss; Done requires confirmation. Keeps a persistent notification until completed. Snoozes and reschedules are limited — editing the todo in the app stays possible at any time.",
             selected = selected == 2,
             onClick = { onSelect(2) },
         )
@@ -489,16 +504,23 @@ private fun HighPrioritySettings(
             fontWeight = FontWeight.SemiBold,
             color = HighColor,
         )
+        Text(
+            "Snooze delays the alarm by minutes; reschedule moves it to another time. " +
+                "Once both are used up, the alarm only stops by completing the todo — " +
+                "though you can always edit or delete it here.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         CountDropdown(
             label = "Max snoozes",
             value = maxSnoozeCount,
-            options = (1..5).toList(),
+            options = (1..ComplianceLimits.MAX_TODO_SNOOZE_LIMIT).toList(),
             onChange = onSnoozeChange,
         )
         CountDropdown(
             label = "Max reschedules",
             value = maxRescheduleCount,
-            options = (1..5).toList(),
+            options = (1..ComplianceLimits.MAX_TODO_RESCHEDULE_LIMIT).toList(),
             onChange = onRescheduleChange,
         )
     }

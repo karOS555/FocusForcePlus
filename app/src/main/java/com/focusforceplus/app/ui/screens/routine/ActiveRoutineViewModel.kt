@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.MainActivity
+import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
 import com.focusforceplus.app.data.repository.RoutineRepository
 import com.focusforceplus.app.service.RoutineForegroundService
@@ -44,6 +45,7 @@ data class ActiveRoutineUiState(
     val maxSnoozeCount: Int = 2,
     val maxRescheduleCount: Int = 1,
     val invincibleMode: Boolean = false,
+    val appBlockerEnabled: Boolean = false,
     // Timer
     val currentTaskIndex: Int = 0,
     val timerState: TimerState = TimerState.BEFORE_START,
@@ -129,6 +131,7 @@ class ActiveRoutineViewModel @Inject constructor(
                     maxSnoozeCount = routine.maxSnoozeCount,
                     maxRescheduleCount = routine.maxRescheduleCount,
                     invincibleMode = routine.invincibleMode,
+                    appBlockerEnabled = routine.appBlockerEnabled,
                     remainingSeconds = totalSec,
                     taskTotalSeconds = totalSec,
                     isLoading = false,
@@ -238,6 +241,19 @@ class ActiveRoutineViewModel @Inject constructor(
                         totalOvertimeMinutes = accumulatedOvertimeSeconds / 60,
                         tasksCompleted = s.tasks.size,
                     ),
+                )
+            }
+            // History row — feeds the dashboard "Completed today" status and stats.
+            viewModelScope.launch {
+                repository.recordCompletion(
+                    RoutineCompletionEntity(
+                        routineId = routineId,
+                        routineName = s.routineName,
+                        completedAt = System.currentTimeMillis(),
+                        scheduledMinutes = s.tasks.sumOf { t -> t.durationMinutes },
+                        overtimeMinutes = accumulatedOvertimeSeconds / 60,
+                        tasksCompleted = s.tasks.size,
+                    )
                 )
             }
         } else {

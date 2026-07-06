@@ -34,4 +34,11 @@ interface RoutineDao {
         ORDER BY startTimeHour, startTimeMinute
     """)
     fun getActiveRoutinesForDay(day: String): Flow<List<RoutineEntity>>
+
+    // Backup / restore
+    @Query("SELECT * FROM routines")
+    suspend fun getAllOnce(): List<RoutineEntity>
+
+    @Query("DELETE FROM routines")
+    suspend fun deleteAll()
 }

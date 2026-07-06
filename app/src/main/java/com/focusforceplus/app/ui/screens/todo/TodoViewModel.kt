@@ -1,16 +1,22 @@
 package com.focusforceplus.app.ui.screens.todo
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusforceplus.app.compliance.ComplianceLimits
+import com.focusforceplus.app.compliance.clampTodoLimits
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.data.model.ChecklistItem
 import com.focusforceplus.app.data.model.checklistFromJson
 import com.focusforceplus.app.data.model.toChecklistJson
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.TodoRepository
+import com.focusforceplus.app.service.TodoAlarmForegroundService
 import com.focusforceplus.app.util.TodoAlarmHelper
+import com.focusforceplus.app.util.TodoNotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,8 +46,10 @@ data class TodoUiState(
 
 @HiltViewModel
 class TodoViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val repository: TodoRepository,
     private val alarmHelper: TodoAlarmHelper,
+    private val notifHelper: TodoNotificationHelper,
     private val settingsRepository: SettingsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -55,6 +63,16 @@ class TodoViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(TodoUiState())
     val uiState: StateFlow<TodoUiState> = _uiState.asStateFlow()
 
+    // Baseline for the discard-changes warning: state as loaded (edit) or default (create).
+    private var snapshotState: TodoUiState? = null
+
+    /** True when the user edited anything since opening the screen. */
+    val hasUnsavedChanges: Boolean
+        get() = snapshotState?.let { normalized(_uiState.value) != normalized(it) } ?: false
+
+    private fun normalized(s: TodoUiState) =
+        s.copy(isSaving = false, titleError = false, error = null)
+
     init {
         if (isEditMode) {
             loadTodo(editTodoId)
@@ -62,6 +80,7 @@ class TodoViewModel @Inject constructor(
             viewModelScope.launch {
                 val defaultPriority = settingsRepository.defaultPriority.first()
                 _uiState.update { it.copy(priority = defaultPriority) }
+                snapshotState = _uiState.value
             }
         }
     }
@@ -88,6 +107,7 @@ class TodoViewModel @Inject constructor(
                     )
                 }
             }
+            snapshotState = _uiState.value
         }
     }
 
@@ -107,8 +127,12 @@ class TodoViewModel @Inject constructor(
     fun updateDescription(v: String) = _uiState.update { it.copy(description = v) }
     fun updateDueDateTime(v: Long?) = _uiState.update { it.copy(dueDateTime = v) }
     fun updatePriority(v: Int) = _uiState.update { it.copy(priority = v) }
-    fun updateMaxSnoozeCount(v: Int) = _uiState.update { it.copy(maxSnoozeCount = v) }
-    fun updateMaxRescheduleCount(v: Int) = _uiState.update { it.copy(maxRescheduleCount = v) }
+    fun updateMaxSnoozeCount(v: Int) = _uiState.update {
+        it.copy(maxSnoozeCount = v.coerceIn(1, ComplianceLimits.MAX_TODO_SNOOZE_LIMIT))
+    }
+    fun updateMaxRescheduleCount(v: Int) = _uiState.update {
+        it.copy(maxRescheduleCount = v.coerceIn(1, ComplianceLimits.MAX_TODO_RESCHEDULE_LIMIT))
+    }
     fun updateRecurring(v: Boolean) = _uiState.update { it.copy(isRecurring = v) }
     fun updateRecurringType(v: String) = _uiState.update { it.copy(recurringType = v) }
     fun toggleRecurringDay(day: String) = _uiState.update {
@@ -165,8 +189,7 @@ class TodoViewModel @Inject constructor(
                         "WEEKLY_${state.recurringDays.joinToString(",")}"
                     else -> state.recurringType
                 }
-                val maxSnooze = if (state.priority == 2) state.maxSnoozeCount else 2
-                val maxReschedule = if (state.priority == 2) state.maxRescheduleCount else Int.MAX_VALUE
+                val limits = clampTodoLimits(state.priority, state.maxSnoozeCount, state.maxRescheduleCount)
                 val checklistJson = if (state.checklistEnabled && state.checklistItems.isNotEmpty()) {
                     state.checklistItems.toChecklistJson()
                 } else {
@@ -180,8 +203,8 @@ class TodoViewModel @Inject constructor(
                     description        = state.description.trim().ifBlank { null },
                     dueDateTime        = state.dueDateTime,
                     priority           = state.priority,
-                    maxSnoozeCount     = maxSnooze,
-                    maxRescheduleCount = maxReschedule,
+                    maxSnoozeCount     = limits.maxSnoozeCount,
+                    maxRescheduleCount = limits.maxRescheduleCount,
                     isRecurring        = state.isRecurring,
                     recurringPattern   = pattern,
                     checklistJson      = checklistJson,
@@ -198,6 +221,12 @@ class TodoViewModel @Inject constructor(
                 if (isEditMode) {
                     alarmHelper.cancelTodoAlarm(editTodoId)
                     alarmHelper.cancelTodoSnoozeAlarm(editTodoId)
+                    // If this todo is currently alarming, its notification is pinned by the
+                    // alarm foreground service — cancelNotification alone won't remove it.
+                    runCatching {
+                        context.startService(TodoAlarmForegroundService.stopIntent(context))
+                    }
+                    notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(editTodoId))
                     repository.updateTodo(todo)
                     // Only schedule alarm for non-completed todos with a future due date
                     if (!todo.isCompleted &&

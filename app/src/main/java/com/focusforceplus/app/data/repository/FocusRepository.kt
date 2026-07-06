@@ -1,6 +1,8 @@
 package com.focusforceplus.app.data.repository
 
+import com.focusforceplus.app.data.db.dao.FocusCompletionDao
 import com.focusforceplus.app.data.db.dao.FocusSessionDao
+import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.db.entity.FocusSessionEntity
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -8,7 +10,8 @@ import javax.inject.Singleton
 
 @Singleton
 class FocusRepository @Inject constructor(
-    private val focusSessionDao: FocusSessionDao
+    private val focusSessionDao: FocusSessionDao,
+    private val focusCompletionDao: FocusCompletionDao,
 ) {
 
     fun getAllSessions(): Flow<List<FocusSessionEntity>> =
@@ -28,4 +31,12 @@ class FocusRepository @Inject constructor(
 
     suspend fun deleteSession(session: FocusSessionEntity) =
         focusSessionDao.delete(session)
+
+    // --- Completion history ---
+
+    suspend fun recordCompletion(completion: FocusCompletionEntity) =
+        focusCompletionDao.insert(completion)
+
+    fun getCompletionsSince(since: Long): Flow<List<FocusCompletionEntity>> =
+        focusCompletionDao.getSince(since)
 }

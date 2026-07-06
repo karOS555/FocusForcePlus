@@ -45,6 +45,14 @@ object SettingsRoutes {
     const val SETTINGS = "settings"
 }
 
+object OnboardingRoutes {
+    const val ONBOARDING = "onboarding"
+}
+
+object StatsRoutes {
+    const val STATS = "stats"
+}
+
 object RoutineRoutes {
     const val LIST           = "routines"
     const val CREATE         = "routine/create"
@@ -61,6 +69,24 @@ object TodoRoutes {
     const val EDIT   = "todo/edit/{todoId}"
 
     fun edit(todoId: Long) = "todo/edit/$todoId"
+}
+
+object BlockerRoutes {
+    const val LIST       = "blocker"
+    const val SETTINGS   = "blocker/settings"
+    const val DISCLOSURE = "blocker/disclosure/{type}"
+
+    fun disclosure(type: String) = "blocker/disclosure/$type"
+}
+
+object FocusRoutes {
+    const val LIST   = "focus"
+    const val CREATE = "focus/create"
+    const val EDIT   = "focus/edit/{sessionId}"
+    const val ACTIVE = "focus/active/{sessionId}"
+
+    fun edit(sessionId: Long)   = "focus/edit/$sessionId"
+    fun active(sessionId: Long) = "focus/active/$sessionId"
 }
 
 val bottomNavScreens = listOf(

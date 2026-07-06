@@ -18,6 +18,7 @@ import javax.inject.Inject
 class RoutineForegroundService : Service() {
 
     @Inject lateinit var notificationHelper: NotificationHelper
+    @Inject lateinit var activeRoutineRegistry: ActiveRoutineRegistry
 
     private var routineId: Long = 0L
     private var routineName: String = ""
@@ -29,6 +30,8 @@ class RoutineForegroundService : Service() {
         private const val EXTRA_ROUTINE_NAME = "routineName"
         private const val EXTRA_TASK_NAME    = "taskName"
         private const val EXTRA_REMAINING    = "remainingSeconds"
+        private const val EXTRA_BLOCKS_APPS  = "blocksApps"
+        private const val EXTRA_INVINCIBLE   = "invincible"
 
         fun start(
             context: Context,
@@ -36,6 +39,8 @@ class RoutineForegroundService : Service() {
             routineName: String,
             taskName: String,
             initialDurationSeconds: Int,
+            blocksApps: Boolean = false,
+            invincible: Boolean = false,
         ) {
             val intent = Intent(context, RoutineForegroundService::class.java).apply {
                 action = ACTION_START
@@ -43,6 +48,8 @@ class RoutineForegroundService : Service() {
                 putExtra(EXTRA_ROUTINE_NAME, routineName)
                 putExtra(EXTRA_TASK_NAME, taskName)
                 putExtra(EXTRA_REMAINING, initialDurationSeconds)
+                putExtra(EXTRA_BLOCKS_APPS, blocksApps)
+                putExtra(EXTRA_INVINCIBLE, invincible)
             }
             context.startForegroundService(intent)
         }
@@ -74,14 +81,20 @@ class RoutineForegroundService : Service() {
                 routineName = intent.getStringExtra(EXTRA_ROUTINE_NAME) ?: ""
                 val taskName = intent.getStringExtra(EXTRA_TASK_NAME) ?: ""
                 val remaining = intent.getIntExtra(EXTRA_REMAINING, 0)
+                val blocksApps = intent.getBooleanExtra(EXTRA_BLOCKS_APPS, false)
+                val invincible = intent.getBooleanExtra(EXTRA_INVINCIBLE, false)
+                if (routineId != 0L) {
+                    activeRoutineRegistry.markActive(routineId, blocksApps, invincible)
+                }
                 val notification = notificationHelper.buildOngoingNotification(
                     routineId, routineName, taskName, remainingSeconds = remaining,
                 )
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // specialUse type exists from API 34; below that the manifest type applies.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     startForeground(
                         NotificationHelper.NOTIFICATION_ID_FOREGROUND,
                         notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
                     )
                 } else {
                     startForeground(NotificationHelper.NOTIFICATION_ID_FOREGROUND, notification)
@@ -107,6 +120,7 @@ class RoutineForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (routineId != 0L) activeRoutineRegistry.markIdle(routineId)
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 }

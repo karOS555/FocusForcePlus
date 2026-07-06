@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.data.db.entity.RoutineEntity
 import com.focusforceplus.app.data.repository.RoutineRepository
+import com.focusforceplus.app.service.ActiveRoutineRegistry
 import com.focusforceplus.app.util.AlarmHelper
 import com.focusforceplus.app.util.PendingRescheduleTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +26,13 @@ class RoutineListViewModel @Inject constructor(
     private val repository: RoutineRepository,
     private val alarmHelper: AlarmHelper,
     private val rescheduleTracker: PendingRescheduleTracker,
+    private val activeRegistry: ActiveRoutineRegistry,
 ) : ViewModel() {
+
+    /** Live id of the routine that is currently running (foreground service alive),
+     *  or null. Re-exposed here so the list UI can react to ACTIVE state without
+     *  injecting [ActiveRoutineRegistry] directly. */
+    val activeRoutineId: StateFlow<Long?> = activeRegistry.activeRoutineId
 
     val routinesWithReschedule: StateFlow<List<RoutineWithReschedule>> = repository
         .getAllRoutines()
@@ -55,13 +62,18 @@ class RoutineListViewModel @Inject constructor(
         }
     }
 
-    fun deleteRoutine(routine: RoutineEntity) {
+    /** Returns true if the delete proceeded, false if it was blocked because the
+     *  routine is currently running (Goldene Regel #11 — delete is a cancel-equivalent
+     *  while ACTIVE). The caller is expected to inform the user when this returns false. */
+    fun deleteRoutine(routine: RoutineEntity): Boolean {
+        if (activeRegistry.isActive(routine.id)) return false
         viewModelScope.launch {
             alarmHelper.cancelRoutineAlarms(routine.id)
             alarmHelper.cancelRescheduleAlarm(routine.id)
             rescheduleTracker.clear(routine.id)
             repository.deleteRoutine(routine)
         }
+        return true
     }
 
     fun cancelPendingReschedule(routineId: Long) {

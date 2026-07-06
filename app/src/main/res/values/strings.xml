@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">FocusForce+</string>
+    <string name="accessibility_service_label">FocusForce+ App Blocker</string>
+    <string name="accessibility_service_description">FocusForce+ uses this accessibility
+        service for exactly one purpose: detecting which app you open, so that apps you
+        chose to block can be covered with a blocking screen. The service cannot read any
+        screen content (window content access is disabled), collects no data, and nothing
+        ever leaves your device. You can turn this service off here at any time — your
+        blocking rules stay saved and blocking simply pauses.</string>
 </resources>

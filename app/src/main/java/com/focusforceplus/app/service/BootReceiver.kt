@@ -3,10 +3,12 @@ package com.focusforceplus.app.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.focusforceplus.app.data.repository.FocusRepository
 import com.focusforceplus.app.data.repository.RoutineRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.TodoRepository
 import com.focusforceplus.app.util.AlarmHelper
+import com.focusforceplus.app.util.FocusAlarmHelper
 import com.focusforceplus.app.util.TodoAlarmHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -21,9 +23,11 @@ class BootReceiver : BroadcastReceiver() {
 
     @Inject lateinit var routineRepository: RoutineRepository
     @Inject lateinit var todoRepository: TodoRepository
+    @Inject lateinit var focusRepository: FocusRepository
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var alarmHelper: AlarmHelper
     @Inject lateinit var todoAlarmHelper: TodoAlarmHelper
+    @Inject lateinit var focusAlarmHelper: FocusAlarmHelper
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
@@ -34,6 +38,7 @@ class BootReceiver : BroadcastReceiver() {
                 alarmHelper.rescheduleAll(routineRepository.getAllRoutines().first())
                 val digestTimes = settingsRepository.digestTimes.first()
                 todoAlarmHelper.rescheduleAll(todoRepository.getAllTodos().first(), digestTimes)
+                focusAlarmHelper.rescheduleAll(focusRepository.getAllSessions().first())
             } finally {
                 pendingResult.finish()
             }

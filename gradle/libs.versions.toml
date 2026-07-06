@@ -1,7 +1,7 @@
 [versions]
-agp = "9.1.0"
+agp = "9.1.1"
 kotlin = "2.2.10"
-ksp = "2.2.10-2.0.2"
+ksp = "2.3.2"
 
 # AndroidX Core
 coreKtx = "1.10.1"

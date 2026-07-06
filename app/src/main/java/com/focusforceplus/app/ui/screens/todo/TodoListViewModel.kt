@@ -1,13 +1,16 @@
 package com.focusforceplus.app.ui.screens.todo
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.data.repository.TodoRepository
+import com.focusforceplus.app.service.TodoAlarmForegroundService
 import com.focusforceplus.app.util.TodoAlarmHelper
 import com.focusforceplus.app.util.TodoNotificationHelper
 import com.focusforceplus.app.util.nextOccurrenceMillis
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,10 +40,21 @@ data class TodoListUiState(
 
 @HiltViewModel
 class TodoListViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val repository: TodoRepository,
     private val alarmHelper: TodoAlarmHelper,
     private val notifHelper: TodoNotificationHelper,
 ) : ViewModel() {
+
+    /** Releases the alarm notification if it is currently pinned by the alarm
+     *  foreground service — a plain cancelNotification cannot remove an FGS
+     *  notification, which would leave a zombie alarm for a gone todo. */
+    private fun releasePinnedAlarm(todoId: Long) {
+        runCatching {
+            context.startService(TodoAlarmForegroundService.stopIntent(context))
+        }
+        notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
+    }
 
     private val _searchQuery    = MutableStateFlow("")
     private val _filterPriority = MutableStateFlow<Int?>(null)
@@ -144,6 +158,7 @@ class TodoListViewModel @Inject constructor(
                 repository.markCompleted(todo.id, System.currentTimeMillis())
                 alarmHelper.cancelTodoAlarm(todo.id)
                 alarmHelper.cancelTodoSnoozeAlarm(todo.id)
+                releasePinnedAlarm(todo.id)
                 notifHelper.cancelNotification(TodoNotificationHelper.todoDigestNotificationId(todo.id))
                 scheduleNextOccurrenceIfRecurring(todo)
             }
@@ -154,7 +169,7 @@ class TodoListViewModel @Inject constructor(
         viewModelScope.launch {
             alarmHelper.cancelTodoAlarm(todo.id)
             alarmHelper.cancelTodoSnoozeAlarm(todo.id)
-            notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todo.id))
+            releasePinnedAlarm(todo.id)
             notifHelper.cancelNotification(TodoNotificationHelper.todoDigestNotificationId(todo.id))
             repository.deleteTodo(todo)
             _deletedTodo.value = todo

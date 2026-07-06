@@ -7,6 +7,7 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.InfiniteTransition
@@ -87,6 +88,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.service.RoutineForegroundService
 import com.focusforceplus.app.ui.common.RoutineIcons
+import com.focusforceplus.app.util.AlarmSoundPolicy
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -99,6 +101,16 @@ fun ActiveRoutineScreen(
 ) {
     val s by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // Block system Back while Invincible Mode is active and the routine is running.
+    // Without this, the toolbar Lock icon (V2 in `.claude/routine-invincible-review.md`)
+    // is bypassed by the Back gesture/button — the screen pops and the routine is
+    // effectively cancelled without the Reschedule path. BEFORE_START is excluded so the
+    // pre-run preview screen stays freely dismissable.
+    BackHandler(enabled = s.invincibleMode && s.timerState != TimerState.BEFORE_START) {
+        // Intentional no-op: there is no graceful action — the user must complete or
+        // reschedule, both of which have explicit affordances inside the screen.
+    }
 
     // Sound and vibration events — PlayAlarm sound is handled by TaskCompleteOverlay.
     LaunchedEffect(Unit) {
@@ -126,6 +138,8 @@ fun ActiveRoutineScreen(
                 routineName             = s.routineName,
                 taskName                = task.name,
                 initialDurationSeconds  = task.durationMinutes * 60,
+                blocksApps              = s.appBlockerEnabled,
+                invincible              = s.invincibleMode,
             )
         }
     }
@@ -594,8 +608,10 @@ private fun TaskCompleteOverlay(
     val context = LocalContext.current
 
     // Acquire ringtone once and play for 7 seconds, then stop automatically.
+    // Both sound and vibration honor the global settings toggles.
     val ringtone = remember {
-        try {
+        if (!AlarmSoundPolicy.soundEnabled) null
+        else try {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             RingtoneManager.getRingtone(context, uri)
@@ -613,7 +629,8 @@ private fun TaskCompleteOverlay(
     // Vibration: alarm pattern looping for 7 seconds, works in silent/vibrate mode.
     DisposableEffect(Unit) {
         val vib: Vibrator? = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!AlarmSoundPolicy.vibrationEnabled) null
+            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
             } else {
                 @Suppress("DEPRECATION")
@@ -998,6 +1015,7 @@ private fun playAlarm(context: Context) {
 }
 
 private fun vibrateShort(context: Context) {
+    if (!AlarmSoundPolicy.vibrationEnabled) return
     try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager

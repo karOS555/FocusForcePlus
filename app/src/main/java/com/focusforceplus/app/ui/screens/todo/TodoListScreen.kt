@@ -24,8 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -71,6 +71,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.data.model.checklistFromJson
+import com.focusforceplus.app.ui.common.FeatureHeader
+import com.focusforceplus.app.ui.common.FeatureHelpContent
 import com.focusforceplus.app.ui.theme.Warning
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -120,6 +122,12 @@ fun TodoListScreen(
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+
+            FeatureHeader(
+                title = "Todos",
+                help = FeatureHelpContent.TODOS,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
 
             // ── Search bar ────────────────────────────────────────────────────
             OutlinedTextField(
@@ -180,7 +188,7 @@ fun TodoListScreen(
                 Box {
                     IconButton(onClick = { sortMenuExpanded = true }) {
                         Icon(
-                            Icons.Filled.Sort,
+                            Icons.AutoMirrored.Filled.Sort,
                             contentDescription = "Sort",
                             tint = if (uiState.sortOrder != SortOrder.DEFAULT)
                                 MaterialTheme.colorScheme.primary

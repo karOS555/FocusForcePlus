@@ -35,4 +35,11 @@ interface FocusSessionDao {
         ORDER BY scheduledTimeHour, scheduledTimeMinute
     """)
     fun getActiveScheduled(): Flow<List<FocusSessionEntity>>
+
+    // Backup / restore
+    @Query("SELECT * FROM focus_sessions")
+    suspend fun getAllOnce(): List<FocusSessionEntity>
+
+    @Query("DELETE FROM focus_sessions")
+    suspend fun deleteAll()
 }

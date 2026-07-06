@@ -24,15 +24,29 @@ interface BlockedAppDao {
     @Query("SELECT * FROM blocked_apps ORDER BY appName")
     fun getAll(): Flow<List<BlockedAppEntity>>
 
+    @Query("SELECT * FROM blocked_apps ORDER BY appName")
+    suspend fun getAllOnce(): List<BlockedAppEntity>
+
     @Query("SELECT * FROM blocked_apps WHERE isBlocked = 1 ORDER BY appName")
     fun getBlockedApps(): Flow<List<BlockedAppEntity>>
 
     @Query("SELECT * FROM blocked_apps WHERE packageName = :packageName LIMIT 1")
     suspend fun getByPackageName(packageName: String): BlockedAppEntity?
 
-    @Query("UPDATE blocked_apps SET usedTodayMinutes = 0")
+    /** Midnight reset: usage counters, exception budget, and any leftover exception. */
+    @Query("UPDATE blocked_apps SET usedTodayMinutes = 0, exceptionsUsedToday = 0, exceptionUntilMillis = 0")
     suspend fun resetDailyUsage()
 
     @Query("UPDATE blocked_apps SET usedTodayMinutes = :minutes WHERE id = :id")
     suspend fun updateUsedTime(id: Long, minutes: Int)
+
+    @Query("UPDATE blocked_apps SET usedTodayMinutes = :minutes WHERE packageName = :packageName")
+    suspend fun updateUsedTimeByPackage(packageName: String, minutes: Int)
+
+    @Query("UPDATE blocked_apps SET exceptionUntilMillis = :untilMillis, exceptionsUsedToday = :usedToday WHERE id = :id")
+    suspend fun updateException(id: Long, untilMillis: Long, usedToday: Int)
+
+    // Backup / restore
+    @Query("DELETE FROM blocked_apps")
+    suspend fun deleteAll()
 }
