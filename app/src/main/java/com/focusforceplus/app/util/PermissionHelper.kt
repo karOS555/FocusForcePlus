@@ -3,6 +3,7 @@ package com.focusforceplus.app.util
 import android.app.AlarmManager
 import android.app.AppOpsManager
 import android.app.NotificationManager
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -20,11 +21,13 @@ object PermissionHelper {
 
     /** Opens the system page where the user can grant "Display over other apps". */
     fun openOverlaySettings(context: Context) {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.parse("package:${context.packageName}"),
-        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        startSettingsSafely(
+            context,
+            Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${context.packageName}"),
+            ),
+        )
     }
 
     /** True if the app is allowed to launch full-screen intents (alarm-style overlays). */
@@ -34,13 +37,17 @@ object PermissionHelper {
         return nm.canUseFullScreenIntent()
     }
 
-    /** Opens the system page where the user can grant USE_FULL_SCREEN_INTENT. */
+    /** Opens the system page where the user can grant USE_FULL_SCREEN_INTENT.
+     *  Not every device/OEM ships this dedicated screen, so we fall back gracefully. */
     fun openFullScreenIntentSettings(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val intent = Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENTS")
-            intent.data  = Uri.parse("package:${context.packageName}")
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
+            startSettingsSafely(
+                context,
+                Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENTS")
+                    .setData(Uri.parse("package:${context.packageName}")),
+                Intent("android.settings.APP_NOTIFICATION_SETTINGS")
+                    .putExtra("android.provider.extra.APP_PACKAGE", context.packageName),
+            )
         }
     }
 
@@ -56,11 +63,11 @@ object PermissionHelper {
     /** Opens the system page where the user can grant SCHEDULE_EXACT_ALARM (Android 12 only). */
     fun openExactAlarmSettings(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                data  = Uri.parse("package:${context.packageName}")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(intent)
+            startSettingsSafely(
+                context,
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    .setData(Uri.parse("package:${context.packageName}")),
+            )
         }
     }
 
@@ -93,10 +100,12 @@ object PermissionHelper {
     /** Opens the system accessibility settings (the service must be enabled there).
      *  Only call this AFTER the in-app prominent disclosure has been confirmed. */
     fun openAccessibilitySettings(context: Context) {
-        context.startActivity(
-            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+        startSettingsSafely(context, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    /** Opens this app's Android app-info page (where "Allow restricted settings" lives). */
+    fun openAppDetailsSettings(context: Context) {
+        startSettingsSafely(context, appDetailsIntent(context))
     }
 
     /** True if Usage Access (PACKAGE_USAGE_STATS) has been granted. */
@@ -118,16 +127,12 @@ object PermissionHelper {
     /** Opens the system Usage Access settings.
      *  Only call this AFTER the in-app prominent disclosure has been confirmed. */
     fun openUsageAccessSettings(context: Context) {
-        val direct = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-            .setData(Uri.parse("package:${context.packageName}"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(direct) }.onFailure {
-            // Some OEMs reject the package URI form; fall back to the list page.
-            context.startActivity(
-                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        }
+        startSettingsSafely(
+            context,
+            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                .setData(Uri.parse("package:${context.packageName}")),
+            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+        )
     }
 
     // ── Focus mode (Do Not Disturb) ───────────────────────────────────────────
@@ -140,10 +145,7 @@ object PermissionHelper {
 
     /** Opens the system page where the user can grant DND access. */
     fun openDndAccessSettings(context: Context) {
-        context.startActivity(
-            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+        startSettingsSafely(context, Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
     }
 
     // ── Battery optimization ──────────────────────────────────────────────────
@@ -158,9 +160,33 @@ object PermissionHelper {
      *  We deliberately use the non-prompting list intent: REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
      *  is restricted and per compliance guide (3.5) not to be forced. */
     fun openBatteryOptimizationSettings(context: Context) {
-        context.startActivity(
-            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+        startSettingsSafely(context, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+    }
+
+    // ── Internals ──────────────────────────────────────────────────────────────
+
+    private fun appDetailsIntent(context: Context) = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.parse("package:${context.packageName}"),
+    )
+
+    /**
+     * Tries each settings intent in turn, always falling back to the app-info page,
+     * so a device that doesn't ship a particular settings screen never crashes the
+     * app. Every candidate gets NEW_TASK since these are launched from non-activity
+     * contexts too.
+     */
+    private fun startSettingsSafely(context: Context, vararg candidates: Intent) {
+        val all = candidates.toList() + appDetailsIntent(context)
+        for (intent in all) {
+            try {
+                context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (_: ActivityNotFoundException) {
+                // try the next candidate
+            } catch (_: Exception) {
+                // some OEMs throw SecurityException etc. — try the next candidate
+            }
+        }
     }
 }

@@ -142,6 +142,9 @@ fun DisclosureScreen(
                     "Anytime, in Android Settings > Accessibility > FocusForce+ App Blocker. " +
                         "Your rules stay saved; blocking simply pauses.",
                 )
+                RestrictedSettingsCard(
+                    onOpenAppInfo = { PermissionHelper.openAppDetailsSettings(context) },
+                )
             } else {
                 DisclosureSection(
                     "What this permission does",
@@ -233,6 +236,51 @@ fun DisclosureScreen(
 private fun isGranted(context: android.content.Context, isAccessibility: Boolean): Boolean =
     if (isAccessibility) PermissionHelper.isAccessibilityServiceEnabled(context)
     else PermissionHelper.hasUsageStatsPermission(context)
+
+/**
+ * Sideload note: Android blocks the accessibility toggle for apps not installed
+ * from the Play Store ("Restricted setting"). We can't change that, so we explain
+ * the one-time unblock and offer a direct button to this app's info page.
+ */
+@Composable
+private fun RestrictedSettingsCard(onOpenAppInfo: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "Seeing \"Restricted setting\"?",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                "Because you installed FocusForce+ directly instead of from the Play " +
+                    "Store, Android blocks the accessibility toggle the first time. To " +
+                    "unblock it: open the app info page below, tap the three-dot menu in " +
+                    "the top corner, and choose \"Allow restricted settings\". Then come " +
+                    "back and turn the service on.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Button(
+                onClick = onOpenAppInfo,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.padding(top = 2.dp),
+            ) {
+                Text("Open app info")
+            }
+        }
+    }
+}
 
 @Composable
 private fun DisclosureSection(title: String, body: String) {
