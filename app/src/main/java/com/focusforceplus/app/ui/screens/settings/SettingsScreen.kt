@@ -545,6 +545,28 @@ fun SettingsScreen(
                             contentPadding = PaddingValues(0.dp),
                         ) { Text("Source code on GitHub") }
 
+                        // Opens the releases page in the browser (no in-app internet access).
+                        // The app can't check for updates itself because it has no network
+                        // permission by design; the user compares versions on that page.
+                        TextButton(
+                            onClick = {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse("https://github.com/karOS555/FocusForcePlus/releases/latest"),
+                                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            },
+                            contentPadding = PaddingValues(0.dp),
+                        ) { Text("Check for updates") }
+
+                        Text(
+                            "Opens the latest release on GitHub. Your version is above. " +
+                                "For automatic updates, install the app through Obtainium.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
                         Text(

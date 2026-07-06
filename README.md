@@ -96,6 +96,13 @@ FocusForce+ isn't on the Play Store yet, so you install the APK directly.
 
 Minimum Android version is 8.0 (API 26).
 
+### Getting updates
+
+FocusForce+ has no internet access, so it can't check for updates itself (that's the point, your data can't leave the device). Two options:
+
+- **Manual:** Settings > About > Check for updates opens the releases page, where you can see if there's a newer version and grab it.
+- **Automatic:** install FocusForce+ through [Obtainium](https://github.com/ImranR98/Obtainium), an app that watches GitHub releases and updates sideloaded apps for you. Point it at this repo once and it handles the rest. The app stays offline, Obtainium does the checking.
+
 > [!NOTE]
 > Some permissions (accessibility for app blocking, usage access for time limits, Do Not Disturb for focus mode) are granted in Android's own settings. The setup guide takes you there and tells you exactly what each one does and doesn't do. Nothing is turned on behind your back.
 
