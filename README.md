@@ -27,7 +27,7 @@
 <br/>
 
 > [!NOTE]
-> This is the first public beta (`0.9.0-beta`). Everything is built and it's been tested on a real device, but it hasn't had a wide test yet, so a few rough edges are likely. If you run into one, please [open an issue](../../issues).
+> FocusForce+ is in public beta. Everything is built and it runs on real devices, but it hasn't had a wide test yet, so expect the odd rough edge. If you hit one, please [open an issue](../../issues), it really helps.
 
 <br/>
 
@@ -51,8 +51,6 @@ Everything stays on your phone. No account, no cloud, no ads, no tracking. The a
     <td align="center"><img src="docs/screenshots/focus.png" alt="Focus session" width="200"/><br/><sub>Focus mode</sub></td>
   </tr>
 </table>
-
-<sub>Placeholder images. Drop your real screenshots into <code>docs/screenshots/</code> with these names and they'll show up here.</sub>
 
 <br/>
 
@@ -128,7 +126,7 @@ Minimum Android version is 8.0 (API 26).
 
 <br/>
 
-The core app is built and working. What's left before a first public release is polish, real-device testing, and store paperwork.
+The whole app is built and the first public beta is out. From here it's real-device testing, polish based on feedback, and eventually a Play Store submission.
 
 - [x] Project foundation (Room, Hilt, navigation, dark theme)
 - [x] Routines with timers, snooze logic, and Invincible Mode
@@ -138,7 +136,8 @@ The core app is built and working. What's left before a first public release is 
 - [x] Onboarding and settings
 - [x] Home dashboard and statistics
 - [x] Tamper Protection, JSON backup, quick-settings tile
-- [ ] First beta release
+- [x] First public beta
+- [ ] Stable 1.0 after a testing round
 - [ ] Play Store submission
 
 Later ideas: home-screen widgets, calendar sync, a Pomodoro mode, streaks and gamification.
@@ -163,7 +162,7 @@ Full details are in [PRIVACY.md](PRIVACY.md).
 
 <br/>
 
-Contributions aren't open yet because the codebase is still moving fast. Bug reports and ideas are very welcome in the [issues](../../issues) though. See [CONTRIBUTING.md](CONTRIBUTING.md) for the current state.
+Bug reports, ideas, and pull requests are all welcome, especially notes on how the app behaves on your device during the beta. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and the few ground rules the project sticks to.
 
 </details>
 
