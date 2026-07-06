@@ -1,60 +1,54 @@
-\---
-
-name:  Bug report
+---
+name: Bug report
 about: Report something that isn't working
-title: "\[Bug] "
+title: "[Bug] "
 labels: bug
 assignees: ''
 ---
 
-## Describe the bug
+## What's wrong
 
-A clear and concise description of what the bug is.
+A clear description of the bug.
 
 ## Steps to reproduce
 
 1. Go to '...'
 2. Tap on '...'
-3. Scroll down to '...'
-4. See error
+3. See the problem
 
-## Expected behavior
+## What you expected
 
-What you expected to happen.
+What should have happened instead.
 
-## Actual behavior
+## Screenshots or a screen recording
 
-What actually happened.
-
-## Screenshots / screen recording
-
-If applicable, add screenshots or a screen recording.
+If it helps show the problem, add them here.
 
 ## Device info
 
-* **Device:** \[e.g. Pixel 7, Samsung Galaxy S22]
-* **Android version:** \[e.g. Android 14]
-* **App version:** \[e.g. 0.1.0 or commit hash]
+- **Device:** e.g. Pixel 7, Samsung Galaxy S22
+- **Android version:** e.g. Android 14
+- **App version:** e.g. 0.9.1-beta (shown in Settings > About)
 
-## Permissions granted
+## Permissions you granted
 
-* \[ ] Notifications
-* \[ ] Exact alarms
-* \[ ] Overlay
-* \[ ] Accessibility service
-* \[ ] Usage stats
-* \[ ] DND access
-* \[ ] Battery optimization disabled
+- [ ] Notifications
+- [ ] Exact alarms
+- [ ] Display over other apps
+- [ ] Full-screen alarms
+- [ ] Accessibility service
+- [ ] Usage access
+- [ ] Do Not Disturb access
+- [ ] Battery unrestricted
 
 ## Logs (optional)
 
-If you can, paste relevant logcat output here. Use `adb logcat | grep focusforce` if you have adb set up.
+If you have adb set up: `adb logcat | grep -i focusforce`
 
 ```
 paste logs here
 ```
 
-## Additional context
+## Anything else
 
-Anything else that might help diagnose the issue.
-
+Other context that might help.

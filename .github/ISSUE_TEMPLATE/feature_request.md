@@ -1,40 +1,34 @@
-\---
-
-name:  Feature request
+---
+name: Feature request
 about: Suggest a new feature or improvement
-title: "\[Feature] "
+title: "[Feature] "
 labels: enhancement
 assignees: ''
 ---
 
-## Problem / motivation
+## The problem
 
-What problem would this feature solve? What's frustrating or missing right now?
+What's frustrating or missing right now? What would this help you do?
 
-## Proposed solution
+## What you'd like
 
-Describe the feature you'd like. Be as specific as you can.
+Describe the feature. Be as specific as you can.
 
-## Alternatives considered
+## Alternatives
 
-Are there other ways to solve this problem? Existing apps that do it well?
+Other ways to solve it, or apps that do it well.
 
-## Who benefits?
+## Who it helps
 
-Who would this help? Users with ADHD? People with specific routines? All users?
+Everyone, people with ADHD, a specific routine, etc.
 
-## Mockups / examples (optional)
+## Mockups or examples (optional)
 
-If you have sketches, screenshots from other apps, or detailed UX ideas, add them here.
+Sketches, screenshots from other apps, or UX ideas.
 
-## Implementation notes (optional)
+## How much you'd want it
 
-If you have thoughts on how this could be implemented technically, share them.
-
-## Priority (your opinion)
-
-* \[ ] Would use daily
-* \[ ] Would use occasionally
-* \[ ] Nice to have
-* \[ ] Blocker — can't use the app effectively without it
-
+- [ ] Would use it daily
+- [ ] Would use it now and then
+- [ ] Nice to have
+- [ ] Can't really use the app well without it

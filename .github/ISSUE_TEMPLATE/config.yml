@@ -1,5 +1,7 @@
-blank_issues_enabled: false
+# blank_issues_enabled: true lets people open a plain issue when nothing fits a
+# template, so nobody feels locked out of reporting.
+blank_issues_enabled: true
 contact_links:
-  - name:  Questions & Discussions
+  - name: Questions and discussion
     url: https://github.com/karOs555/FocusForcePlus/discussions
-    about: For general questions and discussions
+    about: For general questions and ideas (enable Discussions in repo settings first)

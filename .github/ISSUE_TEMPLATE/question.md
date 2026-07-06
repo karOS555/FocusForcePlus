@@ -1,21 +1,19 @@
-\---
-
-name:  Question
+---
+name: Question
 about: Ask a question about the project
-title: "\[Question] "
+title: "[Question] "
 labels: question
 assignees: ''
 ---
 
 ## Your question
 
-Ask away! For general discussions, consider using GitHub Discussions instead once they're enabled.
+Ask away. If Discussions are enabled, general questions fit better there.
 
 ## Context
 
 What are you trying to do or understand?
 
-## What you've already tried / read
+## What you already checked
 
-Have you checked the README, CONTRIBUTING guide, or existing issues?
-
+The README, the CONTRIBUTING guide, or existing issues.
