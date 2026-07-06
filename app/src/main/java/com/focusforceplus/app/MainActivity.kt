@@ -246,11 +246,11 @@ private fun AppContent(
             title = { Text("Enable lock-screen alarm") },
             text  = {
                 Text(
-                    "FocusForce+ needs permission to show the routine alarm over your lock " +
-                    "screen. Without it, alarms will only appear as a notification banner " +
-                    "when the phone is locked.\n\n" +
-                    "Tap \"Open settings\", enable \"Full-screen notifications\" for " +
-                    "FocusForce+, then come back.",
+                    "This is optional. It lets the routine alarm show over your lock screen. " +
+                    "Without it, alarms still work, they just appear as a notification banner.\n\n" +
+                    "Tap \"Open settings\" and enable full-screen notifications for FocusForce+. " +
+                    "Some phones (Samsung, for example) don't have a separate setting for this, " +
+                    "which is fine, the alarm still fires as a notification.",
                 )
             },
             confirmButton = {

@@ -1,3 +1,5 @@
+<div align="center"><a href="https://github.com/Safouene1/support-palestine-banner/blob/master/Markdown-pages/Support.md"><img src="https://raw.githubusercontent.com/Safouene1/support-palestine-banner/master/banner-support.svg" alt="Support Palestine" width="100%"></a></div>
+
 <div align="center">
 
 <img src="docs/logo.png" alt="FocusForce+" width="140"/>

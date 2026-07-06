@@ -38,15 +38,15 @@ object PermissionHelper {
     }
 
     /** Opens the system page where the user can grant USE_FULL_SCREEN_INTENT.
-     *  Not every device/OEM ships this dedicated screen, so we fall back gracefully. */
+     *  Not every device/OEM ships this dedicated screen (Samsung One UI, for one),
+     *  so if it's missing we fall back to the app-info page rather than the plain
+     *  notification screen, which has no full-screen toggle and just confuses. */
     fun openFullScreenIntentSettings(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startSettingsSafely(
                 context,
                 Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENTS")
                     .setData(Uri.parse("package:${context.packageName}")),
-                Intent("android.settings.APP_NOTIFICATION_SETTINGS")
-                    .putExtra("android.provider.extra.APP_PACKAGE", context.packageName),
             )
         }
     }
