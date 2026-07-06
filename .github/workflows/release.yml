@@ -28,36 +28,24 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build release APK
+      # Gradle signs the release APK directly using the keystore from secrets, so
+      # there's no dependency on a specific build-tools version being preinstalled.
+      # Set the four secrets under Settings > Secrets and variables > Actions.
+      - name: Build signed release APK
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > "$KEYSTORE_FILE"
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease --no-daemon
-
-      # Signs the unsigned release APK when the four signing secrets are present.
-      # Set them under Settings > Secrets and variables > Actions. See the README /
-      # docs for how to generate the keystore. Without them this step is skipped and
-      # the unsigned APK is published instead (fine for a first internal test).
-      - name: Sign APK
-        id: sign
-        if: ${{ env.SIGNING_KEY != '' }}
-        uses: r0adkll/sign-android-release@v1
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
 
       - name: Collect APK
         run: |
           mkdir -p out
-          if [ -n "${{ steps.sign.outputs.signedReleaseFile }}" ]; then
-            cp "${{ steps.sign.outputs.signedReleaseFile }}" out/FocusForcePlus-${{ github.ref_name }}.apk
-          else
-            cp app/build/outputs/apk/release/app-release-unsigned.apk out/FocusForcePlus-${{ github.ref_name }}-unsigned.apk
-          fi
+          cp app/build/outputs/apk/release/app-release.apk "out/FocusForcePlus-${{ github.ref_name }}.apk"
 
       - name: Publish to release
         uses: softprops/action-gh-release@v2
