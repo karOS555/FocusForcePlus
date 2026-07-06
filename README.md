@@ -43,16 +43,14 @@ Everything stays on your phone. No account, no cloud, no ads, no tracking. The a
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td align="center"><img src="docs/screenshots/home.png" alt="Home dashboard" width="185"/><br/><sub>Home</sub></td>
-    <td align="center"><img src="docs/screenshots/routine.png" alt="Active routine" width="185"/><br/><sub>Routine timer</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/screenshots/blocker.png" alt="App blocker" width="185"/><br/><sub>App blocker</sub></td>
-    <td align="center"><img src="docs/screenshots/focus.png" alt="Focus session" width="185"/><br/><sub>Focus mode</sub></td>
-  </tr>
-</table>
+<div align="center">
+<img src="docs/screenshots/home.png" alt="Home dashboard" width="180"/>
+<img src="docs/screenshots/routine.png" alt="Active routine" width="180"/>
+<img src="docs/screenshots/blocker.png" alt="App blocker" width="180"/>
+<img src="docs/screenshots/focus.png" alt="Focus session" width="180"/>
+<br/>
+<sub>Home, an active routine, the app blocker, and a focus session.</sub>
+</div>
 
 <br/>
 
