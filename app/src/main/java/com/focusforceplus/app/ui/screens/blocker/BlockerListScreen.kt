@@ -300,11 +300,8 @@ fun BlockerListScreen(
             existing = existing,
             installedApps = editorInstalledApps,
             currentMemberPackages = editorMembers,
-            onSave = { name, limit, invincible, windowStart, windowEnd, daysCsv, members, names ->
-                viewModel.saveGroup(
-                    existing?.group?.name, name, limit, invincible,
-                    windowStart, windowEnd, daysCsv, members, names,
-                )
+            onSave = { result ->
+                viewModel.saveGroup(existing?.group?.name, result)
                 groupEditorFor = null
             },
             onDelete = existing?.let {

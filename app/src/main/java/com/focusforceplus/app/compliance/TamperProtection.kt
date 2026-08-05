@@ -120,5 +120,18 @@ fun weakensInvincibleGroup(old: BlockerGroupEntity, new: BlockerGroupEntity): Bo
             ?.ifEmpty { DAY_CODES.toSet() } ?: DAY_CODES.toSet()
         if (!newDays.containsAll(oldDays)) return true
     }
+
+    if (weakensSessionOverride(old.blockDuringRoutines, new.blockDuringRoutines)) return true
+    if (weakensSessionOverride(old.blockDuringFocus, new.blockDuringFocus)) return true
     return false
+}
+
+/**
+ * Session-flag strength: true (always block) > null (each app decides) > false
+ * (never block). Moving down that order loosens the group.
+ */
+private fun weakensSessionOverride(old: Boolean?, new: Boolean?): Boolean = when (old) {
+    true -> new != true
+    null -> new == false
+    false -> false
 }

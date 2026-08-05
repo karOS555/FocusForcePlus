@@ -50,10 +50,25 @@ import com.focusforceplus.app.util.InstalledApp
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 
+/** Everything the group editor collects — grew past a readable parameter list. */
+data class GroupEditorResult(
+    val name: String,
+    val limitMinutes: Int?,
+    val invincible: Boolean,
+    val windowStart: Int?,
+    val windowEnd: Int?,
+    val windowDaysCsv: String?,
+    val blockDuringRoutines: Boolean?,
+    val blockDuringFocus: Boolean?,
+    val members: Set<String>,
+    val memberDisplayNames: Map<String, String>,
+)
+
 /**
- * Create/edit a blocker group: name, optional shared daily limit + invincible,
- * template quick-fill, and per-app membership checkboxes. Read-only fields when
- * the group is currently locked (the VM still guards saves as defense in depth).
+ * Create/edit a blocker group: name, optional shared daily limit, blocking
+ * schedule, session overrides, invincible, template quick-fill, and per-app
+ * membership checkboxes. Read-only fields when the group is currently locked
+ * (the VM still guards saves as defense in depth).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,11 +76,7 @@ internal fun GroupEditorDialog(
     existing: BlockerGroupRow?,
     installedApps: List<InstalledApp>,
     currentMemberPackages: Set<String>,
-    onSave: (
-        name: String, limit: Int?, invincible: Boolean,
-        windowStart: Int?, windowEnd: Int?, windowDaysCsv: String?,
-        members: Set<String>, names: Map<String, String>,
-    ) -> Unit,
+    onSave: (GroupEditorResult) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
@@ -87,6 +98,8 @@ internal fun GroupEditorDialog(
         }
     }
     var timePickerTarget by remember { mutableStateOf<String?>(null) } // "start" | "end"
+    var duringRoutines by remember { mutableStateOf(existing?.group?.blockDuringRoutines) }
+    var duringFocus by remember { mutableStateOf(existing?.group?.blockDuringFocus) }
     var search by remember { mutableStateOf("") }
 
     // Membership as a live map: package -> selected.
@@ -236,31 +249,62 @@ internal fun GroupEditorDialog(
                     }
                 }
 
-                if (limitEnabled || scheduleEnabled) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "Invincible Mode",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                            Text(
+                // Session behaviour for every member app — set once here instead of
+                // per app, and apps added later inherit it.
+                Text(
+                    "While a routine runs",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                SessionOverrideChips(
+                    value = duringRoutines,
+                    onChange = { duringRoutines = it },
+                )
+                Text(
+                    "While a focus session runs",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                SessionOverrideChips(
+                    value = duringFocus,
+                    onChange = { duringFocus = it },
+                )
+
+                // Invincible needs a bounded condition (limit or schedule) so the
+                // lock always has a natural end — see PLAY_STORE_COMPLIANCE 2.1.
+                val invincibleAvailable = limitEnabled || scheduleEnabled
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Invincible Mode",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (invincibleAvailable) MaterialTheme.colorScheme.onBackground
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            if (invincibleAvailable) {
                                 "While the shared limit is hit or the schedule is running, " +
-                                    "the group cannot be weakened or turned off",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = invincible,
-                            onCheckedChange = { invincible = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                            ),
+                                    "the group cannot be weakened or turned off"
+                            } else {
+                                "Add a shared limit or a schedule first — Invincible Mode " +
+                                    "needs an end point it can unlock at"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Switch(
+                        checked = invincible && invincibleAvailable,
+                        enabled = invincibleAvailable,
+                        onCheckedChange = { invincible = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
                 }
 
                 // Member selection.
@@ -323,14 +367,18 @@ internal fun GroupEditorDialog(
                 val daysCsv = if (days.isEmpty() || days.size == DAY_CODES.size) null
                               else DAY_CODES.filter { it in days }.joinToString(",")
                 onSave(
-                    name,
-                    if (limitEnabled) limitMinutes else null,
-                    invincible,
-                    if (scheduleEnabled) windowStart else null,
-                    if (scheduleEnabled) windowEnd else null,
-                    if (scheduleEnabled) daysCsv else null,
-                    members,
-                    displayNames,
+                    GroupEditorResult(
+                        name = name,
+                        limitMinutes = if (limitEnabled) limitMinutes else null,
+                        invincible = invincible && (limitEnabled || scheduleEnabled),
+                        windowStart = if (scheduleEnabled) windowStart else null,
+                        windowEnd = if (scheduleEnabled) windowEnd else null,
+                        windowDaysCsv = if (scheduleEnabled) daysCsv else null,
+                        blockDuringRoutines = duringRoutines,
+                        blockDuringFocus = duringFocus,
+                        members = members,
+                        memberDisplayNames = displayNames,
+                    )
                 )
             }) { Text("Save") }
         },
@@ -370,3 +418,27 @@ internal fun GroupEditorDialog(
 
 private fun formatWindowMinutes(minutes: Int): String =
     "%02d:%02d".format(minutes / 60, minutes % 60)
+
+/**
+ * Tri-state chooser for a group-level session override. "Per app" (null) keeps
+ * each member's own flag, the other two force the behaviour for the whole group.
+ */
+@Composable
+private fun SessionOverrideChips(
+    value: Boolean?,
+    onChange: (Boolean?) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf<Pair<Boolean?, String>>(
+            null to "Per app",
+            true to "Block",
+            false to "Allow",
+        ).forEach { (option, label) ->
+            FilterChip(
+                selected = value == option,
+                onClick = { onChange(option) },
+                label = { Text(label) },
+            )
+        }
+    }
+}

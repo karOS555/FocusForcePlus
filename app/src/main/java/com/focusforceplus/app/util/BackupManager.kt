@@ -299,6 +299,8 @@ class BackupManager @Inject constructor(
         putNullable("windowStartMinutes", g.windowStartMinutes)
         putNullable("windowEndMinutes", g.windowEndMinutes)
         g.windowDaysCsv?.let { put("windowDaysCsv", it) }
+        g.blockDuringRoutines?.let { put("blockDuringRoutines", it) }
+        g.blockDuringFocus?.let { put("blockDuringFocus", it) }
     }
 
     private fun groupFromJson(o: JSONObject) = BlockerGroupEntity(
@@ -309,6 +311,8 @@ class BackupManager @Inject constructor(
         windowStartMinutes = o.optIntOrNull("windowStartMinutes"),
         windowEndMinutes = o.optIntOrNull("windowEndMinutes"),
         windowDaysCsv = o.optStringOrNull("windowDaysCsv"),
+        blockDuringRoutines = if (o.has("blockDuringRoutines")) o.getBoolean("blockDuringRoutines") else null,
+        blockDuringFocus = if (o.has("blockDuringFocus")) o.getBoolean("blockDuringFocus") else null,
     )
 
     private fun focusSessionJson(f: FocusSessionEntity) = JSONObject().apply {

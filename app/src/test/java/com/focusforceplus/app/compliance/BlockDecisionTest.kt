@@ -354,6 +354,19 @@ class BlockDecisionTest {
     }
 
     @Test
+    fun `loosening an invincible group's session override counts as weakening`() {
+        val old = group(invincible = true).copy(blockDuringRoutines = true)
+        assertTrue(weakensInvincibleGroup(old, old.copy(blockDuringRoutines = false)))
+        assertTrue(weakensInvincibleGroup(old, old.copy(blockDuringRoutines = null)))
+        assertFalse(weakensInvincibleGroup(old, old))
+
+        // null (each app decides) may tighten to "block", but not drop to "allow".
+        val perApp = group(invincible = true).copy(blockDuringFocus = null)
+        assertTrue(weakensInvincibleGroup(perApp, perApp.copy(blockDuringFocus = false)))
+        assertFalse(weakensInvincibleGroup(perApp, perApp.copy(blockDuringFocus = true)))
+    }
+
+    @Test
     fun `shortening an invincible group schedule counts as weakening`() {
         val old = group(invincible = true, windowStart = 9 * 60, windowEnd = 17 * 60)
         val shorter = old.copy(windowEndMinutes = 16 * 60)

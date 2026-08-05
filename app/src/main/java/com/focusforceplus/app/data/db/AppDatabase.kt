@@ -33,7 +33,7 @@ import com.focusforceplus.app.data.db.entity.TodoEntity
         RoutineCompletionEntity::class,
         FocusCompletionEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 @TypeConverters(AppTypeConverters::class)
@@ -148,6 +148,14 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE blocker_groups ADD COLUMN windowStartMinutes INTEGER")
                 db.execSQL("ALTER TABLE blocker_groups ADD COLUMN windowEndMinutes INTEGER")
                 db.execSQL("ALTER TABLE blocker_groups ADD COLUMN windowDaysCsv TEXT")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Nullable on purpose: null keeps each member app's own setting.
+                db.execSQL("ALTER TABLE blocker_groups ADD COLUMN blockDuringRoutines INTEGER")
+                db.execSQL("ALTER TABLE blocker_groups ADD COLUMN blockDuringFocus INTEGER")
             }
         }
     }

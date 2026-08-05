@@ -294,23 +294,15 @@ class BlockerViewModel @Inject constructor(
      * governed. Removing an app from the group clears its groupName. While the
      * existing group is invincible-locked, membership/limit weakening is gated.
      */
-    fun saveGroup(
-        originalName: String?,
-        name: String,
-        sharedLimitMinutes: Int?,
-        invincible: Boolean,
-        windowStartMinutes: Int?,
-        windowEndMinutes: Int?,
-        windowDaysCsv: String?,
-        memberPackages: Set<String>,
-        memberDisplayNames: Map<String, String>,
-    ) {
+    fun saveGroup(originalName: String?, form: GroupEditorResult) {
         viewModelScope.launch {
-            val trimmed = name.trim()
+            val trimmed = form.name.trim()
             if (trimmed.isBlank()) {
                 _message.value = "Give the group a name."
                 return@launch
             }
+            val windowStartMinutes = form.windowStart
+            val windowEndMinutes = form.windowEnd
             if (windowStartMinutes != null && windowEndMinutes != null) {
                 validateBlockWindow(windowStartMinutes, windowEndMinutes)?.let {
                     _message.value = it
@@ -319,14 +311,17 @@ class BlockerViewModel @Inject constructor(
             }
             val existing = originalName?.let { repository.getGroupByName(it) }
             val hasSchedule = windowStartMinutes != null && windowEndMinutes != null
+            val memberPackages = form.members
             val desired = BlockerGroupEntity(
                 id = existing?.id ?: 0L,
                 name = trimmed,
-                sharedDailyLimitMinutes = sharedLimitMinutes,
-                invincibleMode = invincible && (sharedLimitMinutes != null || hasSchedule),
+                sharedDailyLimitMinutes = form.limitMinutes,
+                invincibleMode = form.invincible && (form.limitMinutes != null || hasSchedule),
                 windowStartMinutes = windowStartMinutes,
                 windowEndMinutes = windowEndMinutes,
-                windowDaysCsv = windowDaysCsv,
+                windowDaysCsv = form.windowDaysCsv,
+                blockDuringRoutines = form.blockDuringRoutines,
+                blockDuringFocus = form.blockDuringFocus,
             )
 
             // Weakening an invincible group (limit up/removed, invincible off,
@@ -383,7 +378,7 @@ class BlockerViewModel @Inject constructor(
                     repository.insertApp(
                         BlockedAppEntity(
                             packageName = pkg,
-                            appName = memberDisplayNames[pkg] ?: pkg,
+                            appName = form.memberDisplayNames[pkg] ?: pkg,
                             isBlocked = true,
                             groupName = trimmed,
                         )

@@ -42,4 +42,12 @@ data class BlockerGroupEntity(
     val windowEndMinutes: Int? = null,
     /** Days the schedule applies, CSV of routine day codes ("MO,DI,…"); null = every day. */
     val windowDaysCsv: String? = null,
+    /**
+     * Group-level override for "block while a routine runs"; null = each member
+     * app keeps its own setting. Set once here instead of per app, and it also
+     * applies to apps added to the group later.
+     */
+    val blockDuringRoutines: Boolean? = null,
+    /** Same as [blockDuringRoutines] for focus sessions. */
+    val blockDuringFocus: Boolean? = null,
 )

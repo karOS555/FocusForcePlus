@@ -168,14 +168,21 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             // Focus sessions may narrow blocking to selected groups.
             val focusSession = focusRegistry.activeSession.value
             val ruleGroupName = currentRule.groupName
+            // A group can override the session flags for all its members, so apps
+            // added to the group later inherit the decision automatically.
+            val groupRule = ruleGroupName?.let { snap.groupsByName[it] }
+            val effectiveRule = currentRule.copy(
+                blockDuringRoutines = groupRule?.blockDuringRoutines ?: currentRule.blockDuringRoutines,
+                blockDuringFocus = groupRule?.blockDuringFocus ?: currentRule.blockDuringFocus,
+            )
             val focusApplies = snap.blockDuringFocus &&
                 focusSession?.blocksApps == true &&
                 (focusSession.blockedGroups == null ||
                     (ruleGroupName != null && ruleGroupName in focusSession.blockedGroups))
 
             // Shared group limit: summed usage of all members vs the group budget.
-            val group = currentRule.groupName?.let { snap.groupsByName[it] }
-            val groupUsed = currentRule.groupName?.let { snap.groupUsedMinutes[it] } ?: 0
+            val group = groupRule
+            val groupUsed = ruleGroupName?.let { snap.groupUsedMinutes[it] } ?: 0
             val groupLimitReached = group?.sharedDailyLimitMinutes != null &&
                 groupUsed >= group.sharedDailyLimitMinutes
             val groupWindowActive = group != null &&
@@ -191,7 +198,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 )
 
             val reason = evaluateBlock(
-                app = currentRule,
+                app = effectiveRule,
                 nowMillis = now,
                 minutesOfDay = minutesOfDay(),
                 routineBlocking = snap.blockDuringRoutines && routineRegistry.isBlockingApps(),
@@ -206,7 +213,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             if (now - lastShown < BLOCK_SCREEN_DEBOUNCE_MILLIS) return@launch
             synchronized(lastBlockShownAt) { lastBlockShownAt[pkg] = now }
 
-            showBlockedScreen(currentRule, reason, group, groupUsed)
+            showBlockedScreen(effectiveRule, reason, group, groupUsed)
         }
     }
 
