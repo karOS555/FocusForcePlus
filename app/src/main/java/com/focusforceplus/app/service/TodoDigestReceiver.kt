@@ -3,6 +3,8 @@ package com.focusforceplus.app.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.focusforceplus.app.data.db.entity.TodoEntity
+import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.TodoRepository
 import com.focusforceplus.app.util.TodoAlarmHelper
 import com.focusforceplus.app.util.TodoNotificationHelper
@@ -20,6 +22,7 @@ class TodoDigestReceiver : BroadcastReceiver() {
     @Inject lateinit var repository: TodoRepository
     @Inject lateinit var alarmHelper: TodoAlarmHelper
     @Inject lateinit var notifHelper: TodoNotificationHelper
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     override fun onReceive(context: Context, intent: Intent) {
         val slot   = intent.getIntExtra("digestSlot", 0)
@@ -36,6 +39,18 @@ class TodoDigestReceiver : BroadcastReceiver() {
                 val overdue = open.filter { it.dueDateTime != null && it.dueDateTime < now }
                 val undated = open.filter { it.dueDateTime == null }
 
+                // Undated medium/high todos get a real full-screen alarm each,
+                // staggered so they never all ring at the same moment. Low priority
+                // and overdue todos keep plain notifications.
+                val undatedAlarm = undated.filter { it.priority > 0 }
+                    .sortedWith(compareByDescending<TodoEntity> { it.priority }.thenBy { it.createdAt })
+                val undatedLow = undated.filter { it.priority == 0 }
+
+                if (undatedAlarm.isNotEmpty()) {
+                    val gap = settingsRepository.undatedAlarmGapMinutes.first()
+                    alarmHelper.scheduleUndatedAlarmCascade(undatedAlarm, gap)
+                }
+
                 // Post one notification per todo
                 for (todo in overdue) {
                     notifHelper.showNotification(
@@ -43,15 +58,17 @@ class TodoDigestReceiver : BroadcastReceiver() {
                         notifHelper.buildPerTodoReminderNotification(todo.id, todo.title, todo.priority, isOverdue = true),
                     )
                 }
-                for (todo in undated) {
+                for (todo in undatedLow) {
                     notifHelper.showNotification(
                         TodoNotificationHelper.todoDigestNotificationId(todo.id),
                         notifHelper.buildPerTodoReminderNotification(todo.id, todo.title, todo.priority, isOverdue = false),
                     )
                 }
 
-                // Anchor FGS: keeps Medium/High group notifications stable
-                val pinnedCount = (overdue + undated).count { it.priority > 0 }
+                // Anchor FGS: keeps Medium/High group notifications stable.
+                // Undated medium/high todos are excluded — their alarm flow pins
+                // its own notification via TodoAlarmForegroundService.
+                val pinnedCount = overdue.count { it.priority > 0 }
                 if (pinnedCount > 0) {
                     runCatching {
                         context.startForegroundService(

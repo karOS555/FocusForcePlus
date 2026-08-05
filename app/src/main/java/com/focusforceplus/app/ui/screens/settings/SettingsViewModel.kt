@@ -36,6 +36,7 @@ data class SettingsUiState(
     val digestTimes: List<Pair<Int, Int>> = SettingsRepository.DEFAULT_DIGEST_TIMES,
     val defaultPriority: Int = 1,
     val autoDeleteDays: Int = 0,
+    val undatedAlarmGapMinutes: Int = SettingsRepository.DEFAULT_UNDATED_ALARM_GAP_MINUTES,
     val alarmSoundEnabled: Boolean = true,
     val alarmVibrationEnabled: Boolean = true,
     val permissions: SettingsPermissionStates = SettingsPermissionStates(),
@@ -75,6 +76,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.autoDeleteDays.collect { days ->
                 _uiState.update { it.copy(autoDeleteDays = days) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.undatedAlarmGapMinutes.collect { minutes ->
+                _uiState.update { it.copy(undatedAlarmGapMinutes = minutes) }
             }
         }
         viewModelScope.launch {
@@ -183,6 +189,12 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoDeleteDays(days: Int) {
         viewModelScope.launch { settingsRepository.saveAutoDeleteDays(days) }
+    }
+
+    // ── Undated-todo alarm spacing ────────────────────────────────────────────
+
+    fun setUndatedAlarmGapMinutes(minutes: Int) {
+        viewModelScope.launch { settingsRepository.saveUndatedAlarmGapMinutes(minutes) }
     }
 
     // ── Alarm sound / vibration ───────────────────────────────────────────────

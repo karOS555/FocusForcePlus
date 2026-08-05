@@ -22,6 +22,9 @@ class SettingsRepository @Inject constructor(
         private val DIGEST_TIMES_KEY    = stringSetPreferencesKey("todo_digest_times")
         private val DEFAULT_PRIORITY_KEY = intPreferencesKey("todo_default_priority")
         private val AUTO_DELETE_DAYS_KEY = intPreferencesKey("todo_auto_delete_days")
+        private val UNDATED_ALARM_GAP_KEY = intPreferencesKey("todo_undated_alarm_gap")
+
+        const val DEFAULT_UNDATED_ALARM_GAP_MINUTES = 5
 
         private val BLOCKER_ENABLED_KEY            = booleanPreferencesKey("blocker_enabled")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
@@ -89,6 +92,21 @@ class SettingsRepository @Inject constructor(
 
     suspend fun saveAutoDeleteDays(days: Int) {
         dataStore.edit { prefs -> prefs[AUTO_DELETE_DAYS_KEY] = days }
+    }
+
+    // ── Undated-todo alarm spacing ────────────────────────────────────────────
+
+    /**
+     * Minutes between the staggered full-screen alarms that fire for undated
+     * medium/high todos at each daily reminder time — so several open todos
+     * never ring all at once.
+     */
+    val undatedAlarmGapMinutes: Flow<Int> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs -> prefs[UNDATED_ALARM_GAP_KEY] ?: DEFAULT_UNDATED_ALARM_GAP_MINUTES }
+
+    suspend fun saveUndatedAlarmGapMinutes(minutes: Int) {
+        dataStore.edit { prefs -> prefs[UNDATED_ALARM_GAP_KEY] = minutes.coerceIn(1, 60) }
     }
 
     // ── App blocker ───────────────────────────────────────────────────────────

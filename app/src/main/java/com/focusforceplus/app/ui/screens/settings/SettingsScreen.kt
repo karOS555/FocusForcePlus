@@ -261,6 +261,40 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
+                    // Alarm spacing for undated medium/high todos
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            "Alarm spacing",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Text(
+                            "At each reminder time, undated medium and high priority todos " +
+                                "ring one after another with this gap in between.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(2, 5, 10, 15).forEach { minutes ->
+                                FilterChip(
+                                    selected = uiState.undatedAlarmGapMinutes == minutes,
+                                    onClick = { viewModel.setUndatedAlarmGapMinutes(minutes) },
+                                    label = { Text("$minutes min") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
                     // Default priority
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

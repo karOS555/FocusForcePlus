@@ -27,6 +27,9 @@ class TodoAlarmHelper @Inject constructor(
         // Three fixed slots — slot index is stable, hour/minute can change via settings
         val DIGEST_SLOT_RCS = listOf(300_001, 300_002, 300_003)
         const val MAX_DIGEST_SLOTS = 3
+
+        /** Small offset so the first cascade alarm fires just after the digest itself. */
+        private const val FIRST_CASCADE_DELAY_MILLIS = 5_000L
     }
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -56,6 +59,35 @@ class TodoAlarmHelper @Inject constructor(
         alarmManager.cancel(
             alarmIntent(todoId, "", 0, 2, 1, 0, 1, (RC_ALARM_BASE + todoId).toInt())
         )
+    }
+
+    // ── Undated-todo alarm cascade ────────────────────────────────────────────
+    //
+    // At each daily reminder time, undated medium/high todos get a real full-screen
+    // alarm each — staggered [gapMinutes] apart so they never all ring at once.
+    // Reuses RC_ALARM_BASE, so completing or editing a todo cancels its cascade slot
+    // through the existing cancelTodoAlarm() path, and a later digest simply
+    // replaces the pending alarms (FLAG_UPDATE_CURRENT).
+
+    fun scheduleUndatedAlarmCascade(todos: List<TodoEntity>, gapMinutes: Int) {
+        val base      = System.currentTimeMillis() + FIRST_CASCADE_DELAY_MILLIS
+        val gapMillis = gapMinutes.coerceAtLeast(1) * 60_000L
+        todos.forEachIndexed { index, todo ->
+            val triggerAt = base + index * gapMillis
+            val alarmIntent = alarmIntent(
+                todo.id, todo.title, todo.snoozeCount, todo.maxSnoozeCount,
+                todo.priority, todo.rescheduleCount, todo.maxRescheduleCount,
+                (RC_ALARM_BASE + todo.id).toInt(),
+            )
+            val showIntent = notifHelper.alarmActivityIntent(
+                todo.id, todo.title, todo.snoozeCount, todo.priority,
+                (RC_SHOW_BASE + todo.id).toInt(),
+            )
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(triggerAt, showIntent),
+                alarmIntent,
+            )
+        }
     }
 
     // ── Snooze alarm ──────────────────────────────────────────────────────────
