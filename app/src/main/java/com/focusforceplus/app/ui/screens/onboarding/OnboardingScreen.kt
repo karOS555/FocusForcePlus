@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DoNotDisturbOn
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lock
@@ -81,7 +82,7 @@ fun OnboardingScreen(
     onOpenDisclosure: (String) -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
-    val pagerState = rememberPagerState(pageCount = { 5 })
+    val pagerState = rememberPagerState(pageCount = { 6 })
     val scope = rememberCoroutineScope()
 
     // Re-check grants whenever the user returns from system settings.
@@ -113,7 +114,8 @@ fun OnboardingScreen(
                     onContinue = { scope.launch { pagerState.animateScrollToPage(3) } },
                 )
                 3 -> UpdatesPage(onContinue = { scope.launch { pagerState.animateScrollToPage(4) } })
-                4 -> FirstRoutinePage(
+                4 -> ThanksPage(onContinue = { scope.launch { pagerState.animateScrollToPage(5) } })
+                5 -> FirstRoutinePage(
                     onCreateRoutine = { viewModel.completeOnboarding { onFinish(true) } },
                     onLater = { viewModel.completeOnboarding { onFinish(false) } },
                 )
@@ -127,7 +129,7 @@ fun OnboardingScreen(
                 .padding(bottom = 24.dp),
             horizontalArrangement = Arrangement.Center,
         ) {
-            repeat(5) { index ->
+            repeat(pagerState.pageCount) { index ->
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 4.dp)
@@ -543,7 +545,85 @@ private fun UpdateOptionCard(title: String, body: String) {
     }
 }
 
-// ── Page 5: First routine ─────────────────────────────────────────────────────
+// ── Page 5: Thanks ────────────────────────────────────────────────────────────
+
+@Composable
+private fun ThanksPage(onContinue: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            Icons.Filled.Favorite,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(56.dp),
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Thanks for giving it a try",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "I built FocusForce+ for myself, because nothing I tried was stubborn " +
+                "enough to get me going. Putting it on GitHub came later. It means a " +
+                "lot that you are here, and if it helps you too, that is the best " +
+                "outcome I could ask for.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+
+        UpdateOptionCard(
+            title = "A star costs you two seconds",
+            body = "The app collects nothing and phones home to nobody, so a star on " +
+                "GitHub is the only way I get to see that anyone is using this.",
+        )
+        Spacer(Modifier.height(10.dp))
+        UpdateOptionCard(
+            title = "Tell me what breaks, or what doesn't",
+            body = "Bugs, rough edges, ideas, anything that annoyed you. And if it all " +
+                "just worked, that is worth writing too. Without analytics I have no " +
+                "other way of knowing.",
+        )
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { uriHandler.openUri("https://github.com/karOS555/FocusForcePlus") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        ) { Text("Star on GitHub") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = {
+                uriHandler.openUri("https://github.com/karOS555/FocusForcePlus/issues/new/choose")
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        ) { Text("Leave feedback") }
+
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onContinue,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) { Text("Continue") }
+    }
+}
+
+// ── Page 6: First routine ─────────────────────────────────────────────────────
 
 @Composable
 private fun FirstRoutinePage(

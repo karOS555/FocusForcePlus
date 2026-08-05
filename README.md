@@ -9,7 +9,7 @@
 
 # FocusForce+
 
-### Routines, to-dos, app blocking and focus mode in one app, with reminders that are hard to ignore.
+### Routines, to-dos, app blocking, focus and sleep mode in one app, with reminders that are hard to ignore.
 
 <br/>
 
@@ -36,11 +36,21 @@
 
 <br/>
 
+## Why it exists
+
+I made this for myself, first and foremost.
+
+I kept bouncing between a routine app, a to-do app and a blocker, and none of them held me to anything once the motivation wore off. Everything was a suggestion you could swipe away. So I wrote the thing I actually wanted: one app where a routine wakes you up properly, where a to-do doesn't quietly disappear, and where "just five more minutes" has to get past something first.
+
+I use it every day. Putting it on GitHub came later, almost as an afterthought. But if your brain works anything like mine, there's a decent chance it fits you too, and that turned out to be the best part of having published it.
+
+<br/>
+
 ## What it is
 
-FocusForce+ puts four things that usually live in four separate apps into one: strict **routines**, a nagging **to-do planner**, an **app blocker**, and a **focus mode**. The whole point is that it doesn't let you wriggle out of your own plans the second motivation dips.
+FocusForce+ puts five things that usually live in five separate apps into one: strict **routines**, a nagging **to-do planner**, an **app blocker**, a **focus mode**, and a **sleep mode**. The whole point is that it doesn't let you wriggle out of your own plans the second motivation dips.
 
-I built it for people whose brains need more structure than most apps assume: ADHD, trouble reining in your own habits, or just losing too many hours to your phone. Honestly I'm building it mostly for myself, because I kept looking for something that tied all of this together and couldn't find one that fit.
+It's aimed at people whose brains need more structure than most apps assume: ADHD, trouble reining in your own habits, or just losing too many hours to your phone.
 
 Everything stays on your phone. No account, no cloud, no ads, no tracking. The app doesn't even ask for internet access.
 
@@ -65,9 +75,11 @@ Everything stays on your phone. No account, no cloud, no ads, no tracking. The a
 
 **To-dos.** A planner that won't let things quietly slip. Timed to-dos alarm you like a routine does. Loose ones resurface a few times a day. Overdue ones stay pinned until you deal with them.
 
-**App blocker.** Block distracting apps by a daily time limit, a fixed time window (overnight works too), or automatically during routines and focus sessions. Bundle apps into groups with one shared limit.
+**App blocker.** Block distracting apps by a daily time limit, a fixed time window (overnight works too), or automatically during routines and focus sessions. Bundle apps into groups that share one limit, one blocking schedule, and one set of rules.
 
 **Focus mode.** One session that turns on Do Not Disturb, silences notifications, and blocks the apps or groups you pick, for a set stretch of time. Start one on the spot or schedule it.
+
+**Sleep mode.** One nightly schedule: a wind-down reminder, Do Not Disturb, and your distracting apps out of reach until morning. Bedtime and wake-up can each kick off a routine, and it can put backup alarms in your phone's own clock app so waking up never depends on this one.
 
 **Home dashboard.** Your day at a glance: today's routines and their status, the to-dos that need you next, screen time, and quick actions.
 
@@ -152,6 +164,7 @@ The whole app is built and the first public beta is out. From here it's real-dev
 - [x] Home dashboard and statistics
 - [x] Tamper Protection, JSON backup, quick-settings tile
 - [x] First public beta
+- [x] Sleep mode with linked routines and backup alarms
 - [ ] Stable 1.0 after a testing round
 - [ ] Play Store submission
 
@@ -209,9 +222,16 @@ FocusForce+ is a self-help tool for building focus and habits. It is not a medic
 
 <br/>
 
-## Contact
+## If it helps you
 
-Bugs and ideas go in the [Issues](../../issues) tab.
+The app collects nothing and never phones home, which I'm glad about, but it does mean I have no idea whether anyone out there is actually using this.
+
+So if it's doing something for you:
+
+- **Leave a ⭐ on the repo.** Two seconds, and it's the only signal I get.
+- **[Open an issue](../../issues)** for bugs, rough edges, or ideas. And if nothing broke, that's worth a line too, without analytics I have no other way of knowing what works.
+
+Either one genuinely makes my day.
 
 <br/>
 
