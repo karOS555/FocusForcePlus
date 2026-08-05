@@ -41,7 +41,11 @@ class FocusNotificationHelper @Inject constructor(
         )
     }
 
-    /** Ongoing notification while a session runs. "End session" only when not invincible. */
+    /**
+     * Ongoing notification while a session runs. "End session" only when not
+     * invincible. While running, the countdown renders via the system chronometer
+     * — no periodic notify() calls needed; the service re-posts on state changes.
+     */
     fun buildOngoingNotification(
         sessionName: String,
         remainingSeconds: Int,
@@ -54,7 +58,7 @@ class FocusNotificationHelper @Inject constructor(
             .setContentTitle(if (paused) "$sessionName (paused)" else sessionName)
             .setContentText(
                 if (paused) "Paused - ${formatRemaining(remainingSeconds)} left"
-                else "${formatRemaining(remainingSeconds)} remaining"
+                else "Focus running"
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
@@ -62,6 +66,13 @@ class FocusNotificationHelper @Inject constructor(
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setAutoCancel(false)
+
+        if (!paused) {
+            builder
+                .setWhen(System.currentTimeMillis() + remainingSeconds * 1_000L)
+                .setUsesChronometer(true)
+                .setChronometerCountDown(true)
+        }
 
         if (!invincible) {
             val endIntent = PendingIntent.getBroadcast(

@@ -107,7 +107,8 @@ class FocusForegroundService : Service() {
             while (remainingSeconds > 0) {
                 delay(1_000L)
                 remainingSeconds--
-                if (remainingSeconds % 5 == 0 || remainingSeconds <= 10) updateNotification()
+                // The notification counts down via the system chronometer, so it
+                // only needs a re-post on state changes — not every few seconds.
                 if (remainingSeconds % 15 == 0) publishRegistry()
             }
             finishSession(completed = true)

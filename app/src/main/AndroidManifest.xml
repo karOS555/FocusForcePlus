@@ -155,12 +155,15 @@
             </intent-filter>
         </receiver>
 
-        <!-- Restores alarms after device reboot -->
+        <!-- Re-arms alarms after reboot, app update, and clock/timezone changes -->
         <receiver
             android:name=".service.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
 

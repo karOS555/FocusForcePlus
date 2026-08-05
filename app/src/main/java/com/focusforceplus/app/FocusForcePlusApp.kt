@@ -11,6 +11,7 @@ import com.focusforceplus.app.util.FocusNotificationHelper
 import com.focusforceplus.app.util.NotificationHelper
 import com.focusforceplus.app.util.TodoAlarmHelper
 import com.focusforceplus.app.util.TodoNotificationHelper
+import com.focusforceplus.app.worker.AlarmGuardWorker
 import com.focusforceplus.app.worker.DailyResetWorker
 import com.focusforceplus.app.worker.TodoOverdueWorker
 import com.focusforceplus.app.worker.UsageSyncWorker
@@ -79,6 +80,16 @@ class FocusForcePlusApp : Application() {
             UsageSyncWorker.UNIQUE_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<UsageSyncWorker>(15, TimeUnit.MINUTES).build(),
+        )
+
+        // Safety net: re-arm all alarms twice a day in case an OEM battery
+        // manager silently purged them (idempotent, effectively free).
+        workManager.enqueueUniquePeriodicWork(
+            AlarmGuardWorker.UNIQUE_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<AlarmGuardWorker>(12, TimeUnit.HOURS)
+                .setInitialDelay(1, TimeUnit.HOURS)
+                .build(),
         )
     }
 }
