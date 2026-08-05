@@ -184,6 +184,15 @@
             android:name=".service.TodoDigestReceiver"
             android:exported="false" />
 
+        <!-- Re-posts persistent todo notifications after the user swipes them away -->
+        <receiver
+            android:name=".service.TodoNotificationRepostReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.focusforceplus.app.TODO_NOTIF_SWIPED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Foreground service that keeps the alarm notification non-dismissable (High + Medium) -->
         <service
             android:name=".service.TodoAlarmForegroundService"

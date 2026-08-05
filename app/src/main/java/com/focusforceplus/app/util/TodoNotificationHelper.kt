@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import com.focusforceplus.app.MainActivity
 import com.focusforceplus.app.R
 import com.focusforceplus.app.service.TodoDismissReceiver
+import com.focusforceplus.app.service.TodoNotificationRepostReceiver
 import com.focusforceplus.app.service.TodoSnoozeReceiver
 import com.focusforceplus.app.ui.alarm.TodoAlarmActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -56,6 +57,9 @@ class TodoNotificationHelper @Inject constructor(
         private const val RC_RESCHEDULE_ALARM_NOTIF = 530_000  // Reschedule from active High alarm notif
         private const val RC_DIGEST_TODO_SNOOZE     = 540_000  // Snooze from per-todo digest notification
         private const val RC_DIGEST_TODO_DISMISS    = 550_000  // Dismiss from per-todo digest notification
+        private const val RC_REPOST_ALARM           = 560_000  // deleteIntent: swiped active alarm notif
+        private const val RC_REPOST_SNOOZED         = 570_000  // deleteIntent: swiped High snoozed notif
+        private const val RC_REPOST_STILL_OPEN      = 580_000  // deleteIntent: swiped Medium still-open notif
 
         private const val OVERDUE_GROUP = "com.focusforceplus.app.OVERDUE_GROUP"
 
@@ -127,6 +131,11 @@ class TodoNotificationHelper @Inject constructor(
                     .setContentIntent(alarmIntent)
                     .setOngoing(true)
                     .setAutoCancel(false)
+                    // Android 14+ lets users swipe FGS notifications — bring it right back.
+                    .setDeleteIntent(repostBroadcastIntent(
+                        todoId, TodoNotificationRepostReceiver.KIND_ALARM,
+                        (RC_REPOST_ALARM + todoId).toInt(),
+                    ))
                     // No Done — must confirm on alarm screen
                     .addAction(0, "Open alarm", alarmIntent)
 
@@ -159,6 +168,12 @@ class TodoNotificationHelper @Inject constructor(
                     .setContentIntent(alarmIntent)
                     .setOngoing(true)
                     .setAutoCancel(false)
+                    // Swiping the alarm away is not the same as acting on it - a swipe
+                    // downgrades to the persistent still-open reminder instead.
+                    .setDeleteIntent(repostBroadcastIntent(
+                        todoId, TodoNotificationRepostReceiver.KIND_STILL_OPEN,
+                        (RC_REPOST_ALARM + todoId).toInt(),
+                    ))
                     .addAction(0, "Done \u2714", doneIntent)
 
                 if (remaining > 0) {
@@ -239,6 +254,11 @@ class TodoNotificationHelper @Inject constructor(
                     .setContentIntent(tapIntent)
                     .setOngoing(true)
                     .setAutoCancel(false)
+                    .setDeleteIntent(repostBroadcastIntent(
+                        todoId, TodoNotificationRepostReceiver.KIND_SNOOZED,
+                        (RC_REPOST_SNOOZED + todoId).toInt(),
+                        triggerMillis = triggerMillis,
+                    ))
 
                 if (remaining > 0) {
                     builder.addAction(
@@ -294,6 +314,10 @@ class TodoNotificationHelper @Inject constructor(
             .setContentIntent(tapIntent)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setDeleteIntent(repostBroadcastIntent(
+                todoId, TodoNotificationRepostReceiver.KIND_STILL_OPEN,
+                (RC_REPOST_STILL_OPEN + todoId).toInt(),
+            ))
             .addAction(0, "Done \u2714", doneIntent)
             .build()
     }
@@ -483,6 +507,24 @@ class TodoNotificationHelper @Inject constructor(
         val intent = Intent(context, TodoDismissReceiver::class.java).apply {
             action = TodoDismissReceiver.ACTION_DONE
             putExtra("todoId", todoId)
+        }
+        return PendingIntent.getBroadcast(
+            context, requestCode, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun repostBroadcastIntent(
+        todoId: Long,
+        kind: String,
+        requestCode: Int,
+        triggerMillis: Long = 0L,
+    ): PendingIntent {
+        val intent = Intent(context, TodoNotificationRepostReceiver::class.java).apply {
+            action = TodoNotificationRepostReceiver.ACTION_SWIPED
+            putExtra("todoId", todoId)
+            putExtra(TodoNotificationRepostReceiver.EXTRA_KIND, kind)
+            putExtra("triggerMillis", triggerMillis)
         }
         return PendingIntent.getBroadcast(
             context, requestCode, intent,

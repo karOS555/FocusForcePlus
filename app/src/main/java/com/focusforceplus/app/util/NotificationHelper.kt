@@ -41,6 +41,7 @@ class NotificationHelper @Inject constructor(
         private const val RC_DISMISS_ALARM  = 50_000
         private const val RC_DISMISS_PRE    = 51_000
         private const val RC_DISMISS_SNOOZE = 52_000
+        private const val RC_SWIPE_ALARM    = 53_000
         private const val RC_FOREGROUND_TAP  = 60_000
         private const val RC_DONE_TASK        = 70_000
 
@@ -91,6 +92,8 @@ class NotificationHelper @Inject constructor(
             .setContentIntent(tapIntent)
             .setOngoing(true)
             .setAutoCancel(false)
+            // Android 14+ lets users swipe FGS notifications — bring the alarm back.
+            .setDeleteIntent(alarmSwipedIntent(routineId, snoozeCount, (RC_SWIPE_ALARM + routineId).toInt()))
             .addAction(0, "Start routine", startIntent)
             .applyDismissAction(routineId, invincibleMode, (RC_DISMISS_ALARM + routineId).toInt())
             .build()
@@ -239,6 +242,18 @@ class NotificationHelper @Inject constructor(
             putExtra("routineId", routineId)
         }
         return PendingIntent.getActivity(
+            context, requestCode, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun alarmSwipedIntent(routineId: Long, snoozeCount: Int, requestCode: Int): PendingIntent {
+        val intent = Intent(context, RoutineDismissReceiver::class.java).apply {
+            action = RoutineDismissReceiver.ACTION_ALARM_SWIPED
+            putExtra("routineId", routineId)
+            putExtra("snoozeCount", snoozeCount)
+        }
+        return PendingIntent.getBroadcast(
             context, requestCode, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
