@@ -9,7 +9,9 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
@@ -44,9 +46,16 @@ fun BottomNavBar(navController: NavController) {
                     )
                 },
                 label = {
+                    // "Focus & Sleep" does not fit on one line in a five-tab bar
+                    // on narrow screens, so labels may wrap instead of being
+                    // ellipsised. Short labels are unaffected.
                     Text(
                         text = screen.label,
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        lineHeight = 12.sp,
+                        maxLines = 2,
+                        textAlign = TextAlign.Center,
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
