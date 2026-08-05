@@ -1,7 +1,9 @@
 package com.focusforceplus.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,6 +21,8 @@ import com.focusforceplus.app.ui.screens.routine.ActiveRoutineScreen
 import com.focusforceplus.app.ui.screens.routine.CreateRoutineScreen
 import com.focusforceplus.app.ui.screens.routine.RoutineListScreen
 import com.focusforceplus.app.ui.screens.settings.SettingsScreen
+import com.focusforceplus.app.ui.screens.sleep.SleepScreen
+import com.focusforceplus.app.ui.screens.sleep.SleepViewModel
 import com.focusforceplus.app.ui.screens.stats.StatsScreen
 import com.focusforceplus.app.ui.screens.todo.CreateTodoScreen
 import com.focusforceplus.app.ui.screens.todo.TodoListScreen
@@ -187,6 +191,37 @@ fun NavGraph(
             )
         }
 
+        // ── Sleep Mode ────────────────────────────────────────────────────────
+        composable(SleepRoutes.SLEEP) {
+            SleepScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onCreateRoutine = { linkTarget ->
+                    navController.navigate(SleepRoutes.createLinkedRoutine(linkTarget))
+                },
+            )
+        }
+
+        // Creating a routine from the sleep screen links it on save. The sleep
+        // entry is still on the back stack, so its ViewModel does the linking and
+        // the picker already shows the new routine when we pop back.
+        composable(
+            route = SleepRoutes.CREATE_LINKED_ROUTINE,
+            arguments = listOf(navArgument("linkTarget") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val linkTarget = backStackEntry.arguments?.getString("linkTarget") ?: "bedtime"
+            val sleepEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(SleepRoutes.SLEEP)
+            }
+            val sleepViewModel: SleepViewModel = hiltViewModel(sleepEntry)
+            CreateRoutineScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onRoutineSaved = { savedId ->
+                    if (linkTarget == "bedtime") sleepViewModel.setBedtimeRoutine(savedId)
+                    else sleepViewModel.setMorningRoutine(savedId)
+                },
+            )
+        }
+
         // ── Settings ──────────────────────────────────────────────────────────
         composable(SettingsRoutes.SETTINGS) {
             SettingsScreen(
@@ -194,6 +229,7 @@ fun NavGraph(
                 onOpenBlockerSettings = { navController.navigate(BlockerRoutes.SETTINGS) },
                 onOpenDisclosure = { type -> navController.navigate(BlockerRoutes.disclosure(type)) },
                 onReplayOnboarding = { navController.navigate(OnboardingRoutes.ONBOARDING) },
+                onOpenSleepMode = { navController.navigate(SleepRoutes.SLEEP) },
             )
         }
     }

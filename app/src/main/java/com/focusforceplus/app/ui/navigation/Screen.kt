@@ -53,6 +53,15 @@ object StatsRoutes {
     const val STATS = "stats"
 }
 
+object SleepRoutes {
+    const val SLEEP = "sleep"
+
+    /** Create a routine from the sleep screen and link it as bedtime/morning. */
+    const val CREATE_LINKED_ROUTINE = "sleep/routine/create/{linkTarget}"
+
+    fun createLinkedRoutine(linkTarget: String) = "sleep/routine/create/$linkTarget"
+}
+
 object RoutineRoutes {
     const val LIST           = "routines"
     const val CREATE         = "routine/create"

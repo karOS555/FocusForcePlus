@@ -5,10 +5,13 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.focusforceplus.app.data.repository.SettingsRepository
+import com.focusforceplus.app.data.repository.SleepRepository
 import com.focusforceplus.app.util.AlarmSoundPolicy
 import com.focusforceplus.app.util.BlockerNotificationHelper
 import com.focusforceplus.app.util.FocusNotificationHelper
 import com.focusforceplus.app.util.NotificationHelper
+import com.focusforceplus.app.util.SleepAlarmHelper
+import com.focusforceplus.app.util.SleepNotificationHelper
 import com.focusforceplus.app.util.TodoAlarmHelper
 import com.focusforceplus.app.util.TodoNotificationHelper
 import com.focusforceplus.app.worker.AlarmGuardWorker
@@ -31,8 +34,11 @@ class FocusForcePlusApp : Application() {
     @Inject lateinit var todoNotificationHelper: TodoNotificationHelper
     @Inject lateinit var blockerNotificationHelper: BlockerNotificationHelper
     @Inject lateinit var focusNotificationHelper: FocusNotificationHelper
+    @Inject lateinit var sleepNotificationHelper: SleepNotificationHelper
     @Inject lateinit var todoAlarmHelper: TodoAlarmHelper
+    @Inject lateinit var sleepAlarmHelper: SleepAlarmHelper
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var sleepRepository: SleepRepository
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -42,10 +48,15 @@ class FocusForcePlusApp : Application() {
         todoNotificationHelper.createChannels()
         blockerNotificationHelper.createChannels()
         focusNotificationHelper.createChannels()
+        sleepNotificationHelper.createChannels()
 
         appScope.launch {
             val times = settingsRepository.digestTimes.first()
             todoAlarmHelper.scheduleDigestAlarms(times)
+        }
+
+        appScope.launch {
+            sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
         }
 
         // Keep the synchronous alarm sound/vibration snapshot in sync with settings.

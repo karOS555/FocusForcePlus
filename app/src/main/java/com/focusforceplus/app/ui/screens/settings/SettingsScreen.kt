@@ -84,6 +84,7 @@ fun SettingsScreen(
     onOpenBlockerSettings: () -> Unit = {},
     onOpenDisclosure: (String) -> Unit = {},
     onReplayOnboarding: () -> Unit = {},
+    onOpenSleepMode: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -374,6 +375,18 @@ fun SettingsScreen(
                         title = "Blocking rules and settings",
                         subtitle = "Master switch, session blocking, Invincible Mode info",
                         onClick = onOpenBlockerSettings,
+                    )
+                }
+            }
+
+            // ── Sleep Mode ────────────────────────────────────────────────────
+            item {
+                SettingsSection(title = "Sleep Mode") {
+                    NavigationRow(
+                        title = "Bedtime and wake-up",
+                        subtitle = "Wind-down reminder, night blocking, linked routines, " +
+                            "backup alarms",
+                        onClick = onOpenSleepMode,
                     )
                 }
             }

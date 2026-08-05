@@ -11,6 +11,7 @@ import com.focusforceplus.app.compliance.dayCodeFor
 import com.focusforceplus.app.compliance.isGroupLocked
 import com.focusforceplus.app.compliance.isGroupScheduleActive
 import com.focusforceplus.app.data.repository.BlockerRepository
+import com.focusforceplus.app.data.repository.SleepRepository
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,7 @@ data class BlockedAppUiState(
 @HiltViewModel
 class BlockedAppViewModel @Inject constructor(
     private val repository: BlockerRepository,
+    private val sleepRepository: SleepRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -71,6 +73,7 @@ class BlockedAppViewModel @Inject constructor(
                 BlockReason.TIME_WINDOW -> rule?.windowEndMinutes
                 BlockReason.GROUP_WINDOW ->
                     extraGroupName?.let { repository.getGroupByName(it) }?.windowEndMinutes
+                BlockReason.SLEEP_ACTIVE -> sleepRepository.schedule.first().wakeMinutes
                 else -> null
             }
             val untilWindowEnd = if (windowEnd != null) {

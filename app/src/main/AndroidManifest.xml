@@ -30,6 +30,12 @@
     <!-- Boot receiver -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Sleep mode: optionally create backup wake-up alarms in the user's own clock
+         app, so they ring even if FocusForce+ is not running. Normal permission,
+         granted at install; each alarm is created only from the user's explicit
+         sleep-schedule setting. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
     <!-- Focus mode: toggle Do Not Disturb during sessions. Declaring this is what
          makes FocusForce+ appear in Android's "Do Not Disturb access" list — the
          actual grant still happens there, by the user. -->
@@ -261,6 +267,11 @@
         <!-- Fires at a focus session's scheduled time (reminder, no auto-start) -->
         <receiver
             android:name=".service.FocusAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Drives the sleep schedule: wind-down reminder, bedtime, wake-up -->
+        <receiver
+            android:name=".service.SleepReceiver"
             android:exported="false" />
 
         <!-- Handles "End session" / "Start now" actions from focus notifications -->

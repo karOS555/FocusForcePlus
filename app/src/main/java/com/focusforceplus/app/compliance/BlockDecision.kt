@@ -21,6 +21,8 @@ enum class BlockReason {
     ROUTINE_ACTIVE,
     /** A focus session with app blocking is currently running. */
     FOCUS_ACTIVE,
+    /** The sleep schedule is running and the app's group is in its blocking scope. */
+    SLEEP_ACTIVE,
 }
 
 /** Maximum temporary exceptions per app per day ("5 more minutes"). */
@@ -42,6 +44,16 @@ val NEVER_BLOCK_PACKAGES: Set<String> = setOf(
     "com.google.android.dialer",
     "com.android.emergency",
     "com.android.systemui",
+    // Clock/alarm apps must always ring — especially with sleep mode setting
+    // native wake-up alarms. The device's actual clock app is also excluded
+    // dynamically (see AppBlockerAccessibilityService).
+    "com.google.android.deskclock",
+    "com.android.deskclock",
+    "com.sec.android.app.clockpackage",
+    "com.oneplus.deskclock",
+    "com.oppo.alarmclock",
+    "com.asus.deskclock",
+    "com.motorola.blur.alarmclock",
 )
 
 /**
@@ -83,10 +95,34 @@ fun dayCodeFor(calendarDayOfWeek: Int): String = when (calendarDayOfWeek) {
  * code from [DAY_CODES]. Overnight windows wrap: the post-midnight part belongs
  * to the schedule of the day the window started on.
  */
-fun isGroupScheduleActive(group: BlockerGroupEntity, minutesOfDay: Int, dayCode: String): Boolean {
-    val start = group.windowStartMinutes ?: return false
-    val end = group.windowEndMinutes ?: return false
-    val days = group.windowDaysCsv?.split(',')?.filter { it.isNotBlank() }?.toSet()
+fun isGroupScheduleActive(group: BlockerGroupEntity, minutesOfDay: Int, dayCode: String): Boolean =
+    isDayWindowActive(
+        group.windowStartMinutes, group.windowEndMinutes, group.windowDaysCsv,
+        minutesOfDay, dayCode,
+    )
+
+/**
+ * Whether the sleep window (bedtime → wake-up on the bedtime's day) is running.
+ * Same wrap-around semantics as group schedules.
+ */
+fun isSleepWindowActive(
+    bedtimeMinutes: Int,
+    wakeMinutes: Int,
+    activeDaysCsv: String?,
+    minutesOfDay: Int,
+    dayCode: String,
+): Boolean = isDayWindowActive(bedtimeMinutes, wakeMinutes, activeDaysCsv, minutesOfDay, dayCode)
+
+private fun isDayWindowActive(
+    startMinutes: Int?,
+    endMinutes: Int?,
+    daysCsv: String?,
+    minutesOfDay: Int,
+    dayCode: String,
+): Boolean {
+    val start = startMinutes ?: return false
+    val end = endMinutes ?: return false
+    val days = daysCsv?.split(',')?.filter { it.isNotBlank() }?.toSet()
     fun dayActive(code: String) = days.isNullOrEmpty() || code in days
     return if (start <= end) {
         dayActive(dayCode) && minutesOfDay in start until end
@@ -113,6 +149,7 @@ fun isGroupScheduleActive(group: BlockerGroupEntity, minutesOfDay: Int, dayCode:
  * @param inGroup            the app belongs to a blocker group
  * @param groupLimitReached  that group's shared daily limit is used up
  * @param groupWindowActive  that group's blocking schedule is running right now
+ * @param sleepBlocking      the sleep window is running and covers the app's group
  * @return the reason to block, or null if the app is allowed
  */
 fun evaluateBlock(
@@ -124,6 +161,7 @@ fun evaluateBlock(
     inGroup: Boolean = false,
     groupLimitReached: Boolean = false,
     groupWindowActive: Boolean = false,
+    sleepBlocking: Boolean = false,
 ): BlockReason? {
     if (app.packageName in NEVER_BLOCK_PACKAGES) return null
     if (!app.isBlocked) return null
@@ -132,6 +170,7 @@ fun evaluateBlock(
     // Session-driven blocking applies regardless of limit/window state.
     if (routineBlocking && app.blockDuringRoutines) return BlockReason.ROUTINE_ACTIVE
     if (focusBlocking && app.blockDuringFocus) return BlockReason.FOCUS_ACTIVE
+    if (sleepBlocking) return BlockReason.SLEEP_ACTIVE
 
     if (groupLimitReached) return BlockReason.GROUP_LIMIT
     if (groupWindowActive) return BlockReason.GROUP_WINDOW
@@ -204,9 +243,10 @@ fun canGrantException(
     if (app.exceptionsUsedToday >= MAX_BLOCK_EXCEPTIONS_PER_DAY) return false
     if (isRuleLocked(app, minutesOfDay)) return false
     if (groupIsLocked) return false
-    if ((reason == BlockReason.ROUTINE_ACTIVE || reason == BlockReason.FOCUS_ACTIVE) && sessionIsInvincible) {
-        return false
-    }
+    val sessionReason = reason == BlockReason.ROUTINE_ACTIVE ||
+        reason == BlockReason.FOCUS_ACTIVE ||
+        reason == BlockReason.SLEEP_ACTIVE
+    if (sessionReason && sessionIsInvincible) return false
     return true
 }
 

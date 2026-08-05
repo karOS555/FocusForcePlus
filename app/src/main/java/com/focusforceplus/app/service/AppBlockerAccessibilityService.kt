@@ -8,10 +8,13 @@ import com.focusforceplus.app.compliance.NEVER_BLOCK_PACKAGES
 import com.focusforceplus.app.compliance.dayCodeFor
 import com.focusforceplus.app.compliance.evaluateBlock
 import com.focusforceplus.app.compliance.isGroupScheduleActive
+import com.focusforceplus.app.compliance.isSleepWindowActive
 import com.focusforceplus.app.data.db.entity.BlockedAppEntity
 import com.focusforceplus.app.data.db.entity.BlockerGroupEntity
 import com.focusforceplus.app.data.repository.BlockerRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
+import com.focusforceplus.app.data.repository.SleepRepository
+import com.focusforceplus.app.data.repository.SleepSchedule
 import com.focusforceplus.app.ui.screens.blocker.BlockedAppActivity
 import com.focusforceplus.app.util.BlockerNotificationHelper
 import com.focusforceplus.app.util.InstalledAppsHelper
@@ -46,6 +49,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
     @Inject lateinit var blockerRepository: BlockerRepository
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var sleepRepository: SleepRepository
     @Inject lateinit var routineRegistry: ActiveRoutineRegistry
     @Inject lateinit var focusRegistry: FocusSessionRegistry
     @Inject lateinit var usageTracker: UsageTracker
@@ -63,10 +67,13 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         val blockerEnabled: Boolean = false,
         val blockDuringRoutines: Boolean = true,
         val blockDuringFocus: Boolean = true,
+        val sleep: SleepSchedule = SleepSchedule(),
     )
 
     @Volatile private var snapshot = BlockerSnapshot()
     @Volatile private var launcherPackage: String? = null
+    /** The device's actual clock app — must never be blocked (wake-up alarms). */
+    @Volatile private var clockPackage: String? = null
 
     /** Debounce per package so a stubborn foreground app can't spawn screen loops. */
     private val lastBlockShownAt = HashMap<String, Long>()
@@ -78,15 +85,20 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         launcherPackage = installedAppsHelper.defaultLauncherPackage()
+        clockPackage = resolveClockPackage()
 
         serviceScope.launch {
             combine(
-                blockerRepository.getAllApps(),
-                blockerRepository.getAllGroups(),
+                combine(
+                    blockerRepository.getAllApps(),
+                    blockerRepository.getAllGroups(),
+                    sleepRepository.schedule,
+                    ::Triple,
+                ),
                 settingsRepository.blockerEnabled,
                 settingsRepository.blockDuringRoutines,
                 settingsRepository.blockDuringFocus,
-            ) { apps, groups, enabled, duringRoutines, duringFocus ->
+            ) { (apps, groups, sleep), enabled, duringRoutines, duringFocus ->
                 BlockerSnapshot(
                     rulesByPackage = apps
                         .filter { it.isBlocked }
@@ -99,6 +111,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     blockerEnabled = enabled,
                     blockDuringRoutines = duringRoutines,
                     blockDuringFocus = duringFocus,
+                    sleep = sleep,
                 )
             }.collect { fresh ->
                 snapshot = fresh
@@ -106,6 +119,13 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             }
         }
     }
+
+    /** Resolves the app handling the system alarm clock so it is never blocked. */
+    private fun resolveClockPackage(): String? = runCatching {
+        packageManager
+            .resolveActivity(Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS), 0)
+            ?.activityInfo?.packageName
+    }.getOrNull()
 
     /** Narrows delivered events to exactly the packages we have rules for. */
     private fun updateEventScope(packages: Set<String>) {
@@ -123,7 +143,9 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
-        if (pkg == packageName || pkg == launcherPackage || pkg in NEVER_BLOCK_PACKAGES) return
+        if (pkg == packageName || pkg == launcherPackage || pkg == clockPackage ||
+            pkg in NEVER_BLOCK_PACKAGES
+        ) return
 
         val snap = snapshot
         if (!snap.blockerEnabled) return
@@ -159,6 +181,15 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             val groupWindowActive = group != null &&
                 isGroupScheduleActive(group, minutesOfDay(), todayCode())
 
+            // Sleep mode blocks the selected groups during the sleep window.
+            val sleepApplies = snap.sleep.enabled &&
+                ruleGroupName != null &&
+                ruleGroupName in snap.sleep.blockedGroups &&
+                isSleepWindowActive(
+                    snap.sleep.bedtimeMinutes, snap.sleep.wakeMinutes,
+                    snap.sleep.activeDaysCsv, minutesOfDay(), todayCode(),
+                )
+
             val reason = evaluateBlock(
                 app = currentRule,
                 nowMillis = now,
@@ -168,6 +199,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 inGroup = group != null,
                 groupLimitReached = groupLimitReached,
                 groupWindowActive = groupWindowActive,
+                sleepBlocking = sleepApplies,
             ) ?: return@launch
 
             val lastShown = synchronized(lastBlockShownAt) { lastBlockShownAt[pkg] ?: 0L }
@@ -187,6 +219,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         val sessionInvincible = when (reason) {
             BlockReason.ROUTINE_ACTIVE -> routineRegistry.isSessionInvincible()
             BlockReason.FOCUS_ACTIVE -> focusRegistry.isSessionInvincible()
+            BlockReason.SLEEP_ACTIVE -> snapshot.sleep.invincibleMode
             else -> false
         }
         // SYSTEM_ALERT_WINDOW (granted for the alarm flow) exempts this start from

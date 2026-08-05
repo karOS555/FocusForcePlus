@@ -304,6 +304,55 @@ class BlockDecisionTest {
         assertFalse(isGroupLocked(g, 0, groupScheduleActive = false))
     }
 
+    // ── Sleep mode ────────────────────────────────────────────────────────────
+
+    @Test
+    fun `sleep window blocks members and outranks group rules`() {
+        val member = app()
+        assertEquals(
+            BlockReason.SLEEP_ACTIVE,
+            evaluateBlock(member, now, 60, false, false, inGroup = true, sleepBlocking = true),
+        )
+        assertNull(
+            evaluateBlock(member, now, 60, false, false, inGroup = true, sleepBlocking = false)
+        )
+    }
+
+    @Test
+    fun `sleep window wraps past midnight`() {
+        // Bedtime 23:00, wake 07:00 — every day.
+        assertTrue(isSleepWindowActive(23 * 60, 7 * 60, null, 23 * 60 + 30, "MO"))
+        assertTrue(isSleepWindowActive(23 * 60, 7 * 60, null, 3 * 60, "DI"))
+        assertFalse(isSleepWindowActive(23 * 60, 7 * 60, null, 7 * 60, "DI"))
+        assertFalse(isSleepWindowActive(23 * 60, 7 * 60, null, 12 * 60, "MO"))
+    }
+
+    @Test
+    fun `sleep window respects the bedtime day, not the wake day`() {
+        // Only Friday nights: the Saturday-morning tail still belongs to Friday.
+        val days = "FR"
+        assertTrue(isSleepWindowActive(23 * 60, 7 * 60, days, 23 * 60 + 30, "FR"))
+        assertTrue(isSleepWindowActive(23 * 60, 7 * 60, days, 3 * 60, "SA"))
+        assertFalse(isSleepWindowActive(23 * 60, 7 * 60, days, 23 * 60 + 30, "SA"))
+    }
+
+    @Test
+    fun `invincible sleep block denies the exception`() {
+        val member = app()
+        assertFalse(
+            canGrantException(member, BlockReason.SLEEP_ACTIVE, 60, sessionIsInvincible = true)
+        )
+        assertTrue(
+            canGrantException(member, BlockReason.SLEEP_ACTIVE, 60, sessionIsInvincible = false)
+        )
+    }
+
+    @Test
+    fun `clock apps are never blocked`() {
+        val clock = app(packageName = "com.google.android.deskclock")
+        assertNull(evaluateBlock(clock, now, 60, false, false, sleepBlocking = true))
+    }
+
     @Test
     fun `shortening an invincible group schedule counts as weakening`() {
         val old = group(invincible = true, windowStart = 9 * 60, windowEnd = 17 * 60)

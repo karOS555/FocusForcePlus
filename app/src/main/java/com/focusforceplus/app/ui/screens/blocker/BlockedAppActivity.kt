@@ -227,6 +227,14 @@ private fun reasonText(state: BlockedAppUiState): String = when (state.reason) {
     }
     BlockReason.ROUTINE_ACTIVE -> "A routine with app blocking is running.\nFinish the routine to use this app again."
     BlockReason.FOCUS_ACTIVE -> "A focus session is running.\nStay with it - the block ends with the session."
+    BlockReason.SLEEP_ACTIVE -> {
+        val left = state.minutesUntilWindowEnd
+        if (left != null) {
+            "Sleep mode is on - you planned to be asleep.\nUnblocks at wake-up in ${formatDuration(left)}."
+        } else {
+            "Sleep mode is on - you planned to be asleep."
+        }
+    }
     BlockReason.MANUAL -> "You chose to block this app.\nYou can change the rule in FocusForce+ at any time."
 }
 

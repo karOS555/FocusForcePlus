@@ -195,7 +195,8 @@ class RoutineViewModel @Inject constructor(
         tasks.add(to, item)
     }
 
-    fun saveRoutine(onSuccess: () -> Unit) {
+    /** [onSuccess] receives the saved routine's id, so callers can link to it. */
+    fun saveRoutine(onSuccess: (Long) -> Unit) {
         val state = _uiState.value
         var hasError = false
         if (state.name.isBlank()) { _uiState.update { it.copy(nameError = true) }; hasError = true }
@@ -253,7 +254,7 @@ class RoutineViewModel @Inject constructor(
                 val savedRoutine = repository.getRoutineById(savedId).first()
                 if (savedRoutine != null) alarmHelper.scheduleRoutineAlarms(savedRoutine)
                 _uiState.update { it.copy(isSaving = false) }
-                onSuccess()
+                onSuccess(savedId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = e.message ?: "Failed to save routine") }
             }

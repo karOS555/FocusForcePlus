@@ -89,6 +89,8 @@ import com.focusforceplus.app.ui.common.routineDayLabel
 @Composable
 fun CreateRoutineScreen(
     onNavigateBack: () -> Unit,
+    /** Called with the saved routine's id before navigating back (e.g. to link it). */
+    onRoutineSaved: (Long) -> Unit = {},
     viewModel: RoutineViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -247,7 +249,12 @@ fun CreateRoutineScreen(
             Spacer(Modifier.height(8.dp))
 
             Button(
-                onClick  = { viewModel.saveRoutine(onNavigateBack) },
+                onClick  = {
+                    viewModel.saveRoutine { savedId ->
+                        onRoutineSaved(savedId)
+                        onNavigateBack()
+                    }
+                },
                 enabled  = !uiState.isSaving,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {
