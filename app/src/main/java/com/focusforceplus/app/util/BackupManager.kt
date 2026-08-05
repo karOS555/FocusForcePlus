@@ -296,6 +296,9 @@ class BackupManager @Inject constructor(
         put("name", g.name)
         putNullable("sharedDailyLimitMinutes", g.sharedDailyLimitMinutes)
         put("invincibleMode", g.invincibleMode)
+        putNullable("windowStartMinutes", g.windowStartMinutes)
+        putNullable("windowEndMinutes", g.windowEndMinutes)
+        g.windowDaysCsv?.let { put("windowDaysCsv", it) }
     }
 
     private fun groupFromJson(o: JSONObject) = BlockerGroupEntity(
@@ -303,6 +306,9 @@ class BackupManager @Inject constructor(
         name = o.getString("name"),
         sharedDailyLimitMinutes = o.optIntOrNull("sharedDailyLimitMinutes"),
         invincibleMode = o.optBoolean("invincibleMode", false),
+        windowStartMinutes = o.optIntOrNull("windowStartMinutes"),
+        windowEndMinutes = o.optIntOrNull("windowEndMinutes"),
+        windowDaysCsv = o.optStringOrNull("windowDaysCsv"),
     )
 
     private fun focusSessionJson(f: FocusSessionEntity) = JSONObject().apply {

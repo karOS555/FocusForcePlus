@@ -6,7 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.compliance.NEVER_BLOCK_PACKAGES
 import com.focusforceplus.app.compliance.TamperProtectionGuard
+import com.focusforceplus.app.compliance.dayCodeFor
 import com.focusforceplus.app.compliance.isGroupLocked
+import com.focusforceplus.app.compliance.isGroupScheduleActive
 import com.focusforceplus.app.compliance.isRuleLocked
 import com.focusforceplus.app.compliance.validateBlockWindow
 import com.focusforceplus.app.compliance.weakensInvincibleGroup
@@ -102,6 +104,7 @@ class BlockerViewModel @Inject constructor(
             }
 
             val minutesOfDay = minutesOfDay()
+            val today = todayCode()
             val groupRows = groups.map { g ->
                 val members = rules.filter { it.groupName == g.name }
                 val used = members.sumOf { it.usedTodayMinutes }
@@ -109,7 +112,7 @@ class BlockerViewModel @Inject constructor(
                     group = g,
                     memberCount = members.size,
                     usedTodayMinutes = used,
-                    locked = isGroupLocked(g, used),
+                    locked = isGroupLocked(g, used, isGroupScheduleActive(g, minutesOfDay, today)),
                 )
             }
 
@@ -177,6 +180,9 @@ class BlockerViewModel @Inject constructor(
         val cal = Calendar.getInstance()
         return cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
     }
+
+    private fun todayCode(): String =
+        dayCodeFor(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))
 
     private fun lockedMessage() =
         "This rule is locked by Invincible Mode while it is active. It unlocks at its " +
@@ -293,6 +299,9 @@ class BlockerViewModel @Inject constructor(
         name: String,
         sharedLimitMinutes: Int?,
         invincible: Boolean,
+        windowStartMinutes: Int?,
+        windowEndMinutes: Int?,
+        windowDaysCsv: String?,
         memberPackages: Set<String>,
         memberDisplayNames: Map<String, String>,
     ) {
@@ -302,15 +311,26 @@ class BlockerViewModel @Inject constructor(
                 _message.value = "Give the group a name."
                 return@launch
             }
+            if (windowStartMinutes != null && windowEndMinutes != null) {
+                validateBlockWindow(windowStartMinutes, windowEndMinutes)?.let {
+                    _message.value = it
+                    return@launch
+                }
+            }
             val existing = originalName?.let { repository.getGroupByName(it) }
+            val hasSchedule = windowStartMinutes != null && windowEndMinutes != null
             val desired = BlockerGroupEntity(
                 id = existing?.id ?: 0L,
                 name = trimmed,
                 sharedDailyLimitMinutes = sharedLimitMinutes,
-                invincibleMode = invincible && sharedLimitMinutes != null,
+                invincibleMode = invincible && (sharedLimitMinutes != null || hasSchedule),
+                windowStartMinutes = windowStartMinutes,
+                windowEndMinutes = windowEndMinutes,
+                windowDaysCsv = windowDaysCsv,
             )
 
-            // Weakening an invincible group (limit up/removed, invincible off) is TP-gated.
+            // Weakening an invincible group (limit up/removed, invincible off,
+            // schedule removed/shortened) is TP-gated.
             if (existing != null && weakensInvincibleGroup(existing, desired)) {
                 val verdict = tamperGuard.checkProtectedChange()
                 if (!verdict.allowed) {
@@ -320,7 +340,12 @@ class BlockerViewModel @Inject constructor(
             }
             // While locked, membership must not change either (would free members).
             val currentMembers = repository.getAllAppsOnce().filter { it.groupName == originalName }
-            if (existing != null && isGroupLocked(existing, currentMembers.sumOf { it.usedTodayMinutes })) {
+            val existingLocked = existing != null && isGroupLocked(
+                existing,
+                currentMembers.sumOf { it.usedTodayMinutes },
+                isGroupScheduleActive(existing, minutesOfDay(), todayCode()),
+            )
+            if (existingLocked) {
                 val leaving = currentMembers.any { it.packageName !in memberPackages }
                 if (leaving) {
                     val verdict = tamperGuard.checkProtectedChange()

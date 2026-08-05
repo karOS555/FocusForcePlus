@@ -96,8 +96,9 @@ fun weakensInvincibleRule(old: BlockedAppEntity, new: BlockedAppEntity): Boolean
 
 /**
  * Whether saving [new] over [old] weakens an invincible blocker group: turning
- * invincibility off, or raising/removing the shared daily limit. Membership
- * removal and group deletion are gated separately at the call sites.
+ * invincibility off, raising/removing the shared daily limit, or removing/
+ * shortening the blocking schedule (window or its days). Membership removal and
+ * group deletion are gated separately at the call sites.
  */
 fun weakensInvincibleGroup(old: BlockerGroupEntity, new: BlockerGroupEntity): Boolean {
     if (!old.invincibleMode) return false
@@ -105,5 +106,19 @@ fun weakensInvincibleGroup(old: BlockerGroupEntity, new: BlockerGroupEntity): Bo
     val oldLimit = old.sharedDailyLimitMinutes
     val newLimit = new.sharedDailyLimitMinutes
     if (oldLimit != null && (newLimit == null || newLimit > oldLimit)) return true
+
+    val oldHasWindow = old.windowStartMinutes != null && old.windowEndMinutes != null
+    val newHasWindow = new.windowStartMinutes != null && new.windowEndMinutes != null
+    if (oldHasWindow) {
+        if (!newHasWindow) return true
+        val oldLen = blockWindowLengthMinutes(old.windowStartMinutes!!, old.windowEndMinutes!!)
+        val newLen = blockWindowLengthMinutes(new.windowStartMinutes!!, new.windowEndMinutes!!)
+        if (newLen < oldLen) return true
+        val oldDays = old.windowDaysCsv?.split(',')?.filter { it.isNotBlank() }?.toSet()
+            ?.ifEmpty { DAY_CODES.toSet() } ?: DAY_CODES.toSet()
+        val newDays = new.windowDaysCsv?.split(',')?.filter { it.isNotBlank() }?.toSet()
+            ?.ifEmpty { DAY_CODES.toSet() } ?: DAY_CODES.toSet()
+        if (!newDays.containsAll(oldDays)) return true
+    }
     return false
 }

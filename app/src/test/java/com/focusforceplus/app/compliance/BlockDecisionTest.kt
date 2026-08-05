@@ -199,11 +199,18 @@ class BlockDecisionTest {
 
     // ── Groups ────────────────────────────────────────────────────────────────
 
-    private fun group(invincible: Boolean = false, limit: Int? = 120) =
-        com.focusforceplus.app.data.db.entity.BlockerGroupEntity(
-            id = 1, name = "Social Media",
-            sharedDailyLimitMinutes = limit, invincibleMode = invincible,
-        )
+    private fun group(
+        invincible: Boolean = false,
+        limit: Int? = 120,
+        windowStart: Int? = null,
+        windowEnd: Int? = null,
+        daysCsv: String? = null,
+    ) = com.focusforceplus.app.data.db.entity.BlockerGroupEntity(
+        id = 1, name = "Social Media",
+        sharedDailyLimitMinutes = limit, invincibleMode = invincible,
+        windowStartMinutes = windowStart, windowEndMinutes = windowEnd,
+        windowDaysCsv = daysCsv,
+    )
 
     @Test
     fun `grouped app without own rules is allowed until the shared limit hits`() {
@@ -251,5 +258,62 @@ class BlockDecisionTest {
         assertTrue(
             canGrantException(member, BlockReason.GROUP_LIMIT, 600, sessionIsInvincible = false, groupIsLocked = false)
         )
+    }
+
+    // ── Group schedule ────────────────────────────────────────────────────────
+
+    @Test
+    fun `group schedule blocks members inside the window`() {
+        val member = app()
+        assertEquals(
+            BlockReason.GROUP_WINDOW,
+            evaluateBlock(member, now, 600, false, false, inGroup = true, groupWindowActive = true),
+        )
+        assertNull(
+            evaluateBlock(member, now, 600, false, false, inGroup = true, groupWindowActive = false)
+        )
+    }
+
+    @Test
+    fun `schedule is active only inside the window on active days`() {
+        val g = group(windowStart = 9 * 60, windowEnd = 17 * 60, daysCsv = "MO,DI")
+        assertTrue(isGroupScheduleActive(g, 12 * 60, "MO"))
+        assertFalse(isGroupScheduleActive(g, 8 * 60, "MO"))
+        assertFalse(isGroupScheduleActive(g, 12 * 60, "MI"))
+    }
+
+    @Test
+    fun `schedule without days applies every day`() {
+        val g = group(windowStart = 9 * 60, windowEnd = 17 * 60)
+        assertTrue(isGroupScheduleActive(g, 12 * 60, "SO"))
+    }
+
+    @Test
+    fun `overnight schedule wraps into the next morning on the start day`() {
+        val g = group(windowStart = 22 * 60, windowEnd = 6 * 60, daysCsv = "FR")
+        assertTrue(isGroupScheduleActive(g, 23 * 60, "FR"))   // Friday night
+        assertTrue(isGroupScheduleActive(g, 2 * 60, "SA"))    // Saturday early morning
+        assertFalse(isGroupScheduleActive(g, 23 * 60, "SA"))  // Saturday night not scheduled
+        assertFalse(isGroupScheduleActive(g, 12 * 60, "FR"))
+    }
+
+    @Test
+    fun `group with active schedule locks when invincible`() {
+        val g = group(invincible = true, limit = null, windowStart = 9 * 60, windowEnd = 17 * 60)
+        assertTrue(isGroupLocked(g, 0, groupScheduleActive = true))
+        assertFalse(isGroupLocked(g, 0, groupScheduleActive = false))
+    }
+
+    @Test
+    fun `shortening an invincible group schedule counts as weakening`() {
+        val old = group(invincible = true, windowStart = 9 * 60, windowEnd = 17 * 60)
+        val shorter = old.copy(windowEndMinutes = 16 * 60)
+        val removed = old.copy(windowStartMinutes = null, windowEndMinutes = null)
+        val fewerDays = old.copy(windowDaysCsv = "MO,DI")
+        val longer = old.copy(windowEndMinutes = 18 * 60)
+        assertTrue(weakensInvincibleGroup(old, shorter))
+        assertTrue(weakensInvincibleGroup(old, removed))
+        assertTrue(weakensInvincibleGroup(old, fewerDays))
+        assertFalse(weakensInvincibleGroup(old, longer))
     }
 }

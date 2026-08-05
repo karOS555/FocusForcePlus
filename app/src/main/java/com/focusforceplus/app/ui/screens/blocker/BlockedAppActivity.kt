@@ -211,6 +211,15 @@ private fun reasonText(state: BlockedAppUiState): String = when (state.reason) {
             "(used together: ${state.groupUsedMinutes} min).\n" +
             "Unblocks at midnight - in ${formatDuration(state.minutesUntilMidnight)}."
     }
+    BlockReason.GROUP_WINDOW -> {
+        val group = state.groupName ?: "your group"
+        val left = state.minutesUntilWindowEnd
+        if (left != null) {
+            "\"$group\" is blocked during its scheduled window.\nUnblocks in ${formatDuration(left)}."
+        } else {
+            "\"$group\" is blocked during its scheduled window."
+        }
+    }
     BlockReason.TIME_WINDOW -> {
         val left = state.minutesUntilWindowEnd
         if (left != null) "Blocked during your scheduled window.\nUnblocks in ${formatDuration(left)}."

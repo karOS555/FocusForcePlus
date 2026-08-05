@@ -43,8 +43,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.focusforceplus.app.compliance.DAY_CODES
+import com.focusforceplus.app.ui.common.routineDayLabel
 import com.focusforceplus.app.util.GroupTemplates
 import com.focusforceplus.app.util.InstalledApp
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 
 /**
  * Create/edit a blocker group: name, optional shared daily limit + invincible,
@@ -57,7 +61,11 @@ internal fun GroupEditorDialog(
     existing: BlockerGroupRow?,
     installedApps: List<InstalledApp>,
     currentMemberPackages: Set<String>,
-    onSave: (name: String, limit: Int?, invincible: Boolean, members: Set<String>, names: Map<String, String>) -> Unit,
+    onSave: (
+        name: String, limit: Int?, invincible: Boolean,
+        windowStart: Int?, windowEnd: Int?, windowDaysCsv: String?,
+        members: Set<String>, names: Map<String, String>,
+    ) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
@@ -66,6 +74,19 @@ internal fun GroupEditorDialog(
     var limitEnabled by remember { mutableStateOf(existing?.group?.sharedDailyLimitMinutes != null) }
     var limitMinutes by remember { mutableStateOf(existing?.group?.sharedDailyLimitMinutes ?: 120) }
     var invincible by remember { mutableStateOf(existing?.group?.invincibleMode ?: false) }
+    var scheduleEnabled by remember {
+        mutableStateOf(existing?.group?.windowStartMinutes != null && existing.group.windowEndMinutes != null)
+    }
+    var windowStart by remember { mutableStateOf(existing?.group?.windowStartMinutes ?: 9 * 60) }
+    var windowEnd by remember { mutableStateOf(existing?.group?.windowEndMinutes ?: 17 * 60) }
+    val selectedDays = remember {
+        val fromCsv = existing?.group?.windowDaysCsv
+            ?.split(',')?.filter { it.isNotBlank() }?.toSet()
+        mutableStateMapOf<String, Boolean>().apply {
+            DAY_CODES.forEach { put(it, fromCsv == null || it in fromCsv) }
+        }
+    }
+    var timePickerTarget by remember { mutableStateOf<String?>(null) } // "start" | "end"
     var search by remember { mutableStateOf("") }
 
     // Membership as a live map: package -> selected.
@@ -164,6 +185,58 @@ internal fun GroupEditorDialog(
                         valueRange = 15f..480f,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+
+                // Blocking schedule.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Blocking schedule",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Text(
+                            "Block every app in the group during a daily time window. " +
+                                "Overnight windows like 22:00-06:00 work too.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = scheduleEnabled,
+                        onCheckedChange = { scheduleEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                }
+                if (scheduleEnabled) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(onClick = { timePickerTarget = "start" }) {
+                            Text(formatWindowMinutes(windowStart))
+                        }
+                        Text("to", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = { timePickerTarget = "end" }) {
+                            Text(formatWindowMinutes(windowEnd))
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        DAY_CODES.forEach { day ->
+                            FilterChip(
+                                selected = selectedDays[day] == true,
+                                onClick = { selectedDays[day] = !(selectedDays[day] ?: false) },
+                                label = { Text(routineDayLabel(day)) },
+                            )
+                        }
+                    }
+                }
+
+                if (limitEnabled || scheduleEnabled) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -173,7 +246,8 @@ internal fun GroupEditorDialog(
                                 color = MaterialTheme.colorScheme.onBackground,
                             )
                             Text(
-                                "Once the shared limit is hit, the group locks until midnight",
+                                "While the shared limit is hit or the schedule is running, " +
+                                    "the group cannot be weakened or turned off",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -245,10 +319,16 @@ internal fun GroupEditorDialog(
         confirmButton = {
             Button(onClick = {
                 val members = selected.filterValues { it }.keys.toSet()
+                val days = selectedDays.filterValues { it }.keys
+                val daysCsv = if (days.isEmpty() || days.size == DAY_CODES.size) null
+                              else DAY_CODES.filter { it in days }.joinToString(",")
                 onSave(
                     name,
                     if (limitEnabled) limitMinutes else null,
                     invincible,
+                    if (scheduleEnabled) windowStart else null,
+                    if (scheduleEnabled) windowEnd else null,
+                    if (scheduleEnabled) daysCsv else null,
                     members,
                     displayNames,
                 )
@@ -258,4 +338,35 @@ internal fun GroupEditorDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+
+    timePickerTarget?.let { target ->
+        val initial = if (target == "start") windowStart else windowEnd
+        val timeState = rememberTimePickerState(
+            initialHour = initial / 60,
+            initialMinute = initial % 60,
+            is24Hour = true,
+        )
+        AlertDialog(
+            onDismissRequest = { timePickerTarget = null },
+            title = { Text(if (target == "start") "Window start" else "Window end") },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    TimePicker(state = timeState)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val minutes = timeState.hour * 60 + timeState.minute
+                    if (target == "start") windowStart = minutes else windowEnd = minutes
+                    timePickerTarget = null
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { timePickerTarget = null }) { Text("Cancel") }
+            },
+        )
+    }
 }
+
+private fun formatWindowMinutes(minutes: Int): String =
+    "%02d:%02d".format(minutes / 60, minutes % 60)

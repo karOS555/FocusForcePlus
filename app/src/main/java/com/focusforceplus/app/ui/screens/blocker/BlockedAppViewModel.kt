@@ -7,7 +7,9 @@ import com.focusforceplus.app.compliance.BLOCK_EXCEPTION_DURATION_MILLIS
 import com.focusforceplus.app.compliance.BlockReason
 import com.focusforceplus.app.compliance.MAX_BLOCK_EXCEPTIONS_PER_DAY
 import com.focusforceplus.app.compliance.canGrantException
+import com.focusforceplus.app.compliance.dayCodeFor
 import com.focusforceplus.app.compliance.isGroupLocked
+import com.focusforceplus.app.compliance.isGroupScheduleActive
 import com.focusforceplus.app.data.repository.BlockerRepository
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,8 +67,13 @@ class BlockedAppViewModel @Inject constructor(
             val minutesOfDay = nowCal.get(Calendar.HOUR_OF_DAY) * 60 + nowCal.get(Calendar.MINUTE)
             val untilMidnight = 24 * 60 - minutesOfDay
 
-            val windowEnd = rule?.windowEndMinutes
-            val untilWindowEnd = if (reason == BlockReason.TIME_WINDOW && windowEnd != null) {
+            val windowEnd = when (reason) {
+                BlockReason.TIME_WINDOW -> rule?.windowEndMinutes
+                BlockReason.GROUP_WINDOW ->
+                    extraGroupName?.let { repository.getGroupByName(it) }?.windowEndMinutes
+                else -> null
+            }
+            val untilWindowEnd = if (windowEnd != null) {
                 // Wrap-around aware: overnight windows end on the next day.
                 ((windowEnd - minutesOfDay) + 24 * 60) % (24 * 60)
             } else null
@@ -101,7 +108,12 @@ class BlockedAppViewModel @Inject constructor(
         val usedSum = repository.getAllApps().first()
             .filter { it.groupName == name }
             .sumOf { it.usedTodayMinutes }
-        return isGroupLocked(group, usedSum)
+        val cal = Calendar.getInstance()
+        val minutesOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        val scheduleActive = isGroupScheduleActive(
+            group, minutesOfDay, dayCodeFor(cal.get(Calendar.DAY_OF_WEEK)),
+        )
+        return isGroupLocked(group, usedSum, scheduleActive)
     }
 
     /** Grants a 5-minute exception (max 2/day) and reports success via [onGranted]. */

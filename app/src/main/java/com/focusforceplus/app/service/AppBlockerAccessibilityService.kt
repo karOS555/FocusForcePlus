@@ -5,7 +5,9 @@ import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import com.focusforceplus.app.compliance.BlockReason
 import com.focusforceplus.app.compliance.NEVER_BLOCK_PACKAGES
+import com.focusforceplus.app.compliance.dayCodeFor
 import com.focusforceplus.app.compliance.evaluateBlock
+import com.focusforceplus.app.compliance.isGroupScheduleActive
 import com.focusforceplus.app.data.db.entity.BlockedAppEntity
 import com.focusforceplus.app.data.db.entity.BlockerGroupEntity
 import com.focusforceplus.app.data.repository.BlockerRepository
@@ -154,6 +156,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             val groupUsed = currentRule.groupName?.let { snap.groupUsedMinutes[it] } ?: 0
             val groupLimitReached = group?.sharedDailyLimitMinutes != null &&
                 groupUsed >= group.sharedDailyLimitMinutes
+            val groupWindowActive = group != null &&
+                isGroupScheduleActive(group, minutesOfDay(), todayCode())
 
             val reason = evaluateBlock(
                 app = currentRule,
@@ -163,6 +167,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 focusBlocking = focusApplies,
                 inGroup = group != null,
                 groupLimitReached = groupLimitReached,
+                groupWindowActive = groupWindowActive,
             ) ?: return@launch
 
             val lastShown = synchronized(lastBlockShownAt) { lastBlockShownAt[pkg] ?: 0L }
@@ -236,5 +241,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             val cal = Calendar.getInstance()
             return cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
         }
+
+        private fun todayCode(): String =
+            dayCodeFor(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))
     }
 }

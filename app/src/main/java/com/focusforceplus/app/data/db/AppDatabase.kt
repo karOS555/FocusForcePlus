@@ -33,7 +33,7 @@ import com.focusforceplus.app.data.db.entity.TodoEntity
         RoutineCompletionEntity::class,
         FocusCompletionEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(AppTypeConverters::class)
@@ -140,6 +140,14 @@ abstract class AppDatabase : RoomDatabase() {
                         "SELECT DISTINCT groupName FROM blocked_apps WHERE groupName IS NOT NULL"
                 )
                 db.execSQL("ALTER TABLE focus_sessions ADD COLUMN blockedGroupsCsv TEXT")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE blocker_groups ADD COLUMN windowStartMinutes INTEGER")
+                db.execSQL("ALTER TABLE blocker_groups ADD COLUMN windowEndMinutes INTEGER")
+                db.execSQL("ALTER TABLE blocker_groups ADD COLUMN windowDaysCsv TEXT")
             }
         }
     }

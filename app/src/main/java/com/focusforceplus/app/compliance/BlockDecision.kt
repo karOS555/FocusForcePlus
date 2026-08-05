@@ -13,6 +13,8 @@ enum class BlockReason {
     DAILY_LIMIT,
     /** The app's group reached its shared daily limit; unblocks at midnight. */
     GROUP_LIMIT,
+    /** Inside the app's group blocking schedule. */
+    GROUP_WINDOW,
     /** Inside the configured blocking time window. */
     TIME_WINDOW,
     /** A routine with app blocking is currently running. */
@@ -57,6 +59,43 @@ fun isInBlockWindow(minutesOfDay: Int, startMinutes: Int, endMinutes: Int): Bool
 fun blockWindowLengthMinutes(startMinutes: Int, endMinutes: Int): Int =
     ((endMinutes - startMinutes) + 24 * 60) % (24 * 60)
 
+/** Day codes as persisted throughout the app (see AlarmHelper.DAY_MAP), Monday-first. */
+val DAY_CODES: List<String> = listOf("MO", "DI", "MI", "DO", "FR", "SA", "SO")
+
+fun previousDayCode(code: String): String {
+    val i = DAY_CODES.indexOf(code)
+    return if (i < 0) code else DAY_CODES[(i + 6) % 7]
+}
+
+/** Maps [java.util.Calendar.DAY_OF_WEEK] to the persisted day code. */
+fun dayCodeFor(calendarDayOfWeek: Int): String = when (calendarDayOfWeek) {
+    java.util.Calendar.MONDAY -> "MO"
+    java.util.Calendar.TUESDAY -> "DI"
+    java.util.Calendar.WEDNESDAY -> "MI"
+    java.util.Calendar.THURSDAY -> "DO"
+    java.util.Calendar.FRIDAY -> "FR"
+    java.util.Calendar.SATURDAY -> "SA"
+    else -> "SO"
+}
+
+/**
+ * Whether [group]'s blocking schedule is running right now. [dayCode] is today's
+ * code from [DAY_CODES]. Overnight windows wrap: the post-midnight part belongs
+ * to the schedule of the day the window started on.
+ */
+fun isGroupScheduleActive(group: BlockerGroupEntity, minutesOfDay: Int, dayCode: String): Boolean {
+    val start = group.windowStartMinutes ?: return false
+    val end = group.windowEndMinutes ?: return false
+    val days = group.windowDaysCsv?.split(',')?.filter { it.isNotBlank() }?.toSet()
+    fun dayActive(code: String) = days.isNullOrEmpty() || code in days
+    return if (start <= end) {
+        dayActive(dayCode) && minutesOfDay in start until end
+    } else {
+        (dayActive(dayCode) && minutesOfDay >= start) ||
+            (dayActive(previousDayCode(dayCode)) && minutesOfDay < end)
+    }
+}
+
 /**
  * Evaluates whether [app] should be blocked right now, and why.
  *
@@ -73,6 +112,7 @@ fun blockWindowLengthMinutes(startMinutes: Int, endMinutes: Int): Int =
  *                           session's selected groups by the caller)
  * @param inGroup            the app belongs to a blocker group
  * @param groupLimitReached  that group's shared daily limit is used up
+ * @param groupWindowActive  that group's blocking schedule is running right now
  * @return the reason to block, or null if the app is allowed
  */
 fun evaluateBlock(
@@ -83,6 +123,7 @@ fun evaluateBlock(
     focusBlocking: Boolean,
     inGroup: Boolean = false,
     groupLimitReached: Boolean = false,
+    groupWindowActive: Boolean = false,
 ): BlockReason? {
     if (app.packageName in NEVER_BLOCK_PACKAGES) return null
     if (!app.isBlocked) return null
@@ -93,6 +134,7 @@ fun evaluateBlock(
     if (focusBlocking && app.blockDuringFocus) return BlockReason.FOCUS_ACTIVE
 
     if (groupLimitReached) return BlockReason.GROUP_LIMIT
+    if (groupWindowActive) return BlockReason.GROUP_WINDOW
 
     val hasLimit = app.dailyLimitMinutes != null
     val hasWindow = app.windowStartMinutes != null && app.windowEndMinutes != null
@@ -108,14 +150,21 @@ fun evaluateBlock(
 
 /**
  * Invincible state machine for groups: locked only while the shared daily limit is
- * reached (natural end: midnight). While locked, the group must not be weakened
- * (limit raised/removed, invincible off, members removed, group deleted) and its
- * members must not be freed. A group without a shared limit never locks.
+ * reached (natural end: midnight) or the blocking schedule is running (natural
+ * end: window end). While locked, the group must not be weakened (limit raised/
+ * removed, invincible off, schedule shortened, members removed, group deleted)
+ * and its members must not be freed. A group with neither a limit nor a schedule
+ * never locks.
  */
-fun isGroupLocked(group: BlockerGroupEntity, membersUsedMinutes: Int): Boolean {
+fun isGroupLocked(
+    group: BlockerGroupEntity,
+    membersUsedMinutes: Int,
+    groupScheduleActive: Boolean = false,
+): Boolean {
     if (!group.invincibleMode) return false
-    val limit = group.sharedDailyLimitMinutes ?: return false
-    return membersUsedMinutes >= limit
+    val limit = group.sharedDailyLimitMinutes
+    if (limit != null && membersUsedMinutes >= limit) return true
+    return groupScheduleActive
 }
 
 /**
