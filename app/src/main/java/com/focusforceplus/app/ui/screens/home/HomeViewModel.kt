@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.focusforceplus.app.compliance.dayCodeFor
+import com.focusforceplus.app.compliance.isSleepWindowActive
+import com.focusforceplus.app.data.repository.SleepSchedule
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -52,6 +55,8 @@ data class HomeUiState(
     val blockerEnabled: Boolean = false,
     val blockedAppCount: Int = 0,
     val usage: UsageStats = UsageStats(),
+    val sleep: SleepSchedule = SleepSchedule(),
+    val sleepWindowActive: Boolean = false,
 )
 
 @HiltViewModel
@@ -61,6 +66,7 @@ class HomeViewModel @Inject constructor(
     private val todoRepository: TodoRepository,
     private val blockerRepository: BlockerRepository,
     settingsRepository: com.focusforceplus.app.data.repository.SettingsRepository,
+    sleepRepository: com.focusforceplus.app.data.repository.SleepRepository,
     routineRegistry: ActiveRoutineRegistry,
     focusRegistry: FocusSessionRegistry,
     private val usageTracker: UsageTracker,
@@ -87,9 +93,11 @@ class HomeViewModel @Inject constructor(
         combine(
             blockerRepository.getBlockedApps(),
             settingsRepository.blockerEnabled,
-        ) { blocked, enabled -> blocked.size to enabled },
+            sleepRepository.schedule,
+        ) { blocked, enabled, sleep -> Triple(blocked.size, enabled, sleep) },
         _usage,
-    ) { (todayRoutines, activeId), openTodos, focusSession, (blockedCount, blockerEnabled), usage ->
+    ) { (todayRoutines, activeId), openTodos, focusSession, blockerAndSleep, usage ->
+        val (blockedCount, blockerEnabled, sleep) = blockerAndSleep
         HomeUiState(
             todayRoutines = todayRoutines,
             urgentTodos = pickUrgent(openTodos),
@@ -99,6 +107,8 @@ class HomeViewModel @Inject constructor(
             blockerEnabled = blockerEnabled,
             blockedAppCount = blockedCount,
             usage = usage,
+            sleep = sleep,
+            sleepWindowActive = sleepWindowActive(sleep),
         )
     }.stateIn(
         scope = viewModelScope,
@@ -108,6 +118,16 @@ class HomeViewModel @Inject constructor(
 
     init {
         refreshUsage()
+    }
+
+    private fun sleepWindowActive(schedule: SleepSchedule): Boolean {
+        if (!schedule.enabled) return false
+        val cal = Calendar.getInstance()
+        val minutesOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        return isSleepWindowActive(
+            schedule.bedtimeMinutes, schedule.wakeMinutes, schedule.activeDaysCsv,
+            minutesOfDay, dayCodeFor(cal.get(Calendar.DAY_OF_WEEK)),
+        )
     }
 
     /** Called on screen resume — screen time changes constantly. */

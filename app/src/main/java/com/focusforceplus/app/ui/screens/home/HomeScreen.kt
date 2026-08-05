@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
@@ -194,6 +195,55 @@ fun HomeScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+        }
+
+        // ── Sleep mode ───────────────────────────────────────────────────────
+        // Only surfaced once it is set up — an off schedule is not news.
+        if (s.sleep.enabled) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onGoToFocus),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (s.sleepWindowActive)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surface,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.Bedtime,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (s.sleepWindowActive) "Sleep mode is on" else "Sleep mode",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            Text(
+                                if (s.sleepWindowActive) {
+                                    "Until ${formatClockMinutes(s.sleep.wakeMinutes)} - tap to manage"
+                                } else {
+                                    "Tonight ${formatClockMinutes(s.sleep.bedtimeMinutes)} - " +
+                                        formatClockMinutes(s.sleep.wakeMinutes)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -575,3 +625,6 @@ private fun formatHoursMinutes(totalMinutes: Int): String {
 
 private fun formatDue(millis: Long): String =
     SimpleDateFormat("MMM d, HH:mm", Locale.ENGLISH).format(Date(millis))
+
+private fun formatClockMinutes(minutes: Int): String =
+    "%02d:%02d".format(minutes / 60, minutes % 60)

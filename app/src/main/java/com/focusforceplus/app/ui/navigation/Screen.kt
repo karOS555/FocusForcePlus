@@ -33,9 +33,12 @@ sealed class Screen(
         label = "Blocker",
         icon = Icons.Filled.Block
     )
+    /** Focus sessions and sleep mode share one tab — both are deliberate
+     *  restriction modes (DND + app blocking), timed vs. scheduled. A sixth tab
+     *  would overflow the bottom bar, and "Focus/Sleep" truncates at this width. */
     data object Focus : Screen(
         route = "focus",
-        label = "Focus",
+        label = "Modes",
         icon = Icons.Filled.SelfImprovement
     )
 }

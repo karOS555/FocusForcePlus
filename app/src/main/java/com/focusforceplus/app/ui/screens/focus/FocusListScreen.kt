@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
@@ -34,12 +35,14 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +50,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,12 +73,16 @@ fun FocusListScreen(
     onCreateSession: () -> Unit,
     onEditSession: (Long) -> Unit,
     onOpenActive: (Long) -> Unit,
+    onOpenSleepSettings: () -> Unit = {},
     viewModel: FocusListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showQuickStart by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<FocusSessionEntity?>(null) }
+    // Focus sessions and sleep mode share this tab: both are modes that restrict
+    // the phone on purpose (DND + app blocking), just timed vs. scheduled.
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     // DND access can be granted in system settings — refresh the tip on return.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -96,12 +104,14 @@ fun FocusListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreateSession,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "New focus session")
+            if (selectedTab == 0) {
+                FloatingActionButton(
+                    onClick = onCreateSession,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "New focus session")
+                }
             }
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -114,7 +124,35 @@ fun FocusListScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                FeatureHeader(title = "Focus Mode", help = FeatureHelpContent.FOCUS)
+                FeatureHeader(title = "Focus & Sleep", help = FeatureHelpContent.FOCUS)
+            }
+
+            item {
+                PrimaryTabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Focus") },
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Sleep") },
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
+            if (selectedTab == 1) {
+                item {
+                    SleepSummaryCard(
+                        state = uiState,
+                        onToggleEnabled = viewModel::toggleSleepEnabled,
+                        onOpenSettings = onOpenSleepSettings,
+                    )
+                }
+                item { Spacer(Modifier.height(72.dp)) }
+                return@LazyColumn
             }
 
             // ── Running session banner ────────────────────────────────────────
@@ -453,3 +491,130 @@ private fun QuickStartDialog(
         },
     )
 }
+
+// ── Sleep summary (Sleep tab) ─────────────────────────────────────────────────
+
+/**
+ * Compact sleep-mode overview inside the shared tab: on/off, the window, what it
+ * does tonight, and a way into the full editor. Deliberately not a second copy of
+ * SleepScreen — everything editable lives there.
+ */
+@Composable
+private fun SleepSummaryCard(
+    state: FocusListUiState,
+    onToggleEnabled: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    val sleep = state.sleep
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (state.sleepWindowActive) MaterialTheme.colorScheme.primaryContainer
+                             else MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Bedtime,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Sleep mode",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        when {
+                            state.sleepWindowActive -> "Running until ${formatClock(sleep.wakeMinutes)}"
+                            sleep.enabled -> "Tonight ${formatClock(sleep.bedtimeMinutes)} - " +
+                                formatClock(sleep.wakeMinutes)
+                            else -> "Off"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = sleep.enabled,
+                    onCheckedChange = { onToggleEnabled() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    ),
+                )
+            }
+
+            if (sleep.enabled) {
+                val details = buildList {
+                    if (sleep.windDownMinutes > 0) add("${sleep.windDownMinutes} min wind-down")
+                    if (sleep.dndEnabled) add("Do Not Disturb")
+                    if (sleep.blockedGroups.isNotEmpty()) {
+                        add("blocks ${sleep.blockedGroups.joinToString(", ")}")
+                    }
+                    if (sleep.nativeAlarmCount > 0) {
+                        add("${sleep.nativeAlarmCount} backup alarm(s)")
+                    }
+                }
+                if (details.isNotEmpty()) {
+                    Text(
+                        details.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                val bedtimeRoutine = state.routineName(sleep.bedtimeRoutineId)
+                val morningRoutine = state.routineName(sleep.morningRoutineId)
+                if (bedtimeRoutine != null || morningRoutine != null) {
+                    Text(
+                        listOfNotNull(
+                            bedtimeRoutine?.let { "Bedtime routine: $it" },
+                            morningRoutine?.let { "Morning routine: $it" },
+                        ).joinToString("\n"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                if (state.sleepWindowActive && sleep.invincibleMode) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Locked until wake-up",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+
+            FilledTonalButton(
+                onClick = onOpenSettings,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(if (sleep.enabled) "Edit sleep schedule" else "Set up sleep mode")
+            }
+        }
+    }
+}
+
+private fun formatClock(minutes: Int): String =
+    "%02d:%02d".format(minutes / 60, minutes % 60)

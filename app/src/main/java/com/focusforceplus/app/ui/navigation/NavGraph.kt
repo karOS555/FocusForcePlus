@@ -164,6 +164,7 @@ fun NavGraph(
                 onCreateSession = { navController.navigate(FocusRoutes.CREATE) },
                 onEditSession   = { id -> navController.navigate(FocusRoutes.edit(id)) },
                 onOpenActive    = { id -> navController.navigate(FocusRoutes.active(id)) },
+                onOpenSleepSettings = { navController.navigate(SleepRoutes.SLEEP) },
             )
         }
 
