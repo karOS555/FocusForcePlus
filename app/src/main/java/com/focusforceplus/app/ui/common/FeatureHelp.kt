@@ -250,6 +250,57 @@ object FeatureHelpContent {
             ),
         ),
     )
+
+    val SLEEP = FeatureHelp(
+        key = "sleep",
+        title = "How sleep mode works",
+        intro = "One nightly schedule that winds you down, quiets the phone, puts your " +
+            "distracting apps out of reach until morning, and can hand you straight " +
+            "into a bedtime and a morning routine.",
+        sections = listOf(
+            HelpSection(
+                "Bedtime and wake-up",
+                "Pick the two times and the nights it applies to. The window may run " +
+                    "past midnight - it belongs to the evening it started on, so " +
+                    "\"Friday\" means Friday night into Saturday morning.",
+            ),
+            HelpSection(
+                "Wind-down",
+                "An optional heads-up before bedtime, so sleep mode never starts out " +
+                    "of nowhere. Set it to Off if you don't want it.",
+            ),
+            HelpSection(
+                "During the night",
+                "Do Not Disturb silences interruptions, and any blocker groups you pick " +
+                    "are blocked until wake-up. Blocking needs the app blocker switched " +
+                    "on; group blocking is capped at 12 hours like every other window.",
+            ),
+            HelpSection(
+                "Linked routines",
+                "Bedtime and wake-up can each trigger one of your routines with the full " +
+                    "routine alarm. Pick an existing routine or create one right from the " +
+                    "picker - it gets linked automatically once saved.",
+            ),
+            HelpSection(
+                "Backup alarms",
+                "Optionally, up to three alarms are created in your phone's own clock " +
+                    "app each night, spaced a few minutes apart in case you sleep through " +
+                    "the first. They live in the clock app, ring even if FocusForce+ " +
+                    "isn't running, and you can delete them there anytime.",
+            ),
+            HelpSection(
+                "Your alarm always gets through",
+                "Your clock app can never be blocked - not by sleep mode, not by any " +
+                    "other rule. Waking up must never depend on this app.",
+            ),
+            HelpSection(
+                "Invincible Mode",
+                "While the sleep window is running, an invincible schedule cannot be " +
+                    "weakened or switched off - it releases at wake-up. You can still " +
+                    "tighten it. Outside the window it is freely editable.",
+            ),
+        ),
+    )
 }
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────

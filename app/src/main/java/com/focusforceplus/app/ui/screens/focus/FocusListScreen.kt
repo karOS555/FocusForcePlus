@@ -63,7 +63,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.focusforceplus.app.data.db.entity.FocusSessionEntity
-import com.focusforceplus.app.ui.common.FeatureHeader
+import com.focusforceplus.app.ui.common.FeatureHelpAction
 import com.focusforceplus.app.ui.common.FeatureHelpContent
 import com.focusforceplus.app.ui.common.routineDayLabel
 
@@ -116,33 +116,60 @@ fun FocusListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        LazyColumn(
+      Column(
+          modifier = Modifier
+              .fillMaxSize()
+              .padding(padding),
+      ) {
+        // Title and tab row live outside the list so the tabs can run edge to
+        // edge — an inset tab row reads as a floating box, not a switch.
+        Text(
+            text = "Focus & Sleep",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+        )
+
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Focus") },
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Sleep") },
+            )
+        }
+
+        // Each tab carries its own guide — the focus guide says nothing about
+        // sleep. The caption keeps the row from being a lone floating icon.
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (selectedTab == 0) "Timed sessions that silence distractions"
+                       else "Wind-down, night blocking and wake-up",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            FeatureHelpAction(
+                help = if (selectedTab == 0) FeatureHelpContent.FOCUS
+                       else FeatureHelpContent.SLEEP,
+            )
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                FeatureHeader(title = "Focus & Sleep", help = FeatureHelpContent.FOCUS)
-            }
-
-            item {
-                PrimaryTabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Focus") },
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Sleep") },
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-            }
-
             if (selectedTab == 1) {
                 item {
                     SleepSummaryCard(
@@ -264,6 +291,7 @@ fun FocusListScreen(
 
             item { Spacer(Modifier.height(72.dp)) }
         }
+      }
     }
 
     if (showQuickStart) {
