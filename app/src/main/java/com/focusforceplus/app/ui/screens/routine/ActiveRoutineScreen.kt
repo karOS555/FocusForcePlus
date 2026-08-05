@@ -1,12 +1,5 @@
 package com.focusforceplus.app.ui.screens.routine
 
-import android.content.Context
-import android.media.RingtoneManager
-import android.os.Build
-import android.os.VibrationAttributes
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -65,7 +58,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -80,15 +72,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.focusforceplus.app.service.RoutineForegroundService
 import com.focusforceplus.app.ui.common.RoutineIcons
-import com.focusforceplus.app.util.AlarmSoundPolicy
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -100,7 +89,6 @@ fun ActiveRoutineScreen(
     viewModel: ActiveRoutineViewModel = hiltViewModel(),
 ) {
     val s by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
     // Block system Back while Invincible Mode is active and the routine is running.
     // Without this, the toolbar Lock icon (V2 in `.claude/routine-invincible-review.md`)
@@ -112,35 +100,13 @@ fun ActiveRoutineScreen(
         // reschedule, both of which have explicit affordances inside the screen.
     }
 
-    // Sound and vibration events — PlayAlarm sound is handled by TaskCompleteOverlay.
+    // The session (timer, sound, notifications) lives in RoutineForegroundService —
+    // leaving this screen intentionally does NOT stop it.
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                RoutineEvent.PlayAlarm -> { /* TaskCompleteOverlay plays + auto-stops the alarm */ }
-                RoutineEvent.VibrateShort -> vibrateShort(context)
                 RoutineEvent.NavigateBack -> onBack()
             }
-        }
-    }
-
-    // Foreground service: start on enter, stop on leave.
-    DisposableEffect(Unit) {
-        onDispose { RoutineForegroundService.stop(context) }
-    }
-
-    // Update foreground service notification when the active task changes.
-    LaunchedEffect(s.currentTaskIndex, s.isLoading) {
-        if (!s.isLoading && !s.isCompleted) {
-            val task = s.currentTask ?: return@LaunchedEffect
-            RoutineForegroundService.start(
-                context                 = context,
-                routineId               = viewModel.routineId,
-                routineName             = s.routineName,
-                taskName                = task.name,
-                initialDurationSeconds  = task.durationMinutes * 60,
-                blocksApps              = s.appBlockerEnabled,
-                invincible              = s.invincibleMode,
-            )
         }
     }
 
@@ -390,7 +356,10 @@ fun ActiveRoutineScreen(
                     viewModel.reschedule(hour, minute, tomorrow)
                     onBack()
                 },
-                onSkip = onBack,
+                onSkip = {
+                    viewModel.cancelSession()
+                    onBack()
+                },
                 onDismiss = viewModel::dismissCancel,
             )
         }
@@ -605,55 +574,8 @@ private fun TaskCompleteOverlay(
     onDone: () -> Unit,
     onAddTime: (Int) -> Unit,
 ) {
-    val context = LocalContext.current
-
-    // Acquire ringtone once and play for 7 seconds, then stop automatically.
-    // Both sound and vibration honor the global settings toggles.
-    val ringtone = remember {
-        if (!AlarmSoundPolicy.soundEnabled) null
-        else try {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            RingtoneManager.getRingtone(context, uri)
-        } catch (_: Exception) { null }
-    }
-    LaunchedEffect(Unit) {
-        try { ringtone?.play() } catch (_: Exception) {}
-        delay(7_000)
-        try { ringtone?.stop() } catch (_: Exception) {}
-    }
-    DisposableEffect(Unit) {
-        onDispose { try { ringtone?.stop() } catch (_: Exception) {} }
-    }
-
-    // Vibration: alarm pattern looping for 7 seconds, works in silent/vibrate mode.
-    DisposableEffect(Unit) {
-        val vib: Vibrator? = try {
-            if (!AlarmSoundPolicy.vibrationEnabled) null
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            }
-        } catch (_: Exception) { null }
-        try {
-            val timings    = longArrayOf(0, 800, 400, 800, 800)
-            val amplitudes = intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0,
-                                        VibrationEffect.DEFAULT_AMPLITUDE, 0)
-            val effect = VibrationEffect.createWaveform(timings, amplitudes, 0)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val attrs = VibrationAttributes.Builder()
-                    .setUsage(VibrationAttributes.USAGE_ALARM)
-                    .build()
-                vib?.vibrate(effect, attrs)
-            } else {
-                vib?.vibrate(effect)
-            }
-        } catch (_: Exception) {}
-        onDispose { try { vib?.cancel() } catch (_: Exception) {} }
-    }
-
+    // Sound and vibration for the task-end alarm are played by
+    // RoutineForegroundService, so they also fire when this UI is not open.
     var showAddTimeOptions by remember { mutableStateOf(false) }
 
     Box(
@@ -1004,29 +926,3 @@ private fun ConfettiAnimation(transition: InfiniteTransition) {
     }
 }
 
-// ── Platform helpers ──────────────────────────────────────────────────────────
-
-private fun playAlarm(context: Context) {
-    try {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        RingtoneManager.getRingtone(context, uri)?.play()
-    } catch (_: Exception) {}
-}
-
-private fun vibrateShort(context: Context) {
-    if (!AlarmSoundPolicy.vibrationEnabled) return
-    try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            manager.defaultVibrator.vibrate(
-                VibrationEffect.createOneShot(200L, VibrationEffect.DEFAULT_AMPLITUDE)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(VibrationEffect.createOneShot(200L, VibrationEffect.DEFAULT_AMPLITUDE))
-        }
-    } catch (_: Exception) {}
-}

@@ -9,6 +9,7 @@ import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.TodoRepository
 import com.focusforceplus.app.util.AlarmHelper
 import com.focusforceplus.app.util.FocusAlarmHelper
+import com.focusforceplus.app.util.NotificationHelper
 import com.focusforceplus.app.util.TodoAlarmHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +29,8 @@ class BootReceiver : BroadcastReceiver() {
     @Inject lateinit var alarmHelper: AlarmHelper
     @Inject lateinit var todoAlarmHelper: TodoAlarmHelper
     @Inject lateinit var focusAlarmHelper: FocusAlarmHelper
+    @Inject lateinit var routineSessionStore: RoutineSessionStore
+    @Inject lateinit var notificationHelper: NotificationHelper
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
@@ -39,6 +42,18 @@ class BootReceiver : BroadcastReceiver() {
                 val digestTimes = settingsRepository.digestTimes.first()
                 todoAlarmHelper.rescheduleAll(todoRepository.getAllTodos().first(), digestTimes)
                 focusAlarmHelper.rescheduleAll(focusRepository.getAllSessions().first())
+
+                // A routine session cannot survive a reboot — clean up honestly
+                // instead of pretending it kept running (compliance: no fake locks).
+                routineSessionStore.load()?.let { interrupted ->
+                    routineSessionStore.clear()
+                    runCatching {
+                        notificationHelper.showNotification(
+                            NotificationHelper.NOTIFICATION_ID_INTERRUPTED,
+                            notificationHelper.buildSessionInterruptedNotification(interrupted.routineName),
+                        )
+                    }
+                }
             } finally {
                 pendingResult.finish()
             }

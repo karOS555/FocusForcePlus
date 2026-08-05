@@ -126,6 +126,11 @@
             android:name=".service.RoutineAlarmReceiver"
             android:exported="false" />
 
+        <!-- Safety alarm at each task's end — revives the session service if killed -->
+        <receiver
+            android:name=".service.RoutineTaskEndReceiver"
+            android:exported="false" />
+
         <!-- Receives the 15-minute pre-alarm and shows a reminder notification -->
         <receiver
             android:name=".service.RoutinePreAlarmReceiver"

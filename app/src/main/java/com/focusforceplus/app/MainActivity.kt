@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val alarmRoutineId = intent.routineId()
+        routineNavRequest.value = intent.routineId() to 0
         setContent {
             FocusForceTheme {
                 // Direct .value read is tracked by composition; the local val allows smart-cast.
@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
                 if (completed != null) {
                     AppContent(
                         onboardingCompleted       = completed,
-                        initialRoutineId          = alarmRoutineId,
+                        routineNavRequest         = routineNavRequest.value,
                         canDrawOverlays           = PermissionHelper.canDrawOverlays(this),
                         canScheduleExactAlarms    = PermissionHelper.canScheduleExactAlarms(this),
                         canFullScreen             = PermissionHelper.canUseFullScreenIntent(this),
@@ -120,9 +120,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Navigation request for the active-routine screen. The nonce makes repeated
+     * launches with the same routineId (e.g. the task-end wake-up re-firing) still
+     * re-trigger navigation while the activity is alive.
+     */
+    private val routineNavRequest = androidx.compose.runtime.mutableStateOf(0L to 0)
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val id = intent.routineId()
+        if (id > 0L) {
+            routineNavRequest.value = id to routineNavRequest.value.second + 1
+        }
     }
 
     private fun Intent.routineId(): Long =
@@ -132,7 +143,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppContent(
     onboardingCompleted: Boolean,
-    initialRoutineId: Long = 0L,
+    routineNavRequest: Pair<Long, Int> = 0L to 0,
     canDrawOverlays: Boolean = true,
     canScheduleExactAlarms: Boolean = true,
     canFullScreen: Boolean = true,
@@ -141,7 +152,6 @@ private fun AppContent(
     onOpenFullScreenSettings: () -> Unit = {},
 ) {
     val navController = rememberNavController()
-    var pendingRoutineId by remember { mutableLongStateOf(initialRoutineId) }
     // Show dialogs in priority order — but never during onboarding, which has its
     // own permission checklist with proper disclosures.
     var showOverlayDialog     by remember { mutableStateOf(onboardingCompleted && !canDrawOverlays) }
@@ -157,11 +167,12 @@ private fun AppContent(
         (currentRoute == null && !onboardingCompleted) ||
         currentRoute?.startsWith("blocker/disclosure") == true
 
-    // Navigate to active routine when launched from an alarm notification.
-    LaunchedEffect(pendingRoutineId) {
-        if (pendingRoutineId > 0L) {
-            navController.navigate(RoutineRoutes.active(pendingRoutineId))
-            pendingRoutineId = 0L
+    // Navigate to active routine when launched (or re-launched) from an alarm
+    // notification or the task-end wake-up. Keyed on the nonce so re-launches with
+    // the same routineId navigate again.
+    LaunchedEffect(routineNavRequest) {
+        if (routineNavRequest.first > 0L) {
+            navController.navigate(RoutineRoutes.active(routineNavRequest.first))
         }
     }
 

@@ -15,6 +15,26 @@ data class ActiveRoutineSession(
     val invincible: Boolean,
 )
 
+enum class RoutineSessionPhase { RUNNING, OVERTIME, COMPLETED }
+
+/**
+ * Per-tick progress of the running routine session, published by
+ * [RoutineForegroundService] and observed by the active-routine UI. The service
+ * owns the timer, so this survives the app being swiped away — reopening the
+ * screen simply resumes from the live values.
+ */
+data class RoutineSessionProgress(
+    val routineId: Long,
+    val taskIndex: Int,
+    val taskCount: Int,
+    val taskTotalSeconds: Int,
+    val remainingSeconds: Int,
+    val overtimeSeconds: Int,
+    val phase: RoutineSessionPhase,
+    val totalScheduledMinutes: Int,
+    val totalOvertimeMinutes: Int,
+)
+
 /**
  * Process-wide source of truth for "is a routine currently running?".
  *
@@ -40,6 +60,19 @@ class ActiveRoutineRegistry @Inject constructor() {
 
     /** Live id of the running routine, or null — kept for existing call sites. */
     val activeRoutineId: StateFlow<Long?> = _activeRoutineId.asStateFlow()
+
+    private val _sessionProgress = MutableStateFlow<RoutineSessionProgress?>(null)
+
+    /** Live timer progress of the running session, or null when nothing runs. */
+    val sessionProgress: StateFlow<RoutineSessionProgress?> = _sessionProgress.asStateFlow()
+
+    fun publishProgress(progress: RoutineSessionProgress) {
+        _sessionProgress.value = progress
+    }
+
+    fun clearProgress(routineId: Long) {
+        if (_sessionProgress.value?.routineId == routineId) _sessionProgress.value = null
+    }
 
     fun markActive(id: Long, blocksApps: Boolean = false, invincible: Boolean = false) {
         _activeSession.value = ActiveRoutineSession(id, blocksApps, invincible)

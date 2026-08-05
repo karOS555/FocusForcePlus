@@ -44,9 +44,16 @@ class NotificationHelper @Inject constructor(
         private const val RC_SWIPE_ALARM    = 53_000
         private const val RC_FOREGROUND_TAP  = 60_000
         private const val RC_DONE_TASK        = 70_000
+        private const val RC_TASK_END_TAP     = 90_000
+        private const val RC_TASK_END_DONE    = 91_000
+        private const val RC_INTERRUPTED_TAP  = 92_000
+
+        private const val NOTIFICATION_ID_TASK_END_BASE = 950_000
+        const val NOTIFICATION_ID_INTERRUPTED = 949_999
 
         fun alarmNotificationId(routineId: Long)    = (NOTIFICATION_ID_ALARM_BASE     + routineId).toInt()
         fun preAlarmNotificationId(routineId: Long) = (NOTIFICATION_ID_PRE_ALARM_BASE + routineId).toInt()
+        fun taskEndNotificationId(routineId: Long)  = (NOTIFICATION_ID_TASK_END_BASE  + routineId).toInt()
 
         fun formatMillis(millis: Long): String {
             val cal = Calendar.getInstance().apply { timeInMillis = millis }
@@ -173,22 +180,22 @@ class NotificationHelper @Inject constructor(
 
     // ── Foreground service notification ──────────────────────────────────────
 
+    /**
+     * Live session notification. Uses the system chronometer anchored at
+     * [taskEndWallMillis], so the countdown (or overtime count-up) renders without
+     * re-posting the notification every second — one post per task/state change.
+     */
     fun buildOngoingNotification(
         routineId: Long,
         routineName: String,
         taskName: String,
-        remainingSeconds: Int,
+        taskEndWallMillis: Long,
+        overtime: Boolean,
     ): Notification {
         val tapIntent  = mainActivityIntent(routineId, (RC_FOREGROUND_TAP + routineId).toInt())
         val doneIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_COMPLETE_TASK,
                                              (RC_DONE_TASK + routineId).toInt())
-        val body = if (remainingSeconds >= 0) {
-            val m = remainingSeconds / 60
-            val s = remainingSeconds % 60
-            "$taskName \u2014 %d:%02d remaining".format(m, s)
-        } else {
-            "$taskName \u2014 Overtime"
-        }
+        val body = if (overtime) "$taskName \u2014 overtime" else taskName
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(routineName)
@@ -198,9 +205,61 @@ class NotificationHelper @Inject constructor(
             .setOngoing(true)
             .setContentIntent(tapIntent)
             .setSilent(true)
+            .setWhen(taskEndWallMillis)
+            .setUsesChronometer(true)
+            .setChronometerCountDown(!overtime)
             .addAction(0, "Done", doneIntent)
             .build()
     }
+
+    // ── Task-end wake-up ──────────────────────────────────────────────────────
+
+    /**
+     * Full-screen alert fired when a task's time runs out (and re-posted on each
+     * overtime nag). Silent by itself — the routine service plays the alarm sound
+     * and vibration, so re-posts don't stack system sounds on top.
+     */
+    fun buildTaskEndAlarmNotification(
+        routineId: Long,
+        routineName: String,
+        taskName: String,
+        overtimeMinutes: Int,
+    ): Notification {
+        val tapIntent  = mainActivityIntent(routineId, (RC_TASK_END_TAP + routineId).toInt())
+        val doneIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_COMPLETE_TASK,
+                                             (RC_TASK_END_DONE + routineId).toInt())
+        val body = if (overtimeMinutes > 0) {
+            "\"$taskName\" is $overtimeMinutes min over time — finish it or add time."
+        } else {
+            "Time is up for \"$taskName\"."
+        }
+        return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("⏰ $routineName")
+            .setContentText(body)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setFullScreenIntent(tapIntent, true)
+            .setContentIntent(tapIntent)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setSilent(true)
+            .addAction(0, "Done", doneIntent)
+            .addAction(0, "Open", tapIntent)
+            .build()
+    }
+
+    /** Posted when a reboot (or forced stop) killed a running routine session. */
+    fun buildSessionInterruptedNotification(routineName: String): Notification =
+        NotificationCompat.Builder(context, CHANNEL_ROUTINE)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Routine interrupted")
+            .setContentText("\"$routineName\" was interrupted by a device restart.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setContentIntent(mainActivityIntent(0L, RC_INTERRUPTED_TAP))
+            .setAutoCancel(true)
+            .build()
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

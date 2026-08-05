@@ -1,24 +1,19 @@
 package com.focusforceplus.app.ui.screens.routine
 
 import android.content.Context
-import android.content.Intent
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.focusforceplus.app.MainActivity
-import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
 import com.focusforceplus.app.data.repository.RoutineRepository
+import com.focusforceplus.app.service.ActiveRoutineRegistry
 import com.focusforceplus.app.service.RoutineForegroundService
+import com.focusforceplus.app.service.RoutineSessionPhase
 import com.focusforceplus.app.util.AlarmHelper
 import com.focusforceplus.app.util.NotificationHelper
 import com.focusforceplus.app.util.PendingRescheduleTracker
-import com.focusforceplus.app.util.RoutineSessionAction
-import com.focusforceplus.app.util.RoutineSessionBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -81,18 +76,22 @@ data class ActiveRoutineUiState(
 }
 
 sealed class RoutineEvent {
-    data object PlayAlarm : RoutineEvent()
-    data object VibrateShort : RoutineEvent()
     data object NavigateBack : RoutineEvent()
 }
 
+/**
+ * Thin observer over the session owned by [RoutineForegroundService]: the service
+ * drives the timer and survives the UI, this ViewModel merely mirrors its progress
+ * into UI state and forwards user actions as service commands. Reopening the screen
+ * mid-session resumes seamlessly from the live service values.
+ */
 @HiltViewModel
 class ActiveRoutineViewModel @Inject constructor(
     private val repository: RoutineRepository,
     private val alarmHelper: AlarmHelper,
     private val notificationHelper: NotificationHelper,
     private val rescheduleTracker: PendingRescheduleTracker,
-    private val sessionBus: RoutineSessionBus,
+    private val registry: ActiveRoutineRegistry,
     @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -105,18 +104,19 @@ class ActiveRoutineViewModel @Inject constructor(
     private val _events = MutableSharedFlow<RoutineEvent>(extraBufferCapacity = 4)
     val events: SharedFlow<RoutineEvent> = _events.asSharedFlow()
 
-    private var timerJob: Job? = null
-    private var accumulatedOvertimeSeconds = 0
+    /** Edge detection for the reminder-before-end dialog. */
+    private var lastRemainingSeconds: Int = Int.MAX_VALUE
+
+    /**
+     * The registry keeps the last COMPLETED progress after the service stops, so a
+     * freshly opened screen must not mistake yesterday's completion for its own.
+     * Completion is only honored after this instance saw the session live.
+     */
+    private var observedLiveSession = false
 
     init {
         loadRoutine()
-        viewModelScope.launch {
-            sessionBus.actions.collect { action ->
-                if (action is RoutineSessionAction.CompleteTask && action.routineId == routineId) {
-                    completeCurrentTask()
-                }
-            }
-        }
+        observeSession()
     }
 
     private fun loadRoutine() {
@@ -140,159 +140,90 @@ class ActiveRoutineViewModel @Inject constructor(
         }
     }
 
-    // ── Timer control ────────────────────────────────────────────────────────
-
-    fun startRoutine() {
-        val task = _uiState.value.currentTask ?: return
-        val totalSec = task.durationMinutes * 60
-        _uiState.update {
-            it.copy(
-                timerState = TimerState.RUNNING,
-                remainingSeconds = totalSec,
-                taskTotalSeconds = totalSec,
-                overtimeSeconds = 0,
-            )
-        }
-        launchTimer()
-    }
-
-    private fun launchTimer() {
-        timerJob?.cancel()
-        timerJob = viewModelScope.launch {
-            while (true) {
-                delay(1_000L)
-                tick()
-            }
-        }
-    }
-
-    private fun tick() {
-        val s = _uiState.value
-        when (s.timerState) {
-            TimerState.RUNNING -> {
-                val newRemaining = s.remainingSeconds - 1
-                if (newRemaining <= 0) {
-                    _events.tryEmit(RoutineEvent.PlayAlarm)
-                    _events.tryEmit(RoutineEvent.VibrateShort)
+    private fun observeSession() {
+        viewModelScope.launch {
+            registry.sessionProgress.collect { p ->
+                if (p == null || p.routineId != routineId) return@collect
+                if (p.phase == RoutineSessionPhase.COMPLETED) {
+                    if (!observedLiveSession) return@collect
                     _uiState.update {
                         it.copy(
-                            remainingSeconds = 0,
-                            timerState = TimerState.OVERTIME,
-                            overtimeSeconds = 0,
-                            showTimeUpDialog = true,
+                            isCompleted = true,
+                            timerState = TimerState.BEFORE_START,
+                            showTimeUpDialog = false,
+                            showThreeMinWarning = false,
+                            showOvertimeReminder = false,
+                            completionStats = CompletionStats(
+                                totalScheduledMinutes = p.totalScheduledMinutes,
+                                totalOvertimeMinutes = p.totalOvertimeMinutes,
+                                tasksCompleted = p.taskCount,
+                            ),
                         )
                     }
-                    // Update notification to show "Overtime" immediately.
-                    RoutineForegroundService.update(context, routineId, s.currentTask?.name ?: "", -1)
-                    // Bring the app to the foreground so the TaskCompleteOverlay is visible,
-                    // even if the user is currently in another app.
-                    // SYSTEM_ALERT_WINDOW (already granted) allows this startActivity() call
-                    // from the background on all Android versions.
-                    context.startActivity(
-                        Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                        }
-                    )
-                } else {
-                    val reminderAt = (s.currentTask?.reminderBeforeEndMinutes ?: 3) * 60
-                    _uiState.update {
-                        it.copy(
-                            remainingSeconds = newRemaining,
-                            showThreeMinWarning = newRemaining == reminderAt,
-                        )
-                    }
-                    // Keep the foreground notification countdown accurate in the background.
-                    RoutineForegroundService.update(context, routineId, s.currentTask?.name ?: "", newRemaining)
+                    return@collect
                 }
-            }
-            TimerState.OVERTIME -> {
-                val newOvertime = s.overtimeSeconds + 1
-                accumulatedOvertimeSeconds++
-                val intervalSec = (s.currentTask?.overtimeReminderIntervalMinutes ?: 5) * 60
-                val trigger = intervalSec > 0 && newOvertime % intervalSec == 0
-                if (trigger) _events.tryEmit(RoutineEvent.VibrateShort)
+
+                observedLiveSession = true
+                val s = _uiState.value
+                if (s.isCompleted) return@collect
+                val task = s.tasks.getOrNull(p.taskIndex)
+                val reminderAt = (task?.reminderBeforeEndMinutes ?: 3) * 60
+                val crossedReminder = p.phase == RoutineSessionPhase.RUNNING &&
+                    lastRemainingSeconds > reminderAt && p.remainingSeconds <= reminderAt &&
+                    p.remainingSeconds > 0
+                lastRemainingSeconds =
+                    if (p.phase == RoutineSessionPhase.RUNNING) p.remainingSeconds else Int.MAX_VALUE
+
+                val intervalSec = (task?.overtimeReminderIntervalMinutes ?: 5) * 60
+                val overtimeNag = p.phase == RoutineSessionPhase.OVERTIME &&
+                    intervalSec > 0 && p.overtimeSeconds > 0 && p.overtimeSeconds % intervalSec == 0
+
                 _uiState.update {
                     it.copy(
-                        overtimeSeconds = newOvertime,
-                        showOvertimeReminder = trigger,
-                        overtimeReminderMinutes = if (trigger) newOvertime / 60
-                                                  else s.overtimeReminderMinutes,
+                        currentTaskIndex = p.taskIndex,
+                        timerState = when (p.phase) {
+                            RoutineSessionPhase.RUNNING -> TimerState.RUNNING
+                            RoutineSessionPhase.OVERTIME -> TimerState.OVERTIME
+                            RoutineSessionPhase.COMPLETED -> TimerState.BEFORE_START
+                        },
+                        remainingSeconds = p.remainingSeconds,
+                        taskTotalSeconds = p.taskTotalSeconds,
+                        overtimeSeconds = p.overtimeSeconds,
+                        showTimeUpDialog = p.phase == RoutineSessionPhase.OVERTIME,
+                        showThreeMinWarning = it.showThreeMinWarning || crossedReminder,
+                        showOvertimeReminder = it.showOvertimeReminder || overtimeNag,
+                        overtimeReminderMinutes = if (overtimeNag) p.overtimeSeconds / 60
+                                                  else it.overtimeReminderMinutes,
                     )
                 }
             }
-            else -> {}
         }
     }
 
-    // ── Task actions ─────────────────────────────────────────────────────────
+    // ── Timer control (delegated to the service) ─────────────────────────────
+
+    fun startRoutine() {
+        RoutineForegroundService.start(context, routineId)
+    }
 
     fun completeCurrentTask() {
-        timerJob?.cancel()
-        val s = _uiState.value
-        val nextIndex = s.currentTaskIndex + 1
-        if (nextIndex >= s.tasks.size) {
-            _uiState.update {
-                it.copy(
-                    isCompleted = true,
-                    timerState = TimerState.BEFORE_START,
-                    showTimeUpDialog = false,
-                    completionStats = CompletionStats(
-                        totalScheduledMinutes = s.tasks.sumOf { t -> t.durationMinutes },
-                        totalOvertimeMinutes = accumulatedOvertimeSeconds / 60,
-                        tasksCompleted = s.tasks.size,
-                    ),
-                )
-            }
-            // History row — feeds the dashboard "Completed today" status and stats.
-            viewModelScope.launch {
-                repository.recordCompletion(
-                    RoutineCompletionEntity(
-                        routineId = routineId,
-                        routineName = s.routineName,
-                        completedAt = System.currentTimeMillis(),
-                        scheduledMinutes = s.tasks.sumOf { t -> t.durationMinutes },
-                        overtimeMinutes = accumulatedOvertimeSeconds / 60,
-                        tasksCompleted = s.tasks.size,
-                    )
-                )
-            }
-        } else {
-            val nextTask = s.tasks[nextIndex]
-            val totalSec = nextTask.durationMinutes * 60
-            _uiState.update {
-                it.copy(
-                    currentTaskIndex = nextIndex,
-                    timerState = TimerState.RUNNING,
-                    remainingSeconds = totalSec,
-                    taskTotalSeconds = totalSec,
-                    overtimeSeconds = 0,
-                    showTimeUpDialog = false,
-                    showThreeMinWarning = false,
-                    showOvertimeReminder = false,
-                )
-            }
-            launchTimer()
-        }
+        RoutineForegroundService.completeTask(context)
     }
 
     fun addTime(minutes: Int) {
-        timerJob?.cancel()
-        _uiState.update {
-            it.copy(
-                remainingSeconds = it.remainingSeconds + minutes * 60,
-                overtimeSeconds = 0,
-                timerState = TimerState.RUNNING,
-                showTimeUpDialog = false,
-                showAddTimeDialog = false,
-            )
-        }
-        launchTimer()
+        RoutineForegroundService.addTime(context, minutes)
+        _uiState.update { it.copy(showAddTimeDialog = false, showTimeUpDialog = false) }
     }
 
     fun snooze(minutes: Int, onSnoozed: (Int) -> Unit) {
         if (!_uiState.value.canSnooze) return
         _uiState.update { it.copy(snoozeCount = it.snoozeCount + 1, showSnoozeDialog = false) }
         onSnoozed(minutes)
+    }
+
+    /** Tears down the running session (no-op while still in BEFORE_START). */
+    fun cancelSession() {
+        RoutineForegroundService.cancel(context)
     }
 
     // ── Dialog toggles ───────────────────────────────────────────────────────
@@ -312,6 +243,7 @@ class ActiveRoutineViewModel @Inject constructor(
             _uiState.update { it.copy(cancelConfirmStep = 2) }
         } else {
             _uiState.update { it.copy(cancelConfirmStep = 0) }
+            cancelSession()
             _events.tryEmit(RoutineEvent.NavigateBack)
         }
     }
@@ -320,6 +252,7 @@ class ActiveRoutineViewModel @Inject constructor(
         val s = _uiState.value
         if (!s.canReschedule) return
         _uiState.update { it.copy(rescheduleCount = it.rescheduleCount + 1, cancelConfirmStep = 0) }
+        cancelSession()
         viewModelScope.launch {
             try {
                 val routine = repository.getRoutineById(routineId).first() ?: return@launch
@@ -361,9 +294,4 @@ class ActiveRoutineViewModel @Inject constructor(
     }
 
     fun dismissCancel() = _uiState.update { it.copy(cancelConfirmStep = 0) }
-
-    override fun onCleared() {
-        super.onCleared()
-        timerJob?.cancel()
-    }
 }
