@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GitHub social preview - 1280x640.
+  Upload the exported PNG under Settings > General > Social preview.
+
+  Everything here is plain SVG you can edit in a text editor:
+  - the wordmark is a <text> element (id="wordmark"), not a path
+  - the subtitle is a <text> element (id="subtitle"), keep it to one line, max 60 characters
+  - the layout is a vertical stack (ring, wordmark, subtitle), all centred on x=640,
+    so changing the length of a line can never make it collide with the ring
+  - colours are the app palette: background #050508, accent #1d4ed8,
+    surfaces #0f2847 / #152e54 / #1a3a6b
+  - all content stays at least 60px away from every edge
+
+  If the exported PNG shows the wrong typeface, the converter could not resolve
+  "system-ui"; replace it with a concrete font name such as "Segoe UI" or "Roboto".
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="t d">
+  <title id="t">FocusForce+</title>
+  <desc id="d">Routines, blocking and focus. Fully offline.</desc>
+
+  <rect width="1280" height="640" fill="#050508"/>
+
+  <!-- Ring motif: a timer that has run past its own end. The accent arc covers 290
+       degrees; the dot marks the gap where it should have stopped. -->
+  <g fill="none" stroke-linecap="round">
+    <circle cx="640" cy="235" r="110" stroke="#0f2847" stroke-width="8"/>
+    <path d="M 640 125 A 110 110 0 1 1 536.63 197.38" stroke="#1d4ed8" stroke-width="8"/>
+    <circle cx="640" cy="235" r="79" stroke="#152e54" stroke-width="5"/>
+  </g>
+  <circle cx="576.91" cy="144.89" r="9" fill="#1a3a6b"/>
+
+  <!-- The app's signature: the timer keeps counting after a step has ended. -->
+  <text x="640" y="249" text-anchor="middle"
+        font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
+        font-size="40" font-weight="700" letter-spacing="1" fill="#1d4ed8">-04:17</text>
+
+  <text id="wordmark" x="640" y="455" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="100" font-weight="700" letter-spacing="-2" fill="#e2e8f0">FocusForce+</text>
+
+  <text id="subtitle" x="640" y="530" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="42" font-weight="400" fill="#94a3b8">Routines, blocking and focus. Fully offline.</text>
+</svg>

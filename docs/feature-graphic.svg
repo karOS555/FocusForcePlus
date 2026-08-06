@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Feature graphic - 1024x500.
+  Export as PNG to fastlane/metadata/android/en-US/images/featureGraphic.png
+  (the same size is used by the Play Store listing).
+
+  Everything here is plain SVG you can edit in a text editor:
+  - the wordmark is a <text> element (id="wordmark"), not a path
+  - the subtitle is a <text> element (id="subtitle"), keep it to one line, max 60 characters
+  - the layout is a vertical stack (ring, wordmark, subtitle), all centred on x=512,
+    so changing the length of a line can never make it collide with the ring
+  - colours are the app palette: background #050508, accent #1d4ed8,
+    surfaces #0f2847 / #152e54 / #1a3a6b
+  - all content stays at least 60px away from every edge
+
+  If the exported PNG shows the wrong typeface, the converter could not resolve
+  "system-ui"; replace it with a concrete font name such as "Segoe UI" or "Roboto".
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500" role="img" aria-labelledby="t d">
+  <title id="t">FocusForce+</title>
+  <desc id="d">Routines, blocking and focus. Fully offline.</desc>
+
+  <rect width="1024" height="500" fill="#050508"/>
+
+  <!-- Ring motif: a timer that has run past its own end. The accent arc covers 290
+       degrees; the dot marks the gap where it should have stopped. -->
+  <g fill="none" stroke-linecap="round">
+    <circle cx="512" cy="185" r="88" stroke="#0f2847" stroke-width="7"/>
+    <path d="M 512 97 A 88 88 0 1 1 429.31 154.90" stroke="#1d4ed8" stroke-width="7"/>
+    <circle cx="512" cy="185" r="63" stroke="#152e54" stroke-width="4"/>
+  </g>
+  <circle cx="461.52" cy="112.91" r="8" fill="#1a3a6b"/>
+
+  <!-- The app's signature: the timer keeps counting after a step has ended. -->
+  <text x="512" y="196" text-anchor="middle"
+        font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
+        font-size="32" font-weight="700" letter-spacing="1" fill="#1d4ed8">-04:17</text>
+
+  <text id="wordmark" x="512" y="355" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="78" font-weight="700" letter-spacing="-1.5" fill="#e2e8f0">FocusForce+</text>
+
+  <text id="subtitle" x="512" y="412" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="32" font-weight="400" fill="#94a3b8">Routines, blocking and focus. Fully offline.</text>
+</svg>
