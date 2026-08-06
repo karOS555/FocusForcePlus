@@ -67,12 +67,20 @@ Everything stays on your phone. No account, no cloud, no ads, no tracking. The a
 ## Screenshots
 
 <div align="center">
-<img src="docs/screenshots/home.png" alt="Home dashboard" width="180"/>
-<img src="docs/screenshots/routine.png" alt="Active routine" width="180"/>
-<img src="docs/screenshots/blocker.png" alt="App blocker" width="180"/>
-<img src="docs/screenshots/focus.png" alt="Focus session" width="180"/>
-<br/>
-<sub>Home, an active routine, the app blocker, and a focus session.</sub>
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/home.png" alt="Home dashboard" width="140"/><br/><sub><b>Home</b><br/>Your day at a glance,<br/>plus quick actions.</sub></td>
+<td align="center"><img src="docs/screenshots/routine.png" alt="An active routine counting down its current step" width="140"/><br/><sub><b>Routines</b><br/>Multi-step timers<br/>that keep counting.</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/todos.png" alt="The to-do list with priority filters" width="140"/><br/><sub><b>To-dos</b><br/>Priority sets how<br/>loud the reminder gets.</sub></td>
+<td align="center"><img src="docs/screenshots/blocker.png" alt="The app blocker with its blocked apps" width="140"/><br/><sub><b>App blocker</b><br/>Daily limits, windows<br/>and app groups.</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/focus.png" alt="A focus session in progress" width="140"/><br/><sub><b>Focus mode</b><br/>One timed session,<br/>Do Not Disturb on.</sub></td>
+<td align="center"><img src="docs/screenshots/sleep.png" alt="Sleep mode settings with bedtime and wake-up" width="140"/><br/><sub><b>Sleep mode</b><br/>Wind-down, night<br/>blocking and wake-up.</sub></td>
+</tr>
+</table>
 </div>
 
 <br/>
