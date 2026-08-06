@@ -1,0 +1,4 @@
+- Fixed: crash when opening the full-screen alarm permission on devices without that settings screen
+- Clearer guidance for enabling the accessibility service on sideloaded builds, where Android hides it behind restricted settings
+- Fixed: the status-bar notification icon at small sizes
+- Alarms and reminders survive strict battery restrictions instead of silently failing

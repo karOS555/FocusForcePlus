@@ -1,0 +1,7 @@
+First public beta.
+- Routines with multi-step timers, an alarm-style start and per-routine Invincible Mode
+- To-do planner with priority reminders, a daily digest and recurring items
+- App blocker with daily limits, time windows and app groups
+- Focus mode with Do Not Disturb and scheduling
+- Home dashboard, weekly statistics and a guided setup
+- Tamper Protection, JSON export and import, quick-settings tile

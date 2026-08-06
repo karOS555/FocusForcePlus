@@ -1,0 +1,43 @@
+WHY IT EXISTS
+
+I made this for myself, first and foremost.
+
+I kept bouncing between a routine app, a to-do app and a blocker, and none of them held me to anything once the motivation wore off. Everything was a suggestion you could swipe away. So I wrote the thing I actually wanted: one app where a routine wakes you up properly, where a to-do doesn't quietly disappear, and where "just five more minutes" has to get past something first.
+
+I use it every day. Putting it on GitHub came later. But if your brain works anything like mine, there's a decent chance it fits you too.
+
+WHAT IT IS
+
+FocusForce+ puts five things that usually live in five separate apps into one: strict routines, a nagging to-do planner, an app blocker, a focus mode, and a sleep mode. The whole point is that it doesn't let you wriggle out of your own plans the second motivation dips.
+
+It's aimed at people whose brains need more structure than most apps assume: ADHD, trouble reining in your own habits, or just losing too many hours to your phone.
+
+Everything stays on your phone. No account, no cloud, no ads, no tracking. The app doesn't even ask for internet access.
+
+WHAT'S INSIDE
+
+Routines. Multi-step routines with a real alarm at the start time, a countdown for every step, and a heads-up before each one ends. Run over time and the timer keeps going into the negative and keeps reminding you.
+
+To-dos. A planner that won't let things quietly slip. Timed to-dos alarm you like a routine does. Loose ones resurface a few times a day. Overdue ones stay pinned until you deal with them.
+
+App blocker. Block distracting apps by a daily time limit, a fixed time window (overnight works too), or automatically during routines and focus sessions. Bundle apps into groups that share one limit, one blocking schedule, and one set of rules.
+
+Focus mode. One session that turns on Do Not Disturb, silences notifications, and blocks the apps or groups you pick, for a set stretch of time. Start one on the spot or schedule it.
+
+Sleep mode. One nightly schedule: a wind-down reminder, Do Not Disturb, and your distracting apps out of reach until morning. Bedtime and wake-up can each kick off a routine, and it can put backup alarms in your phone's own clock app so waking up never depends on this one.
+
+Home dashboard and statistics. Your day at a glance: today's routines and their status, the to-dos that need you next, screen time, and quick actions, plus a weekly view of routines completed and focus minutes logged.
+
+WHAT MAKES IT DIFFERENT
+
+Invincible Mode is per feature, not one big switch. Most blocking apps give you a single lockdown toggle. Here you turn it on for the individual routine, focus session, or blocking rule you actually want to commit to. Lock in the morning workout while leaving everything else flexible. While an invincible thing is active you can't impulsively cancel or weaken it until it reaches its natural end.
+
+It's friction, not a trap. You can always uninstall the app from Android settings, and a factory reset always works. The goal isn't to lock you out of your own phone. It's to make bypassing annoying enough that a bad-day version of you doesn't do it for a dumb reason.
+
+Tamper Protection for the settings themselves. When it's on, loosening your own lock settings only works inside a short daily window you choose, so you can't panic-disable everything in a weak moment.
+
+Actually local. No internet permission at all. Your data can't leave the device because the app has no way to send it. You can export and import everything as a plain JSON file whenever you want.
+
+A NOTE ON HEALTH
+
+FocusForce+ is a self-help tool for building focus and habits. It is not a medical device and does not diagnose, treat, cure, or prevent ADHD or any other condition, and it is not a substitute for professional care. If you're struggling, please talk to a qualified healthcare professional.

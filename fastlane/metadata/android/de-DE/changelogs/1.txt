@@ -1,0 +1,7 @@
+Erste öffentliche Beta.
+- Routinen mit mehrstufigen Timern, Weckerstart und Invincible Mode je Routine
+- To-do-Planer mit Erinnerungen nach Priorität, Tagesübersicht und Wiederholungen
+- App-Sperre mit Tageslimits, Zeitfenstern und App-Gruppen
+- Fokus-Modus mit "Nicht stören" und Zeitplanung
+- Startseite, Wochenstatistik und eine geführte Einrichtung
+- Manipulationsschutz, JSON-Export und -Import, Schnelleinstellungs-Kachel

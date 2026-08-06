@@ -1,0 +1,3 @@
+- The setup guide now explains how to keep the app updated, since it has no internet access to check on its own
+- Settings > About: a link to check for updates, and one to report a bug or suggest an idea
+- Fixed: the full-screen alarm permission on phones that don't ship that settings screen, such as Samsung One UI

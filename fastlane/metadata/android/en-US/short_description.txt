@@ -1,0 +1,1 @@
+Routines, to-dos, app blocking and focus mode. Fully offline, no tracking

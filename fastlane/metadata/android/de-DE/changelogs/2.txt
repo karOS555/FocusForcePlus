@@ -1,0 +1,4 @@
+- Behoben: Absturz beim Öffnen der Vollbild-Wecker-Berechtigung auf Geräten ohne diesen Dialog
+- Klarere Anleitung, um den Bedienungshilfen-Dienst bei manuell installierten Builds zu aktivieren
+- Behoben: das Symbol in der Statusleiste bei kleinen Größen
+- Wecker und Erinnerungen überstehen strenge Akku-Beschränkungen, statt still zu versagen

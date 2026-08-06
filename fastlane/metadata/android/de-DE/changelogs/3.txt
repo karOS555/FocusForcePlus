@@ -1,0 +1,3 @@
+- Die Einrichtung erklärt jetzt, wie du die App aktuell hältst, da sie ohne Internetzugriff nicht selbst nachsehen kann
+- Einstellungen > Über: ein Link für Updates und einer, um Fehler oder Ideen zu melden
+- Behoben: die Berechtigung für Vollbild-Wecker auf Handys ohne diesen Einstellungsdialog, etwa Samsung One UI

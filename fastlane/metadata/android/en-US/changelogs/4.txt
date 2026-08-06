@@ -1,0 +1,7 @@
+- Sleep mode: one nightly schedule with bedtime, wake-up, a wind-down reminder, Do Not Disturb and blocked apps until morning
+- Bedtime and wake-up can each start one of your routines
+- Optional backup alarms in your phone's own clock app
+- App groups can now carry their own blocking schedule
+- Fixed: routines froze when you left the app
+- Fixed: swiped-away alarm notifications now come back
+- Fixed: undated medium and high priority to-dos now ring

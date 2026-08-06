@@ -1,0 +1,43 @@
+WARUM ES DIESE APP GIBT
+
+Ich habe sie in erster Linie für mich selbst gebaut.
+
+Ich bin ständig zwischen Routinen-App, To-do-App und Blocker gesprungen, und keine hat mich an irgendetwas gehalten, sobald die Motivation weg war. Alles war ein Vorschlag, den man wegwischen konnte. Also habe ich gebaut, was ich eigentlich wollte: eine App, in der eine Routine einen richtig weckt, eine Aufgabe nicht klammheimlich verschwindet, und "nur noch fünf Minuten" erst an etwas vorbei muss.
+
+Ich benutze sie jeden Tag. Wenn dein Kopf ähnlich funktioniert wie meiner, passt sie vielleicht auch zu dir.
+
+WAS SIE IST
+
+FocusForce+ steckt fünf Dinge, die sonst in fünf Apps leben, in eine einzige: strenge Routinen, einen hartnäckigen To-do-Planer, eine App-Sperre, einen Fokus-Modus und einen Schlaf-Modus. Sie lässt dich nicht aus deinen eigenen Plänen heraus, sobald die Motivation nachgibt.
+
+Sie richtet sich an Menschen, deren Kopf mehr Struktur braucht, als die meisten Apps voraussetzen: ADHS, Schwierigkeiten mit den eigenen Gewohnheiten, oder schlicht zu viele Stunden, die ans Handy gehen.
+
+Alles bleibt auf deinem Gerät. Kein Konto, keine Cloud, keine Werbung, kein Tracking. Die App fragt nicht einmal nach Internetzugriff.
+
+WAS DRIN IST
+
+Routinen. Mehrstufige Routinen mit echtem Wecker zur Startzeit, Countdown für jeden Schritt und Vorwarnung, bevor einer endet. Läuft ein Schritt über, zählt der Timer ins Negative weiter und erinnert dich weiter.
+
+To-dos. Ein Planer, der nichts durchrutschen lässt. Aufgaben mit Uhrzeit wecken dich wie eine Routine, Aufgaben ohne Termin tauchen mehrmals am Tag auf, überfällige bleiben angeheftet, bis du sie erledigst.
+
+App-Sperre. Sperre ablenkende Apps über ein Tageslimit, ein festes Zeitfenster (auch über Nacht) oder automatisch während Routinen und Fokus-Sitzungen. Fasse Apps zu Gruppen mit gemeinsamem Limit, Sperrplan und Regeln zusammen.
+
+Fokus-Modus. Eine Sitzung, die "Nicht stören" einschaltet, Benachrichtigungen stumm schaltet und die Apps oder Gruppen deiner Wahl sperrt. Sofort starten oder planen.
+
+Schlaf-Modus. Ein nächtlicher Zeitplan: Erinnerung zum Runterkommen, "Nicht stören" und ablenkende Apps außer Reichweite bis zum Morgen. Zubettgehen und Aufstehen können je eine Routine auslösen, und auf Wunsch legt er Ersatzwecker in der Uhren-App deines Handys an, damit Aufwachen nie von dieser App abhängt.
+
+Startseite und Statistiken. Dein Tag auf einen Blick, dazu eine Wochenansicht mit abgeschlossenen Routinen und Fokus-Minuten.
+
+WAS SIE UNTERSCHEIDET
+
+Der Invincible Mode gilt pro Funktion, nicht als ein großer Schalter. Du schaltest ihn für die einzelne Routine, Fokus-Sitzung oder Sperrregel ein, auf die du dich festlegen willst: das Morgentraining festnageln, alles andere flexibel lassen. Solange etwas Invincibles läuft, kannst du es nicht aus einem Impuls heraus abbrechen.
+
+Es ist Reibung, keine Falle. Du kannst die App jederzeit über die Android-Einstellungen deinstallieren, ein Zurücksetzen auf Werkseinstellungen funktioniert immer. Es geht nicht darum, dich auszusperren, sondern darum, das Umgehen lästig genug zu machen, dass die Schlecht-Tag-Version von dir es nicht aus einem dummen Grund tut.
+
+Manipulationsschutz. Ist er aktiv, lassen sich deine eigenen Sperreinstellungen nur in einem kurzen täglichen Zeitfenster lockern, das du festlegst. So kannst du nicht in einem schwachen Moment alles panisch abschalten.
+
+Wirklich lokal. Gar keine Internet-Berechtigung. Deine Daten können das Gerät nicht verlassen, weil die App keine Möglichkeit hat, sie zu senden. Alles lässt sich als JSON-Datei exportieren und importieren.
+
+HINWEIS ZUR GESUNDHEIT
+
+FocusForce+ ist ein Selbsthilfe-Werkzeug für Fokus und Gewohnheiten. Es ist kein Medizinprodukt und dient nicht der Diagnose, Behandlung, Heilung oder Vorbeugung von ADHS oder einer anderen Erkrankung, und es ersetzt keine professionelle Betreuung. Wenn es dir schwerfällt, sprich bitte mit einer qualifizierten Fachperson.

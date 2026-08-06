@@ -1,0 +1,7 @@
+- Schlaf-Modus: ein nächtlicher Zeitplan mit Zubettgehen, Aufstehen, Erinnerung zum Runterkommen, "Nicht stören" und gesperrten Apps bis zum Morgen
+- Zubettgehen und Aufstehen können je eine Routine starten
+- Optionale Ersatzwecker in der Uhren-App deines Handys
+- App-Gruppen können jetzt einen eigenen Sperrplan haben
+- Behoben: Routinen froren ein, wenn du die App verlassen hast
+- Behoben: weggewischte Wecker-Benachrichtigungen kommen zurück
+- Behoben: To-dos ohne Termin klingelten nie
