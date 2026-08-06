@@ -42,15 +42,65 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease --no-daemon
 
-      - name: Collect APK
+      # Publish the APK next to a checksum file. The app is distributed outside any
+      # store, so a published SHA-256 is the only way for someone to confirm the
+      # download is the one this workflow built.
+      - name: Collect APK and checksums
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk "out/FocusForcePlus-${{ github.ref_name }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "out/FocusForcePlus-${TAG}.apk"
+          cd out
+          sha256sum -- *.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      # IzzyOnDroid and other update checkers only look at regular releases, so a
+      # finished version must not be marked as a pre-release. Anything carrying
+      # alpha, beta or rc in its tag still is, and so is every manual run.
+      - name: Decide whether this is a pre-release
+        id: channel
+        env:
+          TAG: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if [ "$REF_TYPE" != "tag" ]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          elif printf '%s' "$TAG" | grep -qiE 'alpha|beta|rc'; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Publish to release
         uses: softprops/action-gh-release@v2
         with:
-          files: out/*.apk
+          files: |
+            out/*.apk
+            out/SHA256SUMS.txt
           draft: false
-          prerelease: true
+          prerelease: ${{ steps.channel.outputs.prerelease }}
           generate_release_notes: true
+          # Release pages get indexed on their own, so they should say what the app
+          # is instead of opening with a bare commit list. The generated notes are
+          # appended below this block.
+          body: |
+            FocusForce+ puts strict routines, a nagging to-do planner, an app blocker,
+            a focus mode and a sleep mode into one Android app, for people whose brains
+            need more structure than most apps assume. Everything stays on the device:
+            no account, no tracking, and no internet permission at all.
+
+            **Install:** download the `.apk` below and open it on your phone. Android
+            asks permission to install from this source the first time. Minimum Android
+            version is 8.0.
+
+            **Updates:** the app cannot check for them itself, because it has no internet
+            access. [Obtainium](https://github.com/ImranR98/Obtainium) can watch this
+            repository and update the app for you.
+
+            **Verify your download:** `SHA256SUMS.txt` is attached. Check it with
+            `sha256sum -c SHA256SUMS.txt`.
+
+            More at <https://karos555.github.io/FocusForcePlus/>
+
+            ---
