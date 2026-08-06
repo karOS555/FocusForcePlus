@@ -32,7 +32,7 @@ Sleep mode, and a round of fixes for reminders that were too easy to escape.
 ### Efficiency
 - Routine and focus countdown notifications use the system timer instead of redrawing every second, which noticeably cuts their background work
 
-[0.9.3-beta]: https://github.com/karOs555/FocusForcePlus/releases/tag/v0.9.3-beta
+[0.9.3-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.9.3-beta
 
 ## [0.9.2-beta] - 2026-07-07
 
@@ -45,7 +45,7 @@ More fixes and polish from testing the beta on a real device.
 ### Fixed
 - Full-screen alarm permission on phones that don't ship that dedicated settings screen (Samsung One UI, for one) now opens the app-info page instead of the plain notification screen that has no such toggle; the prompt also makes clear the permission is optional and alarms still work without it
 
-[0.9.2-beta]: https://github.com/karOs555/FocusForcePlus/releases/tag/v0.9.2-beta
+[0.9.2-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.9.2-beta
 
 ## [0.9.1-beta] - 2026-07-06
 
@@ -57,7 +57,7 @@ First round of fixes from testing the beta on a real device.
 - Status-bar notification icon no longer falls back to the generic Android icon at small sizes
 - Alarms and reminders survive strict OEM background restrictions (e.g. Samsung) instead of silently failing
 
-[0.9.1-beta]: https://github.com/karOs555/FocusForcePlus/releases/tag/v0.9.1-beta
+[0.9.1-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.9.1-beta
 
 ## [0.9.0-beta] - 2026-07-06
 
@@ -74,4 +74,4 @@ First public beta. The whole app is built and has been tested on a real device. 
 - JSON export and import for all your data
 - A quick-settings tile for starting a focus session
 
-[0.9.0-beta]: https://github.com/karOs555/FocusForcePlus/releases/tag/v0.9.0-beta
+[0.9.0-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.9.0-beta

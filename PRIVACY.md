@@ -49,4 +49,4 @@ If this policy ever changes, the updated version will be posted here with a new 
 
 ## Contact
 
-Questions or concerns: open an issue at https://github.com/karOs555/FocusForcePlus/issues
+Questions or concerns: open an issue at https://github.com/karOS555/FocusForcePlus/issues

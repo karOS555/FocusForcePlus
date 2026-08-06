@@ -18,12 +18,20 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-152e54?style=flat-square&logo=kotlin&logoColor=white)]()
 [![Compose](https://img.shields.io/badge/Jetpack_Compose-1a3a6b?style=flat-square&logo=jetpackcompose&logoColor=white)]()
 [![Local only](https://img.shields.io/badge/100%25_offline-050508?style=flat-square)]()
+[![Website](https://img.shields.io/badge/Website-0f2847?style=flat-square&logo=githubpages&logoColor=white)](https://karos555.github.io/FocusForcePlus/)
 
 <br/>
 
-<a href="https://github.com/karOs555/FocusForcePlus/releases/latest">
+<a href="https://github.com/karOS555/FocusForcePlus/releases/latest">
 <img src="https://img.shields.io/badge/Download_the_APK-1d4ed8?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"/>
 </a>
+
+<!-- Enable once FocusForce+ is listed on IzzyOnDroid. Check both URLs against the
+     current IzzyOnDroid docs before turning this on.
+<a href="https://apt.izzysoft.de/fdroid/index/apk/com.focusforceplus.app">
+<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it on IzzyOnDroid" height="60"/>
+</a>
+-->
 
 <sub>No Play Store needed. Grab the latest APK and install it directly. [How to install](#install)</sub>
 
@@ -107,7 +115,7 @@ No internet permission at all. Your data can't leave the device because the app 
 
 FocusForce+ isn't on the Play Store yet, so you install the APK directly.
 
-1. Open [the latest release](https://github.com/karOs555/FocusForcePlus/releases/latest) and download the `.apk` file.
+1. Open [the latest release](https://github.com/karOS555/FocusForcePlus/releases/latest) and download the `.apk` file.
 2. Open it on your phone. Android will ask permission to install from this source the first time. Allow it.
 3. Follow the in-app setup guide. It walks you through the permissions each feature needs and explains what every one is for.
 
@@ -119,6 +127,16 @@ FocusForce+ has no internet access, so it can't check for updates itself (that's
 
 - **Manual:** Settings > About > Check for updates opens the releases page, where you can see if there's a newer version and grab it.
 - **Automatic:** install FocusForce+ through [Obtainium](https://github.com/ImranR98/Obtainium), an app that watches GitHub releases and updates sideloaded apps for you. Point it at this repo once and it handles the rest. The app stays offline, Obtainium does the checking.
+
+<div align="center">
+
+<a href="https://github.com/ImranR98/Obtainium">
+<img src="https://img.shields.io/badge/Get_updates_via-Obtainium-1a3a6b?style=for-the-badge&logoColor=white" alt="Get updates via Obtainium"/>
+</a>
+
+<sub>Install Obtainium, then add `https://github.com/karOS555/FocusForcePlus` as a source.</sub>
+
+</div>
 
 > [!NOTE]
 > Some permissions (accessibility for app blocking, usage access for time limits, Do Not Disturb for focus mode) are granted in Android's own settings. The setup guide takes you there and tells you exactly what each one does and doesn't do. Nothing is turned on behind your back.
