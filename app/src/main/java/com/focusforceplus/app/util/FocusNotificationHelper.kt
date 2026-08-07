@@ -10,6 +10,8 @@ import androidx.core.app.NotificationCompat
 import com.focusforceplus.app.MainActivity
 import com.focusforceplus.app.R
 import com.focusforceplus.app.service.FocusSessionReceiver
+import com.focusforceplus.app.util.NotificationStyle.applyBrand
+import com.focusforceplus.app.util.NotificationStyle.asLiveUpdate
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +22,9 @@ class FocusNotificationHelper @Inject constructor(
 ) {
     companion object {
         const val CHANNEL_FOCUS = "focus_mode"
+
+        /** Quiet-but-not-silent channel for the running session — see NotificationStyle. */
+        const val CHANNEL_FOCUS_LIVE = "focus_live"
         const val NOTIFICATION_ID_FOCUS = 9001
         const val NOTIFICATION_ID_FOCUS_DONE = 9002
         const val NOTIFICATION_ID_FOCUS_SCHEDULED = 9003
@@ -29,43 +34,77 @@ class FocusNotificationHelper @Inject constructor(
         private const val RC_FOCUS_DONE_TAP = 900_003
         private const val RC_SCHEDULED_TAP = 900_004
         private const val RC_SCHEDULED_START = 900_005
+
+        private const val MODULE = "Focus"
     }
 
     fun createChannels() {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_FOCUS, "Focus Mode", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Running focus sessions and session reminders"
+                description = "Session reminders and completion"
+                group = NotificationStyle.GROUP_REMINDERS
                 setSound(null, null)
             }
+        )
+        manager.createNotificationChannel(
+            NotificationStyle.liveSessionChannel(
+                CHANNEL_FOCUS_LIVE,
+                "Running focus session",
+                "Live countdown of the focus session you are in",
+            )
         )
     }
 
     /**
-     * Ongoing notification while a session runs. "End session" only when not
-     * invincible. While running, the countdown renders via the system chronometer
-     * — no periodic notify() calls needed; the service re-posts on state changes.
+     * Ongoing notification while a session runs, drawn as a progress timeline:
+     * the part already focused, the part still to go, and a marker at the halfway
+     * point. On Android 16 / One UI it is promoted to a Live Update, so the
+     * remaining time also sits in the status bar chip and the Now Bar.
+     *
+     * The countdown itself renders via the system chronometer; the service
+     * re-posts on a slow tick to advance the tracker.
      */
     fun buildOngoingNotification(
         sessionName: String,
         remainingSeconds: Int,
         paused: Boolean,
         invincible: Boolean,
+        totalSeconds: Int = 0,
     ): Notification {
         val tap = mainActivityIntent(RC_FOCUS_TAP)
-        val builder = NotificationCompat.Builder(context, CHANNEL_FOCUS)
-            .setSmallIcon(R.drawable.ic_notification)
+        val total = totalSeconds.coerceAtLeast(remainingSeconds).coerceAtLeast(1)
+        val elapsed = (total - remainingSeconds).coerceIn(0, total)
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_FOCUS_LIVE)
+            .applyBrand(MODULE)
             .setContentTitle(if (paused) "$sessionName (paused)" else sessionName)
             .setContentText(
-                if (paused) "Paused - ${formatRemaining(remainingSeconds)} left"
-                else "Focus running"
+                if (paused) "Paused - ${NotificationStyle.formatDuration(remainingSeconds)} left"
+                else "${NotificationStyle.formatDuration(remainingSeconds)} of focus left"
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setContentIntent(tap)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
             .setAutoCancel(false)
+            .asLiveUpdate(NotificationStyle.formatChip(remainingSeconds))
+
+        // Two segments — done and to go — plus a marker at halfway, which is the
+        // one milestone a single block of deep work actually has.
+        NotificationStyle.timeline(
+            segments = listOf(
+                NotificationStyle.TimelineSegment(
+                    elapsed.coerceAtLeast(1),
+                    if (paused) NotificationStyle.SEGMENT_AHEAD else NotificationStyle.SEGMENT_DONE,
+                ),
+                NotificationStyle.TimelineSegment(
+                    (total - elapsed).coerceAtLeast(1),
+                    NotificationStyle.SEGMENT_AHEAD,
+                ),
+            ),
+            progress = elapsed,
+            points = listOf(total / 2),
+        )?.let { builder.setStyle(it) }
 
         if (!paused) {
             builder
@@ -89,7 +128,7 @@ class FocusNotificationHelper @Inject constructor(
 
     fun buildCompletionNotification(sessionName: String, focusedMinutes: Int): Notification =
         NotificationCompat.Builder(context, CHANNEL_FOCUS)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("Focus session complete")
             .setContentText("\"$sessionName\" done - $focusedMinutes minutes of focus. Well done!")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -109,7 +148,7 @@ class FocusNotificationHelper @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(context, CHANNEL_FOCUS)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("Time to focus")
             .setContentText("\"$sessionName\" is scheduled for now.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)

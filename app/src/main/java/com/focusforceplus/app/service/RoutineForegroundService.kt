@@ -268,9 +268,17 @@ class RoutineForegroundService : Service() {
     private fun startTicker() {
         tickerJob?.cancel()
         tickerJob = serviceScope.launch {
+            var sinceNotificationRefresh = 0
             while (!completed) {
                 checkTaskEnd()
                 publishProgress()
+                // The countdown itself is drawn by the system chronometer, but the
+                // timeline tracker only moves when the notification is re-posted.
+                // Every 15s keeps it visibly live without a notify() per second.
+                if (++sinceNotificationRefresh >= NOTIFICATION_REFRESH_SECONDS) {
+                    sinceNotificationRefresh = 0
+                    updateOngoingNotification()
+                }
                 delay(1_000L)
             }
         }
@@ -471,9 +479,29 @@ class RoutineForegroundService : Service() {
     private fun updateOngoingNotification() {
         val endWall = System.currentTimeMillis() + (taskEndElapsed - SystemClock.elapsedRealtime())
         pin(notificationHelper.buildOngoingNotification(
-            routineId, routineName, tasks.getOrNull(taskIndex)?.name ?: "",
-            endWall, inOvertime,
+            routineId = routineId,
+            routineName = routineName,
+            taskName = tasks.getOrNull(taskIndex)?.name ?: "",
+            taskEndWallMillis = endWall,
+            overtime = inOvertime,
+            taskIndex = taskIndex,
+            taskDurationsMinutes = tasks.map { it.durationMinutes },
+            elapsedSeconds = elapsedInRoutineSeconds(),
+            chipSeconds = if (inOvertime) overtimeSeconds() else remainingSeconds(),
+            invincible = invincible,
         ))
+    }
+
+    /**
+     * How far into the whole routine we are, in seconds — the position of the
+     * tracker on the notification timeline. Tasks already done count in full;
+     * overtime does not push the tracker past the current task's own segment.
+     */
+    private fun elapsedInRoutineSeconds(): Int {
+        if (tasks.isEmpty()) return 0
+        val before = tasks.take(taskIndex).sumOf { it.durationMinutes } * 60
+        val inCurrent = (taskTotalSeconds - remainingSeconds()).coerceIn(0, taskTotalSeconds)
+        return before + inCurrent
     }
 
     private fun pin(notification: android.app.Notification) {
@@ -529,6 +557,9 @@ class RoutineForegroundService : Service() {
         private const val RC_TASK_END_ALARM = 640_001
         private const val RC_TASK_END_SHOW = 640_002
         private const val RING_DURATION_MILLIS = 20_000L
+
+        /** How often the live notification is re-posted to move the timeline tracker. */
+        private const val NOTIFICATION_REFRESH_SECONDS = 15
 
         fun start(context: Context, routineId: Long) {
             context.startForegroundService(

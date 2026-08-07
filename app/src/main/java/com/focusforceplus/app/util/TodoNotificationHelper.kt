@@ -13,6 +13,7 @@ import com.focusforceplus.app.service.TodoDismissReceiver
 import com.focusforceplus.app.service.TodoNotificationRepostReceiver
 import com.focusforceplus.app.service.TodoSnoozeReceiver
 import com.focusforceplus.app.ui.alarm.TodoAlarmActivity
+import com.focusforceplus.app.util.NotificationStyle.applyBrand
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import java.time.LocalDateTime
@@ -60,8 +61,11 @@ class TodoNotificationHelper @Inject constructor(
         private const val RC_REPOST_ALARM           = 560_000  // deleteIntent: swiped active alarm notif
         private const val RC_REPOST_SNOOZED         = 570_000  // deleteIntent: swiped High snoozed notif
         private const val RC_REPOST_STILL_OPEN      = 580_000  // deleteIntent: swiped Medium still-open notif
+        private const val RC_REPOST_DIGEST          = 590_000  // deleteIntent: swiped per-todo daily reminder
 
         private const val OVERDUE_GROUP = "com.focusforceplus.app.OVERDUE_GROUP"
+
+        private const val MODULE = "Todo"
 
         fun todoAlarmNotificationId(todoId: Long)  = (NOTIF_TODO_ALARM_BASE  + todoId).toInt()
         fun todoDigestNotificationId(todoId: Long) = (NOTIF_TODO_DIGEST_BASE + todoId).toInt()
@@ -71,7 +75,8 @@ class TodoNotificationHelper @Inject constructor(
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_TODO_URGENT, "Todo Alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Full-screen alarm for high-priority scheduled todos"
+                description = "Full-screen alarm for high-priority todos"
+                group = NotificationStyle.GROUP_ALARMS
                 enableVibration(true)
                 enableLights(true)
             }
@@ -79,6 +84,7 @@ class TodoNotificationHelper @Inject constructor(
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_TODO_MEDIUM, "Todo Reminders", NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Silent alarm screen for medium-priority todos"
+                group = NotificationStyle.GROUP_ALARMS
                 enableVibration(false)
                 setSound(null, null)
             }
@@ -86,11 +92,13 @@ class TodoNotificationHelper @Inject constructor(
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_TODO_DIGEST, "Todo Digest", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "Daily digest of open and overdue todos"
+                group = NotificationStyle.GROUP_REMINDERS
             }
         )
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_TODO_OVERDUE, "Overdue Todos", NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Persistent notification for overdue todos"
+                group = NotificationStyle.GROUP_REMINDERS
                 enableVibration(false)
             }
         )
@@ -122,7 +130,7 @@ class TodoNotificationHelper @Inject constructor(
             // ── High ─────────────────────────────────────────────────────────
             2 -> {
                 val builder = NotificationCompat.Builder(context, channel)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .applyBrand(MODULE)
                     .setContentTitle("\u26a0\ufe0f Todo alarm")
                     .setContentText(title)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -159,7 +167,7 @@ class TodoNotificationHelper @Inject constructor(
                 val dismissIntent = dismissBroadcastIntent(todoId, (RC_DISMISS + todoId).toInt())
 
                 val builder = NotificationCompat.Builder(context, channel)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .applyBrand(MODULE)
                     .setContentTitle("Todo reminder")
                     .setContentText(title)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -190,7 +198,7 @@ class TodoNotificationHelper @Inject constructor(
             else -> {
                 val doneIntent = doneBroadcastIntent(todoId, (RC_DONE + todoId).toInt())
                 NotificationCompat.Builder(context, CHANNEL_TODO_DIGEST)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .applyBrand(MODULE)
                     .setContentTitle("Reminder: $title")
                     .setContentText("Tap to open your todos")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -210,7 +218,7 @@ class TodoNotificationHelper @Inject constructor(
         val doneIntent = doneBroadcastIntent(todoId, (RC_DONE + todoId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_TODO_DIGEST)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("Reminder: $title")
             .setContentText("Tap to open your todos")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -241,19 +249,25 @@ class TodoNotificationHelper @Inject constructor(
         val timeStr   = formatTime(triggerMillis)
         val tapIntent = alarmActivityIntent(todoId, title, snoozeCount, priority, (RC_SNOOZE_TAP + todoId).toInt())
         val channel   = if (priority == 2) CHANNEL_TODO_URGENT else CHANNEL_TODO_MEDIUM
+        // Snoozing replaces the ringing alarm notification. Without this, the
+        // replacement re-alerts on the alarm channel and the snooze feels ignored.
 
         return when (priority) {
             // ── High snoozed ─────────────────────────────────────────────────
             2 -> {
                 val builder = NotificationCompat.Builder(context, channel)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .applyBrand(MODULE)
                     .setContentTitle("\"$title\" snoozed")
                     .setContentText("Re-fires at $timeStr \u00b7 $remaining snooze(s) left")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
                     .setContentIntent(tapIntent)
                     .setOngoing(true)
+                    .setOnlyAlertOnce(true)
                     .setAutoCancel(false)
+                    .setWhen(triggerMillis)
+                    .setUsesChronometer(true)
+                    .setChronometerCountDown(true)
                     .setDeleteIntent(repostBroadcastIntent(
                         todoId, TodoNotificationRepostReceiver.KIND_SNOOZED,
                         (RC_REPOST_SNOOZED + todoId).toInt(),
@@ -275,14 +289,18 @@ class TodoNotificationHelper @Inject constructor(
                 val dismissIntent = dismissBroadcastIntent(todoId, (RC_DISMISS_SNOOZE + todoId).toInt())
 
                 val builder = NotificationCompat.Builder(context, channel)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .applyBrand(MODULE)
                     .setContentTitle("\"$title\" snoozed")
                     .setContentText("Re-fires at $timeStr")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
                     .setContentIntent(tapIntent)
                     .setOngoing(true)
+                    .setOnlyAlertOnce(true)
                     .setAutoCancel(false)
+                    .setWhen(triggerMillis)
+                    .setUsesChronometer(true)
+                    .setChronometerCountDown(true)
                     .addAction(0, "Done \u2714", doneIntent)
 
                 if (remaining > 0) {
@@ -306,13 +324,14 @@ class TodoNotificationHelper @Inject constructor(
         val doneIntent = doneBroadcastIntent(todoId, (RC_MEDIUM_DONE + todoId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_TODO_MEDIUM)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle(title)
             .setContentText("Still open \u2014 tap to snooze or reschedule")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(tapIntent)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setAutoCancel(false)
             .setDeleteIntent(repostBroadcastIntent(
                 todoId, TodoNotificationRepostReceiver.KIND_STILL_OPEN,
@@ -326,6 +345,11 @@ class TodoNotificationHelper @Inject constructor(
     //
     // These fire after the initial alarm window has passed. The todo is overdue or
     // undated. Direct Done is acceptable here since there is no active alarm screen.
+    //
+    // Persistence follows the same rule as the alarm path, so a priority means the
+    // same thing everywhere: High and Medium come straight back when swiped (there
+    // is always a Done / Snooze / Dismiss button — friction, not a trap), Low is an
+    // ordinary notification the user can wipe away.
 
     fun buildPerTodoReminderNotification(
         todoId: Long,
@@ -342,35 +366,45 @@ class TodoNotificationHelper @Inject constructor(
             isOverdue                  -> "Overdue: $title"
             else                       -> title
         }
+        val repostIntent = repostBroadcastIntent(
+            todoId, TodoNotificationRepostReceiver.KIND_DIGEST,
+            (RC_REPOST_DIGEST + todoId).toInt(),
+        )
         return when (priority) {
             2 -> NotificationCompat.Builder(context, CHANNEL_TODO_URGENT)
-                .setSmallIcon(R.drawable.ic_notification)
+                .applyBrand(MODULE)
                 .setContentTitle(contentTitle)
                 .setContentText("High priority \u2014 still open")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setContentIntent(tapIntent)
-                .setAutoCancel(true)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(false)
+                .setDeleteIntent(repostIntent)
                 .setGroup(OVERDUE_GROUP)
                 .addAction(0, "Done \u2714", doneIntent)
                 .addAction(0, "Snooze 30m", snoozeIntent)
                 .addAction(0, "Dismiss", dismissIntent)
                 .build()
             1 -> NotificationCompat.Builder(context, CHANNEL_TODO_MEDIUM)
-                .setSmallIcon(R.drawable.ic_notification)
+                .applyBrand(MODULE)
                 .setContentTitle(contentTitle)
                 .setContentText(if (isOverdue) "Medium priority \u2014 still open" else "Open task")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setContentIntent(tapIntent)
-                .setAutoCancel(true)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(false)
+                .setDeleteIntent(repostIntent)
                 .setGroup(OVERDUE_GROUP)
                 .addAction(0, "Done \u2714", doneIntent)
                 .addAction(0, "Snooze 30m", snoozeIntent)
                 .addAction(0, "Dismiss", dismissIntent)
                 .build()
             else -> NotificationCompat.Builder(context, CHANNEL_TODO_DIGEST)
-                .setSmallIcon(R.drawable.ic_notification)
+                .applyBrand(MODULE)
                 .setContentTitle(contentTitle)
                 .setContentText(if (isOverdue) "Overdue task" else "Open task")
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -388,7 +422,7 @@ class TodoNotificationHelper @Inject constructor(
     fun buildOverdueGroupSummary(count: Int): Notification {
         val tapIntent = mainActivityIntent(RC_OVERDUE_TAP)
         return NotificationCompat.Builder(context, CHANNEL_TODO_OVERDUE)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("$count todo(s) need attention")
             .setContentText("Tap to view your todos")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -418,7 +452,7 @@ class TodoNotificationHelper @Inject constructor(
         val bigText = items.take(7).joinToString("\n\u2022 ", prefix = "\u2022 ")
 
         return NotificationCompat.Builder(context, CHANNEL_TODO_DIGEST)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle(title)
             .setContentText(items.firstOrNull() ?: "Tap to view your todos")
             .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
@@ -436,7 +470,7 @@ class TodoNotificationHelper @Inject constructor(
         val preview   = titles.take(3).joinToString(", ")
 
         return NotificationCompat.Builder(context, CHANNEL_TODO_OVERDUE)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("$overdueCount overdue todo(s)")
             .setContentText(preview)
             .setStyle(NotificationCompat.BigTextStyle().bigText(

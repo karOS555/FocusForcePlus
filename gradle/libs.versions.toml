@@ -4,7 +4,8 @@ kotlin = "2.2.10"
 ksp = "2.3.2"
 
 # AndroidX Core
-coreKtx = "1.10.1"
+# 1.17+ is required for NotificationCompat.ProgressStyle / Live Updates (Now Bar).
+coreKtx = "1.17.0"
 activityCompose = "1.8.0"
 coreSplashscreen = "1.0.1"
 composeBom = "2026.02.01"

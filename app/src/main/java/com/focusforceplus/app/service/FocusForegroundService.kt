@@ -107,9 +107,13 @@ class FocusForegroundService : Service() {
             while (remainingSeconds > 0) {
                 delay(1_000L)
                 remainingSeconds--
-                // The notification counts down via the system chronometer, so it
-                // only needs a re-post on state changes — not every few seconds.
-                if (remainingSeconds % 15 == 0) publishRegistry()
+                // The countdown itself renders via the system chronometer; the
+                // 15-second re-post is what advances the timeline tracker and the
+                // Live Update chip.
+                if (remainingSeconds % 15 == 0) {
+                    publishRegistry()
+                    updateNotification()
+                }
             }
             finishSession(completed = true)
         }
@@ -132,7 +136,7 @@ class FocusForegroundService : Service() {
 
     private fun startForegroundWithNotification() {
         val notification = notifHelper.buildOngoingNotification(
-            sessionName, remainingSeconds, paused, invincible,
+            sessionName, remainingSeconds, paused, invincible, totalSeconds,
         )
         // specialUse type exists from API 34; below that the manifest type applies.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -149,7 +153,9 @@ class FocusForegroundService : Service() {
     private fun updateNotification() {
         notifHelper.showNotification(
             FocusNotificationHelper.NOTIFICATION_ID_FOCUS,
-            notifHelper.buildOngoingNotification(sessionName, remainingSeconds, paused, invincible),
+            notifHelper.buildOngoingNotification(
+                sessionName, remainingSeconds, paused, invincible, totalSeconds,
+            ),
         )
     }
 

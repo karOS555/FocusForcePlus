@@ -7,7 +7,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.focusforceplus.app.MainActivity
-import com.focusforceplus.app.R
+import com.focusforceplus.app.util.NotificationStyle.applyBrand
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,6 +31,7 @@ class BlockerNotificationHelper @Inject constructor(
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
                 description = "Status updates from the app blocker"
+                group = NotificationStyle.GROUP_REMINDERS
             }
         )
     }
@@ -50,7 +51,7 @@ class BlockerNotificationHelper @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_BLOCKER)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand("Blocker")
             .setContentTitle("App blocking is paused")
             .setContentText("The accessibility service was turned off, so blocked apps are no longer covered.")
             .setStyle(

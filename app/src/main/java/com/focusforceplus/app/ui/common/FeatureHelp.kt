@@ -89,6 +89,14 @@ object FeatureHelpContent {
                     "time or mark the step done.",
             ),
             HelpSection(
+                "The notification while it runs",
+                "A running routine shows up as a timeline: one section per step, " +
+                    "coloured for done, running and still ahead, with the countdown of " +
+                    "the current step. Done, +5 min and Cancel work straight from there, " +
+                    "and it stays readable on the lock screen so you never have to " +
+                    "unlock to see where you are.",
+            ),
+            HelpSection(
                 "Snooze and reschedule",
                 "Snoozes and reschedules are limited per routine (you choose the caps " +
                     "when editing). Once they are used up, the routine expects to be done.",
@@ -134,9 +142,17 @@ object FeatureHelpContent {
                     "up, the todo itself always stays editable and deletable in this list.",
             ),
             HelpSection(
-                "Daily digest",
+                "Daily reminders",
                 "Undated and overdue todos resurface as notifications at fixed times " +
-                    "each day. Change the times under Settings > Todos.",
+                    "each day - add as many times as you like under Settings > Todos.",
+            ),
+            HelpSection(
+                "Swiping a reminder away",
+                "High and Medium reminders come straight back when you swipe them - " +
+                    "that is the point of them. Every one of them always carries Done, " +
+                    "Snooze and Dismiss, so there is a way out; it just has to be a " +
+                    "decision instead of a reflex. Low priority stays an ordinary " +
+                    "notification you can wipe away.",
             ),
             HelpSection(
                 "Recurring todos",

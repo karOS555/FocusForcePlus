@@ -5,6 +5,12 @@
     <!-- ── Notification & alarm permissions ──────────────────────────────── -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- Android 16+: lets the running routine / focus / sleep notification be
+         promoted to a Live Update — status bar chip, lock screen, always-on
+         display, and the Now Bar on One UI. Normal permission, granted at install;
+         only ever used for a session the user started themselves. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Required for startActivity() to work when another app is in the foreground.
@@ -58,6 +64,19 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
+        </intent>
+        <!-- Lets us check whether this device actually ships the per-app
+             full-screen-notification screen before sending the user there.
+             Several OEMs (Samsung One UI) do not — see PermissionHelper. -->
+        <intent>
+            <action android:name="android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENTS" />
+            <data android:scheme="package" />
+        </intent>
+        <!-- Same check for the Android 16 Live Updates screen, which One UI 8
+             also does not ship. -->
+        <intent>
+            <action android:name="android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS" />
+            <data android:scheme="package" />
         </intent>
     </queries>
 
@@ -158,6 +177,8 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.focusforceplus.app.SESSION_COMPLETE_TASK" />
+                <action android:name="com.focusforceplus.app.SESSION_ADD_TIME" />
+                <action android:name="com.focusforceplus.app.SESSION_CANCEL" />
             </intent-filter>
         </receiver>
 

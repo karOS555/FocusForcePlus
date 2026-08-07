@@ -10,6 +10,7 @@ import com.focusforceplus.app.util.AlarmSoundPolicy
 import com.focusforceplus.app.util.BlockerNotificationHelper
 import com.focusforceplus.app.util.FocusNotificationHelper
 import com.focusforceplus.app.util.NotificationHelper
+import com.focusforceplus.app.util.NotificationStyle
 import com.focusforceplus.app.util.SleepAlarmHelper
 import com.focusforceplus.app.util.SleepNotificationHelper
 import com.focusforceplus.app.util.TodoAlarmHelper
@@ -44,6 +45,8 @@ class FocusForcePlusApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Channel groups first — channels reference them by id.
+        NotificationStyle.createChannelGroups(this)
         notificationHelper.createChannels()
         todoNotificationHelper.createChannels()
         blockerNotificationHelper.createChannels()

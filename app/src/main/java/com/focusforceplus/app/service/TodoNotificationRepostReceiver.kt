@@ -33,6 +33,9 @@ class TodoNotificationRepostReceiver : BroadcastReceiver() {
         const val KIND_ALARM = "alarm"
         const val KIND_SNOOZED = "snoozed"
         const val KIND_STILL_OPEN = "stillOpen"
+
+        /** The daily-reminder notification for a single todo, re-posted in place. */
+        const val KIND_DIGEST = "digest"
     }
 
     @Inject lateinit var repository: TodoRepository
@@ -48,6 +51,21 @@ class TodoNotificationRepostReceiver : BroadcastReceiver() {
             try {
                 val todo = repository.getTodoById(todoId) ?: return@launch
                 if (todo.isCompleted || todo.priority == 0) return@launch
+
+                // The daily reminder is a plain notification, not a service-pinned
+                // one — re-post it under its own id so it reappears exactly where it
+                // was instead of turning into a different notification.
+                if (kind == KIND_DIGEST) {
+                    notifHelper.showNotification(
+                        TodoNotificationHelper.todoDigestNotificationId(todoId),
+                        notifHelper.buildPerTodoReminderNotification(
+                            todoId, todo.title, todo.priority,
+                            isOverdue = todo.dueDateTime != null &&
+                                todo.dueDateTime < System.currentTimeMillis(),
+                        ),
+                    )
+                    return@launch
+                }
 
                 // Prefer re-pinning through the FGS (keeps the notification anchored);
                 // fall back to a plain notify if the OEM refuses the service start.

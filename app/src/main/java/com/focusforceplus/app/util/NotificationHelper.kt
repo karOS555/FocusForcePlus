@@ -9,6 +9,8 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.focusforceplus.app.MainActivity
 import com.focusforceplus.app.R
+import com.focusforceplus.app.util.NotificationStyle.applyBrand
+import com.focusforceplus.app.util.NotificationStyle.asLiveUpdate
 import com.focusforceplus.app.service.RoutineDismissReceiver
 import com.focusforceplus.app.service.RoutineRescheduleReceiver
 import com.focusforceplus.app.service.RoutineSessionReceiver
@@ -24,7 +26,12 @@ class NotificationHelper @Inject constructor(
 ) {
     companion object {
         const val CHANNEL_ROUTINE             = "routine_channel"
+        const val CHANNEL_ROUTINE_SESSION     = "routine_live"
+        private const val RETIRED_CHANNEL_ROUTINE_SESSION = "routine_session"
         const val NOTIFICATION_ID_FOREGROUND  = 1001
+
+        /** Sub-text on every routine notification, so a stack stays readable. */
+        private const val MODULE = "Routine"
 
         private const val NOTIFICATION_ID_ALARM_BASE     = 2000
         private const val NOTIFICATION_ID_PRE_ALARM_BASE = 3000
@@ -47,6 +54,9 @@ class NotificationHelper @Inject constructor(
         private const val RC_TASK_END_TAP     = 90_000
         private const val RC_TASK_END_DONE    = 91_000
         private const val RC_INTERRUPTED_TAP  = 92_000
+        private const val RC_ADD_TIME         = 93_000
+        private const val RC_CANCEL_SESSION   = 94_000
+        private const val RC_TASK_END_ADD     = 95_000
 
         private const val NOTIFICATION_ID_TASK_END_BASE = 950_000
         const val NOTIFICATION_ID_INTERRUPTED = 949_999
@@ -63,16 +73,31 @@ class NotificationHelper @Inject constructor(
 
     fun createChannels() {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel(
-            CHANNEL_ROUTINE,
-            "Routine Alarms",
-            NotificationManager.IMPORTANCE_HIGH,
-        ).apply {
-            description = "Routine start alarms and task reminders"
-            enableVibration(true)
-            enableLights(true)
-        }
-        manager.createNotificationChannel(channel)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ROUTINE,
+                "Routine Alarms",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Routine start alarms and task time-ups"
+                group = NotificationStyle.GROUP_ALARMS
+                enableVibration(true)
+                enableLights(true)
+            }
+        )
+        // The live session sits in its own quiet channel: it updates constantly and
+        // must never buzz, while the alarm channel above must always be loud.
+        manager.createNotificationChannel(
+            NotificationStyle.liveSessionChannel(
+                CHANNEL_ROUTINE_SESSION,
+                "Running routine",
+                "Live progress of the routine you are currently doing",
+            )
+        )
+        // An earlier build shipped this channel at IMPORTANCE_LOW, which made the
+        // phone treat it as silent and drop it from the lock screen. A channel's
+        // importance cannot be raised once it exists, so the old one is retired.
+        runCatching { manager.deleteNotificationChannel(RETIRED_CHANNEL_ROUTINE_SESSION) }
     }
 
     // ── Full-screen alarm notification ────────────────────────────────────────
@@ -90,7 +115,7 @@ class NotificationHelper @Inject constructor(
                                             (RC_START_ALARM + routineId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("Time to start your routine!")
             .setContentText(routineName)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -123,7 +148,7 @@ class NotificationHelper @Inject constructor(
                                           (RC_START_PRE + routineId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("\"$routineName\" starts at $timeStr")
             .setContentText("Your routine starts in 15 minutes.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -155,7 +180,7 @@ class NotificationHelper @Inject constructor(
         val subText = if (remaining > 0) "$remaining snooze(s) remaining" else "No snoozes left"
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("\"$routineName\" snoozed")
             .setContentText("Starts at $timeStr \u00b7 $subText")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -181,9 +206,14 @@ class NotificationHelper @Inject constructor(
     // ── Foreground service notification ──────────────────────────────────────
 
     /**
-     * Live session notification. Uses the system chronometer anchored at
-     * [taskEndWallMillis], so the countdown (or overtime count-up) renders without
-     * re-posting the notification every second — one post per task/state change.
+     * Live session notification: the routine drawn as a timeline, one segment per
+     * task, so a glance shows where the user is and what is still ahead — the same
+     * shape the active-routine screen has, but in the shade, on the lock screen
+     * and (Android 16 / One UI) in the status-bar chip and the Now Bar.
+     *
+     * The system chronometer anchored at [taskEndWallMillis] renders the live
+     * countdown (or the overtime count-up) without a notify() per second; the
+     * service re-posts on a slow tick only to advance the timeline tracker.
      */
     fun buildOngoingNotification(
         routineId: Long,
@@ -191,25 +221,96 @@ class NotificationHelper @Inject constructor(
         taskName: String,
         taskEndWallMillis: Long,
         overtime: Boolean,
+        taskIndex: Int = 0,
+        taskDurationsMinutes: List<Int> = emptyList(),
+        elapsedSeconds: Int = 0,
+        /** What the status-bar chip counts: time left in the step, or time over it. */
+        chipSeconds: Int = 0,
+        invincible: Boolean = false,
     ): Notification {
         val tapIntent  = mainActivityIntent(routineId, (RC_FOREGROUND_TAP + routineId).toInt())
         val doneIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_COMPLETE_TASK,
                                              (RC_DONE_TASK + routineId).toInt())
-        val body = if (overtime) "$taskName \u2014 overtime" else taskName
-        return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_notification)
+        val addTimeIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_ADD_TIME,
+                                                (RC_ADD_TIME + routineId).toInt())
+
+        val stepLabel = if (taskDurationsMinutes.isNotEmpty()) {
+            "Step ${taskIndex + 1}/${taskDurationsMinutes.size} \u00b7 $taskName"
+        } else {
+            taskName
+        }
+        val body = if (overtime) "$stepLabel \u2014 overtime" else stepLabel
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ROUTINE_SESSION)
+            .applyBrand(MODULE)
             .setContentTitle(routineName)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .setOngoing(true)
             .setContentIntent(tapIntent)
-            .setSilent(true)
+            // Deliberately NOT setSilent(true): the channel is already soundless,
+            // and a "silent" notification is hidden from the lock screen on phones
+            // where "hide silent notifications" is on — which is where a running
+            // routine is most useful.
             .setWhen(taskEndWallMillis)
             .setUsesChronometer(true)
             .setChronometerCountDown(!overtime)
             .addAction(0, "Done", doneIntent)
-            .build()
+            .addAction(0, "+5 min", addTimeIntent)
+            .asLiveUpdate(
+                if (overtime) "+" + NotificationStyle.formatChip(chipSeconds)
+                else NotificationStyle.formatChip(chipSeconds),
+            )
+
+        routineTimeline(taskDurationsMinutes, taskIndex, elapsedSeconds, overtime)
+            ?.let { builder.setStyle(it) }
+
+        // Cancelling an invincible routine is refused by the service anyway; not
+        // offering the button keeps the notification honest about what it can do.
+        if (!invincible) {
+            builder.addAction(
+                0, "Cancel",
+                sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_CANCEL,
+                                    (RC_CANCEL_SESSION + routineId).toInt()),
+            )
+        }
+        return builder.build()
+    }
+
+    /**
+     * One segment per task, coloured done / running / still ahead, with a marker at
+     * every task boundary. Null below Android 16, where the notification simply
+     * stays a plain one.
+     */
+    private fun routineTimeline(
+        taskDurationsMinutes: List<Int>,
+        taskIndex: Int,
+        elapsedSeconds: Int,
+        overtime: Boolean,
+    ): NotificationCompat.Style? {
+        if (taskDurationsMinutes.isEmpty()) return null
+        val segments = taskDurationsMinutes.mapIndexed { index, minutes ->
+            NotificationStyle.TimelineSegment(
+                length = (minutes * 60).coerceAtLeast(60),
+                color = when {
+                    index < taskIndex -> NotificationStyle.SEGMENT_DONE
+                    index > taskIndex -> NotificationStyle.SEGMENT_AHEAD
+                    overtime -> NotificationStyle.SEGMENT_OVERTIME
+                    else -> NotificationStyle.SEGMENT_NOW
+                },
+            )
+        }
+        val total = segments.sumOf { it.length }
+        // Markers at the task boundaries; the two outer ends need none.
+        val points = segments
+            .runningFold(0) { acc, seg -> acc + seg.length }
+            .drop(1)
+            .dropLast(1)
+        return NotificationStyle.timeline(
+            segments = segments,
+            progress = elapsedSeconds.coerceIn(0, total),
+            points = points,
+        )
     }
 
     // ── Task-end wake-up ──────────────────────────────────────────────────────
@@ -228,14 +329,16 @@ class NotificationHelper @Inject constructor(
         val tapIntent  = mainActivityIntent(routineId, (RC_TASK_END_TAP + routineId).toInt())
         val doneIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_COMPLETE_TASK,
                                              (RC_TASK_END_DONE + routineId).toInt())
+        val addTimeIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_ADD_TIME,
+                                                (RC_TASK_END_ADD + routineId).toInt())
         val body = if (overtimeMinutes > 0) {
             "\"$taskName\" is $overtimeMinutes min over time — finish it or add time."
         } else {
             "Time is up for \"$taskName\"."
         }
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("⏰ $routineName")
+            .applyBrand(MODULE)
+            .setContentTitle("Time is up — $routineName")
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -244,15 +347,16 @@ class NotificationHelper @Inject constructor(
             .setOngoing(true)
             .setAutoCancel(false)
             .setSilent(true)
+            .setOnlyAlertOnce(true)
             .addAction(0, "Done", doneIntent)
-            .addAction(0, "Open", tapIntent)
+            .addAction(0, "+5 min", addTimeIntent)
             .build()
     }
 
     /** Posted when a reboot (or forced stop) killed a running routine session. */
     fun buildSessionInterruptedNotification(routineName: String): Notification =
         NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .setSmallIcon(R.drawable.ic_notification)
+            .applyBrand(MODULE)
             .setContentTitle("Routine interrupted")
             .setContentText("\"$routineName\" was interrupted by a device restart.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
