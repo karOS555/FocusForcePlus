@@ -2,6 +2,33 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.9.4-beta] - 2026-08-08
+
+A notification rework, more room on every screen, and a handful of fixes.
+
+### Added
+- **Running sessions are now a timeline.** A routine's notification draws one section per step — done, running, still ahead — with the countdown of the current step and Done / +5 min / Cancel right there. Focus sessions and sleep mode get the same treatment
+- A running routine, focus session or sleep window stays readable on the lock screen, with its timeline and countdown — no unlocking to see where you are
+- **Live updates**: on Android 16 the same session can be promoted into the status-bar chip. Whether a phone actually shows it is up to the manufacturer — Samsung's Now Bar takes its own apps only, and Settings > Permissions says so plainly instead of promising it
+- The home screen now carries App Blocker and Sleep mode as switchable rows: what they are doing right now, and an on/off switch without opening a tab first. Sleep mode also gets its own live banner while the night is running
+- Notifications share one look now: same accent, same icon, and a label telling you which part of the app is talking. The system's notification settings group them into Alarms, Running sessions, and Reminders
+
+### Changed
+- **Screen titles moved into the app bar.** Every tab used to repeat its title below the header, and a stray inset ate another 55dp — the todo list showed three entries on a large phone where it now shows five
+- Daily todo reminder times are no longer capped at three
+- Swiping a daily reminder for a high or medium priority todo brings it back, the same way its alarm does. Low priority stays an ordinary notification
+- Snoozing a todo no longer makes the replacement notification buzz again, and it counts down to when it will re-fire
+
+### Fixed
+- **A running session was missing from the lock screen.** Its notification sat on a low-importance channel, which Android counts as "silent" - and phones set to hide silent notifications on the lock screen dropped it entirely. Sessions now use a quiet-but-not-silent channel and show their full content on the lock screen, which is exactly where a running routine is worth seeing
+- The status bar icon was a lightning bolt. It is the FocusForce+ target now
+- **The backup file was missing your settings.** Reminder times, default priority, auto-delete, alarm spacing, blocker switches, alarm sound and vibration, and the entire sleep schedule were never exported — restoring a backup silently reset them. Older backup files still import; they just leave your current settings alone
+- **A snooze on the todo alarm screen could be spent twice.** A second tap while the first was still saving burned another snooze; every action on that screen now runs exactly once, and the screen closes even if the system refuses the background service
+- **The lock-screen alarm permission asked forever on phones that don't have it.** Samsung One UI ships no full-screen-notification screen, so "Grant" led to a page with nothing to turn on. The app now detects that, asks at most once, and says plainly that alarms work anyway
+- A second todo alarm arriving while one was already on screen showed the wrong todo
+
+[0.9.4-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.9.4-beta
+
 ## [0.9.3-beta] - 2026-08-06
 
 Sleep mode, and a round of fixes for reminders that were too easy to escape.
