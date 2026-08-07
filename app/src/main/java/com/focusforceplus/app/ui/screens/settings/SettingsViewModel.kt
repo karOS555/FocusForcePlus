@@ -26,10 +26,17 @@ data class SettingsPermissionStates(
     val exactAlarms: Boolean = false,
     val overlay: Boolean = false,
     val fullScreenIntent: Boolean = false,
+    /** False when this device ships no screen to grant the full-screen permission. */
+    val fullScreenIntentGrantable: Boolean = true,
     val accessibility: Boolean = false,
     val usageStats: Boolean = false,
     val batteryUnrestricted: Boolean = false,
     val dndAccess: Boolean = false,
+    /** Android 16+: running sessions may show in the status bar chip / Now Bar. */
+    val liveUpdates: Boolean = false,
+    val liveUpdatesSupported: Boolean = false,
+    /** False when this device ships no screen to turn Live Updates on. */
+    val liveUpdatesGrantable: Boolean = false,
 )
 
 data class SettingsUiState(
@@ -139,10 +146,16 @@ class SettingsViewModel @Inject constructor(
                     exactAlarms = PermissionHelper.canScheduleExactAlarms(context),
                     overlay = PermissionHelper.canDrawOverlays(context),
                     fullScreenIntent = PermissionHelper.canUseFullScreenIntent(context),
+                    fullScreenIntentGrantable =
+                        PermissionHelper.fullScreenIntentState(context) !=
+                            PermissionHelper.FullScreenIntentState.UNAVAILABLE,
                     accessibility = PermissionHelper.isAccessibilityServiceEnabled(context),
                     usageStats = PermissionHelper.hasUsageStatsPermission(context),
                     batteryUnrestricted = PermissionHelper.isIgnoringBatteryOptimizations(context),
                     dndAccess = PermissionHelper.hasDndAccess(context),
+                    liveUpdates = PermissionHelper.canPostLiveUpdates(context),
+                    liveUpdatesSupported = PermissionHelper.supportsLiveUpdates(),
+                    liveUpdatesGrantable = PermissionHelper.hasLiveUpdateSettingsScreen(context),
                 )
             )
         }

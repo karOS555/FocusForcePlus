@@ -386,7 +386,12 @@ private fun PermissionChecklistPage(
         ChecklistRow("Display over other apps", perms.overlay) {
             PermissionHelper.openOverlaySettings(context)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        // Only offered where the phone actually has the screen for it — several
+        // OEMs (Samsung One UI) ship no full-screen-notification toggle at all,
+        // and a row that cannot be ticked reads as a broken app.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            (perms.fullScreenIntent || PermissionHelper.hasFullScreenIntentSettingsScreen(context))
+        ) {
             ChecklistRow("Full-screen alarms", perms.fullScreenIntent) {
                 PermissionHelper.openFullScreenIntentSettings(context)
             }

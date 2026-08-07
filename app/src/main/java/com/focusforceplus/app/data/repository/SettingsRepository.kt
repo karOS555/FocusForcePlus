@@ -33,6 +33,7 @@ class SettingsRepository @Inject constructor(
         private val ALARM_VIBRATION_ENABLED_KEY    = booleanPreferencesKey("alarm_vibration_enabled")
         private val ONBOARDING_COMPLETED_KEY       = booleanPreferencesKey("onboarding_completed")
         private val HELP_HINTS_SEEN_KEY            = stringSetPreferencesKey("help_hints_seen")
+        private val FSI_PROMPT_SHOWN_KEY           = booleanPreferencesKey("fsi_prompt_shown")
 
         private val TP_ENABLED_KEY                 = booleanPreferencesKey("tp_enabled")
         private val TP_WINDOW_START_KEY            = intPreferencesKey("tp_window_start_minutes")
@@ -162,6 +163,21 @@ class SettingsRepository @Inject constructor(
 
     suspend fun saveOnboardingCompleted(completed: Boolean) {
         dataStore.edit { prefs -> prefs[ONBOARDING_COMPLETED_KEY] = completed }
+    }
+
+    // ── Full-screen alarm permission prompt ───────────────────────────────────
+
+    /**
+     * The lock-screen alarm permission is optional and, on some phones, not even
+     * grantable — so we offer it exactly once instead of on every app start. It
+     * stays reachable in Settings > Permissions.
+     */
+    val fullScreenIntentPromptShown: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs -> prefs[FSI_PROMPT_SHOWN_KEY] ?: false }
+
+    suspend fun markFullScreenIntentPromptShown() {
+        dataStore.edit { prefs -> prefs[FSI_PROMPT_SHOWN_KEY] = true }
     }
 
     // ── Tamper Protection ─────────────────────────────────────────────────────

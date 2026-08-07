@@ -37,15 +37,53 @@ object PermissionHelper {
         return nm.canUseFullScreenIntent()
     }
 
+    /**
+     * What we can honestly tell the user about the full-screen-alarm permission.
+     *
+     * On Android 14+ this permission is only auto-granted to calling/alarm apps the
+     * system recognises as such; everyone else is expected to send the user to
+     * [FULL_SCREEN_INTENT_SETTINGS]. Several OEMs — Samsung One UI among them —
+     * simply do not ship that screen, so the toggle the user is asked for does not
+     * exist on their phone. Asking anyway is what made the reminder come back
+     * forever, so we detect that case and stop asking.
+     */
+    enum class FullScreenIntentState {
+        /** Granted (or an Android version that doesn't gate it). */
+        GRANTED,
+
+        /** Not granted, but this device has a screen where it can be turned on. */
+        GRANTABLE,
+
+        /** Not granted and this device offers no way to grant it. */
+        UNAVAILABLE,
+    }
+
+    const val FULL_SCREEN_INTENT_SETTINGS = "android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENTS"
+
+    fun fullScreenIntentState(context: Context): FullScreenIntentState = when {
+        canUseFullScreenIntent(context) -> FullScreenIntentState.GRANTED
+        hasFullScreenIntentSettingsScreen(context) -> FullScreenIntentState.GRANTABLE
+        else -> FullScreenIntentState.UNAVAILABLE
+    }
+
+    /** True if the device actually has the per-app full-screen-notification screen. */
+    fun hasFullScreenIntentSettingsScreen(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        val intent = Intent(FULL_SCREEN_INTENT_SETTINGS)
+            .setData(Uri.parse("package:${context.packageName}"))
+        return runCatching {
+            context.packageManager.queryIntentActivities(intent, 0).isNotEmpty()
+        }.getOrDefault(false)
+    }
+
     /** Opens the system page where the user can grant USE_FULL_SCREEN_INTENT.
-     *  Not every device/OEM ships this dedicated screen (Samsung One UI, for one),
-     *  so if it's missing we fall back to the app-info page rather than the plain
-     *  notification screen, which has no full-screen toggle and just confuses. */
+     *  Only call this when [hasFullScreenIntentSettingsScreen] is true — otherwise
+     *  the fallback dumps the user on the app-info page with nothing to toggle. */
     fun openFullScreenIntentSettings(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startSettingsSafely(
                 context,
-                Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENTS")
+                Intent(FULL_SCREEN_INTENT_SETTINGS)
                     .setData(Uri.parse("package:${context.packageName}")),
             )
         }
@@ -76,6 +114,43 @@ object PermissionHelper {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
                android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    // ── Live Updates (status bar chip, lock screen, One UI Now Bar) ───────────
+
+    const val PROMOTED_NOTIFICATION_SETTINGS = "android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS"
+
+    /** Android 16+ only; below that there is nothing to grant or show. */
+    fun supportsLiveUpdates(): Boolean = Build.VERSION.SDK_INT >= 36
+
+    /** True when running sessions may appear as Live Updates / in the Now Bar. */
+    fun canPostLiveUpdates(context: Context): Boolean =
+        NotificationStyle.canPostLiveUpdates(context)
+
+    /**
+     * Same story as [hasFullScreenIntentSettingsScreen]: the per-app Live Updates
+     * screen is part of Android 16, but not every OEM ships it — One UI 8 does not.
+     * Without this check the app would offer a "Grant" button that lands the user on
+     * a page with nothing to turn on.
+     */
+    fun hasLiveUpdateSettingsScreen(context: Context): Boolean {
+        if (!supportsLiveUpdates()) return false
+        val intent = Intent(PROMOTED_NOTIFICATION_SETTINGS)
+            .setData(Uri.parse("package:${context.packageName}"))
+        return runCatching {
+            context.packageManager.queryIntentActivities(intent, 0).isNotEmpty()
+        }.getOrDefault(false)
+    }
+
+    fun openLiveUpdateSettings(context: Context) {
+        if (!supportsLiveUpdates()) return
+        startSettingsSafely(
+            context,
+            Intent(PROMOTED_NOTIFICATION_SETTINGS)
+                .setData(Uri.parse("package:${context.packageName}")),
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+        )
     }
 
     // ── App blocker permissions ───────────────────────────────────────────────

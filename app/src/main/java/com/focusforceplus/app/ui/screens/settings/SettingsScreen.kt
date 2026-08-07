@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -497,7 +498,14 @@ fun SettingsScreen(
                         PermissionStatusRow("Display over other apps", uiState.permissions.overlay) {
                             PermissionHelper.openOverlaySettings(context)
                         }
-                        PermissionStatusRow("Full-screen alarms", uiState.permissions.fullScreenIntent) {
+                        PermissionStatusRow(
+                            title = "Full-screen alarms",
+                            granted = uiState.permissions.fullScreenIntent,
+                            unavailableNote = if (uiState.permissions.fullScreenIntentGrantable) null
+                                else "This phone has no setting for it. Alarms still ring - " +
+                                    "they open over the lock screen through \"Display over " +
+                                    "other apps\" instead.",
+                        ) {
                             PermissionHelper.openFullScreenIntentSettings(context)
                         }
                         PermissionStatusRow("Accessibility (app blocker)", uiState.permissions.accessibility) {
@@ -511,6 +519,22 @@ fun SettingsScreen(
                         }
                         PermissionStatusRow("Do Not Disturb access", uiState.permissions.dndAccess) {
                             PermissionHelper.openDndAccessSettings(context)
+                        }
+                        // Android 16+ only: what puts a running routine, focus session
+                        // or sleep mode into the status bar chip, the lock screen and
+                        // Samsung's Now Bar.
+                        if (uiState.permissions.liveUpdatesSupported) {
+                            PermissionStatusRow(
+                                title = "Live updates (Now Bar)",
+                                granted = uiState.permissions.liveUpdates,
+                                unavailableNote = if (uiState.permissions.liveUpdatesGrantable) null
+                                    else "Not offered by this phone - Samsung's Now Bar " +
+                                        "only takes its own apps. Nothing is missing: " +
+                                        "running sessions show their full notification, " +
+                                        "on the lock screen too.",
+                            ) {
+                                PermissionHelper.openLiveUpdateSettings(context)
+                            }
                         }
                     }
                 }
@@ -874,8 +898,12 @@ private fun NavigationRow(
 private fun PermissionStatusRow(
     title: String,
     granted: Boolean,
+    /** Set when the permission cannot be granted on this device — no Grant button,
+     *  and the row explains itself instead of looking like something the user failed to do. */
+    unavailableNote: String? = null,
     onGrant: () -> Unit,
 ) {
+    val unavailable = !granted && unavailableNote != null
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -883,19 +911,39 @@ private fun PermissionStatusRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = if (granted) Icons.Filled.Check else Icons.Filled.Close,
-            contentDescription = if (granted) "Granted" else "Not granted",
-            tint = if (granted) Color(0xFF34d399) else MaterialTheme.colorScheme.error,
+            imageVector = when {
+                granted -> Icons.Filled.Check
+                unavailable -> Icons.Filled.Remove
+                else -> Icons.Filled.Close
+            },
+            contentDescription = when {
+                granted -> "Granted"
+                unavailable -> "Not available"
+                else -> "Not granted"
+            },
+            tint = when {
+                granted -> Color(0xFF34d399)
+                unavailable -> MaterialTheme.colorScheme.onSurfaceVariant
+                else -> MaterialTheme.colorScheme.error
+            },
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(10.dp))
-        Text(
-            title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f),
-        )
-        if (!granted) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            if (unavailable) {
+                Text(
+                    unavailableNote,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (!granted && !unavailable) {
             TextButton(onClick = onGrant) { Text("Grant") }
         }
     }
