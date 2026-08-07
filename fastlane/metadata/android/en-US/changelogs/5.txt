@@ -1,0 +1,8 @@
+- Running sessions draw as a timeline, one section per step
+- A running session stays readable on the lock screen
+- Tab titles moved into the app bar, so lists show more
+- Blocker and sleep mode switch from the home screen
+- No limit of three daily to-do reminder times any more
+- Fixed: backups were missing settings and the sleep schedule
+- Fixed: a snooze could be spent twice on the alarm screen
+- Fixed: endless prompts for a permission some phones lack

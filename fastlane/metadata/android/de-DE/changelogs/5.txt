@@ -1,0 +1,8 @@
+- Laufende Sitzungen als Zeitstrahl, ein Abschnitt pro Schritt
+- Laufende Sitzungen bleiben auf dem Sperrbildschirm lesbar
+- Tab-Titel in der App-Leiste, Listen zeigen dadurch mehr
+- Blocker und Schlaf-Modus vom Startbildschirm aus schaltbar
+- Keine Grenze von drei To-do-Erinnerungen pro Tag mehr
+- Behoben: Backups ohne Einstellungen und Schlafplan
+- Behoben: ein Snooze konnte doppelt verbraucht werden
+- Behoben: endloses Fragen nach fehlender Berechtigung
