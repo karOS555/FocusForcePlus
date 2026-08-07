@@ -39,13 +39,20 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -93,8 +100,20 @@ fun HomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(s.message) {
+        s.message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -146,6 +165,15 @@ fun HomeScreen(
                     onClick = { onOpenActiveRoutine(runningRoutine.routine.id) },
                 )
             }
+        } else if (s.sleepWindowActive) {
+            item {
+                LiveSessionBanner(
+                    icon = Icons.Filled.Bedtime,
+                    title = "Sleep mode is running",
+                    subtitle = "Until ${formatClockMinutes(s.sleep.wakeMinutes)} - tap to manage",
+                    onClick = onGoToFocus,
+                )
+            }
         }
 
         // ── Today stats ──────────────────────────────────────────────────────
@@ -163,14 +191,14 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     label = "Open todos",
                     value = "${s.openTodoCount}",
-                    hint = if (s.openTodoCount == 0) "all clear" else "waiting for you",
+                    hint = if (s.openTodoCount == 0) "all clear" else "open",
                     onClick = onGoToTodos,
                 )
                 StatCard(
                     modifier = Modifier.weight(1f),
                     label = "Blocked apps",
                     value = "${s.blockedAppCount}",
-                    hint = if (s.blockerEnabled) "blocking on" else "blocking paused",
+                    hint = if (s.blockerEnabled) "on" else "paused",
                     onClick = onGoToBlocker,
                 )
             }
@@ -199,53 +227,41 @@ fun HomeScreen(
             }
         }
 
-        // ── Sleep mode ───────────────────────────────────────────────────────
-        // Only surfaced once it is set up — an off schedule is not news.
-        if (s.sleep.enabled) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onGoToFocus),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (s.sleepWindowActive)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surface,
-                    ),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Filled.Bedtime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                if (s.sleepWindowActive) "Sleep mode is on" else "Sleep mode",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                            Text(
-                                if (s.sleepWindowActive) {
-                                    "Until ${formatClockMinutes(s.sleep.wakeMinutes)} - tap to manage"
-                                } else {
-                                    "Tonight ${formatClockMinutes(s.sleep.bedtimeMinutes)} - " +
-                                        formatClockMinutes(s.sleep.wakeMinutes)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
+        // ── Modes: blocker and sleep, switchable without leaving the dashboard ──
+        //
+        // Both are schedules that run in the background, so the thing the user
+        // actually wants from the home screen is "is it on, and what is it doing
+        // right now" — plus the switch, without a detour through two tabs.
+        item {
+            SectionHeader(
+                title = "Modes",
+                actionLabel = "Focus & Sleep",
+                onAction = onGoToFocus,
+            )
+        }
+
+        item {
+            ModeCard(
+                icon = Icons.Filled.Block,
+                title = "App Blocker",
+                status = blockerStatus(s),
+                highlighted = s.blockerEnabled && s.blockedAppCount > 0,
+                checked = s.blockerEnabled,
+                onCheckedChange = viewModel::setBlockerEnabled,
+                onClick = onGoToBlocker,
+            )
+        }
+
+        item {
+            ModeCard(
+                icon = Icons.Filled.Bedtime,
+                title = "Sleep mode",
+                status = sleepStatus(s),
+                highlighted = s.sleepWindowActive,
+                checked = s.sleep.enabled,
+                onCheckedChange = viewModel::setSleepEnabled,
+                onClick = onGoToFocus,
+            )
         }
 
         // ── Quick actions ────────────────────────────────────────────────────
@@ -337,9 +353,97 @@ fun HomeScreen(
 
         item { Spacer(Modifier.height(24.dp)) }
     }
+    }
 }
 
 // ── Pieces ────────────────────────────────────────────────────────────────────
+
+/**
+ * A background mode (app blocker, sleep) as one row: what it is, what it is doing
+ * right now, and a switch. Tapping the row opens the module for the details.
+ */
+@Composable
+private fun ModeCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    status: String,
+    highlighted: Boolean,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (highlighted) MaterialTheme.colorScheme.primaryContainer
+                             else MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (checked) MaterialTheme.colorScheme.primary
+                       else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                ),
+            )
+        }
+    }
+}
+
+private fun blockerStatus(s: HomeUiState): String = when {
+    s.blockedAppCount == 0 ->
+        "No apps picked yet - tap to choose which ones to block"
+    !s.blockerReady ->
+        "Needs the accessibility service - tap to finish setup"
+    !s.blockerEnabled ->
+        "Paused - ${s.blockedAppCount} app(s) configured"
+    s.blockerGroupCount > 0 ->
+        "On - ${s.blockedAppCount} app(s) in ${s.blockerGroupCount} group(s)"
+    else ->
+        "On - ${s.blockedAppCount} app(s) covered"
+}
+
+private fun sleepStatus(s: HomeUiState): String {
+    val window = "${formatClockMinutes(s.sleep.bedtimeMinutes)} - " +
+        formatClockMinutes(s.sleep.wakeMinutes)
+    return when {
+        s.sleepWindowActive -> "Running until ${formatClockMinutes(s.sleep.wakeMinutes)}"
+        s.sleep.enabled -> "Tonight $window"
+        else -> "Off - tap to set a bedtime and wake-up"
+    }
+}
 
 @Composable
 private fun LiveSessionBanner(

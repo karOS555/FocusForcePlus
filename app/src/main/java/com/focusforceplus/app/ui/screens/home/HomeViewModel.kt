@@ -23,9 +23,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.focusforceplus.app.compliance.dayCodeFor
+import com.focusforceplus.app.compliance.isRuleLocked
 import com.focusforceplus.app.compliance.isSleepWindowActive
 import com.focusforceplus.app.data.repository.SleepSchedule
 import java.util.Calendar
@@ -54,9 +57,13 @@ data class HomeUiState(
     val activeFocusSession: ActiveFocusSession? = null,
     val blockerEnabled: Boolean = false,
     val blockedAppCount: Int = 0,
+    val blockerGroupCount: Int = 0,
+    /** False while the accessibility service is off — blocking cannot work yet. */
+    val blockerReady: Boolean = true,
     val usage: UsageStats = UsageStats(),
     val sleep: SleepSchedule = SleepSchedule(),
     val sleepWindowActive: Boolean = false,
+    val message: String? = null,
 )
 
 @HiltViewModel
@@ -65,16 +72,27 @@ class HomeViewModel @Inject constructor(
     routineRepository: RoutineRepository,
     private val todoRepository: TodoRepository,
     private val blockerRepository: BlockerRepository,
-    settingsRepository: com.focusforceplus.app.data.repository.SettingsRepository,
-    sleepRepository: com.focusforceplus.app.data.repository.SleepRepository,
+    private val settingsRepository: com.focusforceplus.app.data.repository.SettingsRepository,
+    private val sleepRepository: com.focusforceplus.app.data.repository.SleepRepository,
     routineRegistry: ActiveRoutineRegistry,
     focusRegistry: FocusSessionRegistry,
     private val usageTracker: UsageTracker,
     private val todoAlarmHelper: TodoAlarmHelper,
     private val todoNotifHelper: TodoNotificationHelper,
+    private val sleepAlarmHelper: com.focusforceplus.app.util.SleepAlarmHelper,
+    private val tamperGuard: com.focusforceplus.app.compliance.TamperProtectionGuard,
 ) : ViewModel() {
 
     private val _usage = MutableStateFlow(UsageStats())
+    private val _message = MutableStateFlow<String?>(null)
+    private val _blockerReady = MutableStateFlow(true)
+
+    /** Blocker rules, groups and the master switch, bundled to stay under combine's arity. */
+    private data class BlockerSnapshot(
+        val ruleCount: Int,
+        val groupCount: Int,
+        val enabled: Boolean,
+    )
 
     val uiState: StateFlow<HomeUiState> = combine(
         combine(
@@ -88,27 +106,32 @@ class HomeViewModel @Inject constructor(
                 .toSet()
             buildTodayRoutines(routines, activeId, doneToday) to activeId
         },
-        todoRepository.getUncompletedTodos(),
-        focusRegistry.activeSession,
+        combine(todoRepository.getUncompletedTodos(), focusRegistry.activeSession, ::Pair),
         combine(
             blockerRepository.getBlockedApps(),
+            blockerRepository.getAllGroups(),
             settingsRepository.blockerEnabled,
-            sleepRepository.schedule,
-        ) { blocked, enabled, sleep -> Triple(blocked.size, enabled, sleep) },
-        _usage,
-    ) { (todayRoutines, activeId), openTodos, focusSession, blockerAndSleep, usage ->
-        val (blockedCount, blockerEnabled, sleep) = blockerAndSleep
+        ) { blocked, groups, enabled -> BlockerSnapshot(blocked.size, groups.size, enabled) },
+        combine(sleepRepository.schedule, _blockerReady, ::Pair),
+        combine(_usage, _message, ::Pair),
+    ) { (todayRoutines, activeId), todosAndFocus, blocker, sleepAndReady, usageAndMessage ->
+        val (openTodos, focusSession) = todosAndFocus
+        val (sleep, blockerReady) = sleepAndReady
+        val (usage, message) = usageAndMessage
         HomeUiState(
             todayRoutines = todayRoutines,
             urgentTodos = pickUrgent(openTodos),
             openTodoCount = openTodos.size,
             activeRoutineId = activeId,
             activeFocusSession = focusSession,
-            blockerEnabled = blockerEnabled,
-            blockedAppCount = blockedCount,
+            blockerEnabled = blocker.enabled,
+            blockedAppCount = blocker.ruleCount,
+            blockerGroupCount = blocker.groupCount,
+            blockerReady = blockerReady,
             usage = usage,
             sleep = sleep,
             sleepWindowActive = sleepWindowActive(sleep),
+            message = message,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -118,6 +141,54 @@ class HomeViewModel @Inject constructor(
 
     init {
         refreshUsage()
+    }
+
+    fun clearMessage() = _message.update { null }
+
+    // ── Mode switches ─────────────────────────────────────────────────────────
+
+    /**
+     * Master switch for the blocker, straight from the dashboard. Turning it OFF
+     * follows the same rules as in blocker settings: refused while an Invincible
+     * rule is actively blocking, and Tamper-Protection gated when invincible rules
+     * exist at all (Golden Rule #11 — no side door around a lock).
+     */
+    fun setBlockerEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            if (!enabled) {
+                val cal = Calendar.getInstance()
+                val minutesOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+                val rules = blockerRepository.getAllAppsOnce()
+                val lockedCount = rules.count { isRuleLocked(it, minutesOfDay) }
+                if (lockedCount > 0) {
+                    _message.value = "Cannot turn blocking off: $lockedCount rule(s) are " +
+                        "locked by Invincible Mode right now."
+                    return@launch
+                }
+                if (rules.any { it.invincibleMode && it.isBlocked }) {
+                    val verdict = tamperGuard.checkProtectedChange()
+                    if (!verdict.allowed) {
+                        _message.value = verdict.message
+                        return@launch
+                    }
+                }
+            }
+            settingsRepository.saveBlockerEnabled(enabled)
+        }
+    }
+
+    /** Sleep schedule on/off. Locked while an invincible night is running. */
+    fun setSleepEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val current = sleepRepository.schedule.first()
+            if (current.enabled && !enabled && current.invincibleMode && sleepWindowActive(current)) {
+                _message.value = "Sleep mode is locked by Invincible Mode until wake-up."
+                return@launch
+            }
+            val updated = current.copy(enabled = enabled)
+            sleepRepository.saveSchedule(updated)
+            sleepAlarmHelper.scheduleAll(updated)
+        }
     }
 
     private fun sleepWindowActive(schedule: SleepSchedule): Boolean {
@@ -130,9 +201,10 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    /** Called on screen resume — screen time changes constantly. */
+    /** Called on screen resume — screen time and permissions change constantly. */
     fun refreshUsage() {
         viewModelScope.launch {
+            _blockerReady.value = PermissionHelper.isAccessibilityServiceEnabled(context)
             val granted = PermissionHelper.hasUsageStatsPermission(context)
             if (!granted) {
                 _usage.value = UsageStats(permissionGranted = false)
