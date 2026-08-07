@@ -21,6 +21,8 @@ import com.focusforceplus.app.data.db.entity.RoutineEntity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.data.repository.SettingsRepository
+import com.focusforceplus.app.data.repository.SleepRepository
+import com.focusforceplus.app.data.repository.SleepSchedule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -31,9 +33,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Full local backup as a single JSON document (routines + tasks, todos, blocker
- * rules, focus sessions, completion history). Import replaces all current data and
- * re-arms every alarm. Settings (DataStore) are not part of the backup.
+ * Full local backup as a single JSON document: routines + tasks, todos, blocker
+ * rules and groups, focus sessions, completion history, **all app settings** and
+ * the **sleep schedule**. Import replaces all current data and re-arms every alarm.
+ *
+ * Version 2 added the `settings` and `sleep` objects — before that a restored
+ * backup silently dropped everything that lives in DataStore rather than Room
+ * (reminder times, default priority, alarm spacing, blocker master switch, the
+ * whole sleep schedule). Version 1 files still import; the missing sections are
+ * simply left at their current values.
  *
  * Uses org.json for consistency with the existing checklist serialization — no new
  * dependency, nothing leaves the device except through the user's chosen file.
@@ -51,12 +59,14 @@ class BackupManager @Inject constructor(
     private val routineCompletionDao: RoutineCompletionDao,
     private val focusCompletionDao: FocusCompletionDao,
     private val settingsRepository: SettingsRepository,
+    private val sleepRepository: SleepRepository,
     private val alarmHelper: AlarmHelper,
     private val todoAlarmHelper: TodoAlarmHelper,
     private val focusAlarmHelper: FocusAlarmHelper,
+    private val sleepAlarmHelper: SleepAlarmHelper,
 ) {
     companion object {
-        const val BACKUP_VERSION = 1
+        const val BACKUP_VERSION = 2
         const val SUGGESTED_FILE_NAME = "focusforceplus-backup.json"
     }
 
@@ -80,6 +90,8 @@ class BackupManager @Inject constructor(
             put("focusSessions", JSONArray(focusSessions.map { focusSessionJson(it) }))
             put("routineCompletions", JSONArray(routineCompletionDao.getAllOnce().map { routineCompletionJson(it) }))
             put("focusCompletions", JSONArray(focusCompletionDao.getAllOnce().map { focusCompletionJson(it) }))
+            put("settings", settingsJson())
+            put("sleep", sleepJson(sleepRepository.schedule.first()))
         }
 
         context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
@@ -87,7 +99,8 @@ class BackupManager @Inject constructor(
         } ?: throw IllegalStateException("Could not open the selected file for writing.")
 
         "Exported ${routines.size} routines, ${todos.size} todos, " +
-            "${blockedApps.size} blocker rules, ${focusSessions.size} focus sessions."
+            "${blockedApps.size} blocker rules, ${focusSessions.size} focus sessions, " +
+            "plus your settings and sleep schedule."
     }
 
     // ── Import ────────────────────────────────────────────────────────────────
@@ -122,6 +135,10 @@ class BackupManager @Inject constructor(
             ?.mapObjects { routineCompletionFromJson(it) } ?: emptyList()
         val focusCompletions = root.optJSONArray("focusCompletions")
             ?.mapObjects { focusCompletionFromJson(it) } ?: emptyList()
+        // Version 1 files carry neither of these; leaving them null keeps the
+        // current settings instead of resetting them to defaults.
+        val settings = root.optJSONObject("settings")
+        val sleep = root.optJSONObject("sleep")?.let { sleepFromJson(it) }
 
         // Cancel alarms of the data that is about to be replaced.
         routineDao.getAllOnce().forEach { alarmHelper.cancelRoutineAlarms(it.id) }
@@ -152,13 +169,27 @@ class BackupManager @Inject constructor(
             focusCompletions.forEach { focusCompletionDao.insert(it) }
         }
 
-        // Re-arm alarms for the imported data.
+        // Settings live in DataStore, outside the Room transaction. They are applied
+        // after the data landed so a failed import never leaves half-applied settings.
+        settings?.let { applySettings(it) }
+        sleep?.let { sleepRepository.saveSchedule(it) }
+
+        // Re-arm alarms for the imported data — including the restored reminder
+        // times and sleep schedule, not the ones that happened to be set before.
         alarmHelper.rescheduleAll(routines)
         todoAlarmHelper.rescheduleAll(todos, settingsRepository.digestTimes.first())
         focusAlarmHelper.rescheduleAll(focusSessions)
+        sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
 
-        "Imported ${routines.size} routines, ${todos.size} todos, " +
-            "${blockedApps.size} blocker rules, ${focusSessions.size} focus sessions."
+        buildString {
+            append("Imported ${routines.size} routines, ${todos.size} todos, ")
+            append("${blockedApps.size} blocker rules, ${focusSessions.size} focus sessions")
+            when {
+                settings != null && sleep != null -> append(", settings and sleep schedule.")
+                settings != null -> append(" and settings.")
+                else -> append(".\nThis backup predates settings export, so your current settings were kept.")
+            }
+        }
     }
 
     // ── Entity <-> JSON mapping ───────────────────────────────────────────────
@@ -387,6 +418,97 @@ class BackupManager @Inject constructor(
         focusedMinutes = o.getInt("focusedMinutes"),
         completedAt = o.getLong("completedAt"),
         endedEarly = o.getBoolean("endedEarly"),
+    )
+
+    // ── Settings (DataStore) ──────────────────────────────────────────────────
+    //
+    // Everything the user can configure, except state that is meaningless on
+    // another device or after a restore: the onboarding flag, the seen-help-hint
+    // keys, and the Tamper Protection clock anchor. Tamper Protection's own
+    // enabled flag is deliberately NOT restored either — re-enabling a lock must
+    // stay an explicit, in-window decision (compliance guide 2.2).
+
+    private suspend fun settingsJson() = JSONObject().apply {
+        put("digestTimes", JSONArray(
+            settingsRepository.digestTimes.first().map {
+                SettingsRepository.encodeTime(it.first, it.second)
+            }
+        ))
+        put("defaultPriority", settingsRepository.defaultPriority.first())
+        put("autoDeleteDays", settingsRepository.autoDeleteDays.first())
+        put("undatedAlarmGapMinutes", settingsRepository.undatedAlarmGapMinutes.first())
+        put("blockerEnabled", settingsRepository.blockerEnabled.first())
+        put("blockDuringRoutines", settingsRepository.blockDuringRoutines.first())
+        put("blockDuringFocus", settingsRepository.blockDuringFocus.first())
+        put("alarmSoundEnabled", settingsRepository.alarmSoundEnabled.first())
+        put("alarmVibrationEnabled", settingsRepository.alarmVibrationEnabled.first())
+        put("tpWindowStartMinutes", settingsRepository.tpWindowStartMinutes.first())
+        put("tpWindowDurationMinutes", settingsRepository.tpWindowDurationMinutes.first())
+    }
+
+    private suspend fun applySettings(o: JSONObject) {
+        o.optJSONArray("digestTimes")?.let { array ->
+            val times = (0 until array.length())
+                .mapNotNull { SettingsRepository.decodeTime(array.getString(it)) }
+                .sortedBy { it.first * 60 + it.second }
+            if (times.isNotEmpty()) settingsRepository.saveDigestTimes(times)
+        }
+        if (o.has("defaultPriority")) settingsRepository.saveDefaultPriority(o.getInt("defaultPriority"))
+        if (o.has("autoDeleteDays")) settingsRepository.saveAutoDeleteDays(o.getInt("autoDeleteDays"))
+        if (o.has("undatedAlarmGapMinutes")) {
+            settingsRepository.saveUndatedAlarmGapMinutes(o.getInt("undatedAlarmGapMinutes"))
+        }
+        if (o.has("blockerEnabled")) settingsRepository.saveBlockerEnabled(o.getBoolean("blockerEnabled"))
+        if (o.has("blockDuringRoutines")) {
+            settingsRepository.saveBlockDuringRoutines(o.getBoolean("blockDuringRoutines"))
+        }
+        if (o.has("blockDuringFocus")) {
+            settingsRepository.saveBlockDuringFocus(o.getBoolean("blockDuringFocus"))
+        }
+        if (o.has("alarmSoundEnabled")) {
+            settingsRepository.saveAlarmSoundEnabled(o.getBoolean("alarmSoundEnabled"))
+        }
+        if (o.has("alarmVibrationEnabled")) {
+            settingsRepository.saveAlarmVibrationEnabled(o.getBoolean("alarmVibrationEnabled"))
+        }
+        if (o.has("tpWindowStartMinutes") && o.has("tpWindowDurationMinutes")) {
+            settingsRepository.saveTpWindow(
+                o.getInt("tpWindowStartMinutes"),
+                o.getInt("tpWindowDurationMinutes"),
+            )
+        }
+    }
+
+    // ── Sleep schedule (DataStore) ────────────────────────────────────────────
+
+    private fun sleepJson(s: SleepSchedule) = JSONObject().apply {
+        put("enabled", s.enabled)
+        put("bedtimeMinutes", s.bedtimeMinutes)
+        put("wakeMinutes", s.wakeMinutes)
+        putNullable("activeDaysCsv", s.activeDaysCsv)
+        put("windDownMinutes", s.windDownMinutes)
+        put("dndEnabled", s.dndEnabled)
+        putNullable("blockedGroupsCsv", s.blockedGroupsCsv)
+        put("invincibleMode", s.invincibleMode)
+        put("bedtimeRoutineId", s.bedtimeRoutineId)
+        put("morningRoutineId", s.morningRoutineId)
+        put("nativeAlarmCount", s.nativeAlarmCount)
+        put("nativeAlarmGapMinutes", s.nativeAlarmGapMinutes)
+    }
+
+    private fun sleepFromJson(o: JSONObject) = SleepSchedule(
+        enabled = o.optBoolean("enabled", false),
+        bedtimeMinutes = o.optInt("bedtimeMinutes", 23 * 60),
+        wakeMinutes = o.optInt("wakeMinutes", 7 * 60),
+        activeDaysCsv = o.optStringOrNull("activeDaysCsv"),
+        windDownMinutes = o.optInt("windDownMinutes", 30),
+        dndEnabled = o.optBoolean("dndEnabled", true),
+        blockedGroupsCsv = o.optStringOrNull("blockedGroupsCsv"),
+        invincibleMode = o.optBoolean("invincibleMode", false),
+        bedtimeRoutineId = o.optLong("bedtimeRoutineId", 0L),
+        morningRoutineId = o.optLong("morningRoutineId", 0L),
+        nativeAlarmCount = o.optInt("nativeAlarmCount", 0),
+        nativeAlarmGapMinutes = o.optInt("nativeAlarmGapMinutes", 10),
     )
 
     // ── org.json helpers ──────────────────────────────────────────────────────
