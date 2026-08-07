@@ -32,11 +32,18 @@ data class TodoAlarmUiState(
     val isLoading: Boolean = true,
     val checklistItems: List<ChecklistItem> = emptyList(),
     val showAllDonePrompt: Boolean = false,
+    /**
+     * True from the moment an action (done / snooze / reschedule / dismiss) starts
+     * until the screen closes. Every action writes to the database and then finishes
+     * the activity, so a second tap while the first is still running would burn a
+     * second snooze for nothing.
+     */
+    val actionInProgress: Boolean = false,
 ) {
     val canSnooze: Boolean get() = snoozeCount < maxSnoozeCount
-    val remainingSnoozes: Int get() = maxSnoozeCount - snoozeCount
+    val remainingSnoozes: Int get() = (maxSnoozeCount - snoozeCount).coerceAtLeast(0)
     val canReschedule: Boolean get() = rescheduleCount < maxRescheduleCount
-    val remainingReschedules: Int get() = maxRescheduleCount - rescheduleCount
+    val remainingReschedules: Int get() = (maxRescheduleCount - rescheduleCount).coerceAtLeast(0)
 }
 
 @HiltViewModel
@@ -93,85 +100,107 @@ class TodoAlarmViewModel @Inject constructor(
 
     fun dismissAllDonePrompt() = _uiState.update { it.copy(showAllDonePrompt = false) }
 
-    fun markDone(onSuccess: () -> Unit) {
+    /**
+     * Runs [block] at most once per screen. Every action here ends with the alarm
+     * screen closing, so re-entrancy can only ever double-spend a snooze or
+     * reschedule — which is exactly what it used to do when the close was slower
+     * than the user's second tap.
+     */
+    private fun runOnce(onSuccess: () -> Unit, block: suspend () -> Unit) {
+        if (_uiState.value.actionInProgress) return
+        _uiState.update { it.copy(actionInProgress = true) }
         viewModelScope.launch {
-            try {
-                val todo = repository.getTodoById(todoId)
-                repository.markCompleted(todoId, System.currentTimeMillis())
-                alarmHelper.cancelTodoAlarm(todoId)
-                alarmHelper.cancelTodoSnoozeAlarm(todoId)
-                stopAlarmForegroundService()
-                notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
-                if (todo != null && todo.isRecurring && todo.recurringPattern != null && todo.dueDateTime != null) {
-                    val nextDue = nextOccurrenceMillis(todo.dueDateTime, todo.recurringPattern)
-                    val next = todo.copy(
-                        id              = 0L,
-                        dueDateTime     = nextDue,
-                        isCompleted     = false,
-                        completedAt     = null,
-                        snoozeCount     = 0,
-                        rescheduleCount = 0,
-                        postponedTo     = null,
-                    )
-                    val newId = repository.insertTodo(next)
-                    alarmHelper.scheduleTodoAlarm(next.copy(id = newId))
-                }
-            } finally {
+            val ok = runCatching { block() }.isSuccess
+            if (ok) {
                 onSuccess()
+            } else {
+                // The action did not land, so the alarm has to stay: closing here
+                // would drop the reminder entirely. Re-open the buttons instead.
+                _uiState.update { it.copy(actionInProgress = false) }
             }
+        }
+    }
+
+    fun markDone(onSuccess: () -> Unit) = runOnce(onSuccess) {
+        val todo = repository.getTodoById(todoId)
+        repository.markCompleted(todoId, System.currentTimeMillis())
+        alarmHelper.cancelTodoAlarm(todoId)
+        alarmHelper.cancelTodoSnoozeAlarm(todoId)
+        stopAlarmForegroundService()
+        notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
+        if (todo != null && todo.isRecurring && todo.recurringPattern != null && todo.dueDateTime != null) {
+            val nextDue = nextOccurrenceMillis(todo.dueDateTime, todo.recurringPattern)
+            val next = todo.copy(
+                id              = 0L,
+                dueDateTime     = nextDue,
+                isCompleted     = false,
+                completedAt     = null,
+                snoozeCount     = 0,
+                rescheduleCount = 0,
+                postponedTo     = null,
+            )
+            val newId = repository.insertTodo(next)
+            alarmHelper.scheduleTodoAlarm(next.copy(id = newId))
         }
     }
 
     fun snooze(minutes: Int, onSuccess: () -> Unit) {
         if (!_uiState.value.canSnooze) return
-        viewModelScope.launch {
-            try {
-                val todo = repository.getTodoById(todoId)
-                if (todo != null) {
-                    val newCount      = todo.snoozeCount + 1
-                    val triggerMillis = System.currentTimeMillis() + minutes * 60_000L
-                    repository.updateSnoozeCount(todoId, newCount)
-                    alarmHelper.scheduleTodoSnoozeAlarm(todoId, todo.title, minutes, newCount, todo.maxSnoozeCount, todo.priority)
-                    // Transition FGS to snoozed notification — keeps it pinned for Medium/High
-                    context.startForegroundService(
-                        TodoAlarmForegroundService.startSnoozedIntent(
-                            context, todoId, todo.title, triggerMillis, newCount, todo.maxSnoozeCount, todo.priority,
-                        )
+        runOnce(onSuccess) {
+            val todo = repository.getTodoById(todoId) ?: return@runOnce
+            // The database is the authority on how many snoozes are left; the screen
+            // may have been opened from a notification posted before an earlier snooze.
+            if (todo.snoozeCount >= todo.maxSnoozeCount) return@runOnce
+            val newCount      = todo.snoozeCount + 1
+            val triggerMillis = System.currentTimeMillis() + minutes * 60_000L
+            repository.updateSnoozeCount(todoId, newCount)
+            _uiState.update { it.copy(snoozeCount = newCount, maxSnoozeCount = todo.maxSnoozeCount) }
+            alarmHelper.scheduleTodoSnoozeAlarm(
+                todoId, todo.title, minutes, newCount, todo.maxSnoozeCount, todo.priority,
+            )
+            // Transition the pinned notification to its snoozed form. An OEM refusing
+            // the background service start must not undo the snooze itself, so this
+            // falls back to a plain post.
+            val pinned = runCatching {
+                context.startForegroundService(
+                    TodoAlarmForegroundService.startSnoozedIntent(
+                        context, todoId, todo.title, triggerMillis, newCount, todo.maxSnoozeCount, todo.priority,
                     )
-                }
-            } finally {
-                onSuccess()
+                )
+            }.isSuccess
+            if (!pinned) {
+                notifHelper.showNotification(
+                    TodoNotificationHelper.todoAlarmNotificationId(todoId),
+                    notifHelper.buildTodoSnoozedNotification(
+                        todoId, todo.title, triggerMillis, newCount, todo.maxSnoozeCount, todo.priority,
+                    ),
+                )
             }
         }
     }
 
     fun reschedule(epochMillis: Long, onSuccess: () -> Unit) {
-        viewModelScope.launch {
-            val todo = repository.getTodoById(todoId)
+        if (!_uiState.value.canReschedule && _uiState.value.priority == 2) return
+        runOnce(onSuccess) {
+            val todo = repository.getTodoById(todoId) ?: return@runOnce
             // High priority enforces the reschedule cap. The UI disables the button;
-            // this also guards the notification-action path. Blocked = the screen stays
-            // open so the user can pick another action.
-            if (todo != null && todo.priority == 2 && todo.rescheduleCount >= todo.maxRescheduleCount) {
-                return@launch
+            // this also guards the notification-action path.
+            if (todo.priority == 2 && todo.rescheduleCount >= todo.maxRescheduleCount) return@runOnce
+            val updated = todo.copy(
+                dueDateTime     = epochMillis,
+                postponedTo     = epochMillis,
+                snoozeCount     = 0,
+                rescheduleCount = todo.rescheduleCount + 1,
+            )
+            repository.updateTodo(updated)
+            _uiState.update {
+                it.copy(snoozeCount = 0, rescheduleCount = updated.rescheduleCount)
             }
-            try {
-                if (todo != null) {
-                    val updated = todo.copy(
-                        dueDateTime     = epochMillis,
-                        postponedTo     = epochMillis,
-                        snoozeCount     = 0,
-                        rescheduleCount = todo.rescheduleCount + 1,
-                    )
-                    repository.updateTodo(updated)
-                    alarmHelper.cancelTodoAlarm(todoId)
-                    alarmHelper.cancelTodoSnoozeAlarm(todoId)
-                    alarmHelper.scheduleTodoAlarm(updated)
-                    stopAlarmForegroundService()
-                    notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
-                }
-            } finally {
-                onSuccess()
-            }
+            alarmHelper.cancelTodoAlarm(todoId)
+            alarmHelper.cancelTodoSnoozeAlarm(todoId)
+            alarmHelper.scheduleTodoAlarm(updated)
+            stopAlarmForegroundService()
+            notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
         }
     }
 
@@ -179,29 +208,25 @@ class TodoAlarmViewModel @Inject constructor(
         runCatching { context.startService(TodoAlarmForegroundService.stopIntent(context)) }
     }
 
-    fun dismiss(onSuccess: () -> Unit) {
-        val state = _uiState.value
-        viewModelScope.launch {
-            try {
-                alarmHelper.cancelTodoSnoozeAlarm(todoId)
-                if (state.priority == 1) {
-                    // Medium: transition FGS to dismissed soft reminder (stays pinned, no stop/restart flash)
-                    val todo = repository.getTodoById(todoId)
-                    if (todo != null) {
-                        context.startForegroundService(
-                            TodoAlarmForegroundService.startDismissedIntent(context, todoId, todo.title)
-                        )
-                    } else {
-                        stopAlarmForegroundService()
-                        notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
-                    }
-                } else {
-                    stopAlarmForegroundService()
-                    notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
-                }
-            } finally {
-                onSuccess()
+    fun dismiss(onSuccess: () -> Unit) = runOnce(onSuccess) {
+        alarmHelper.cancelTodoSnoozeAlarm(todoId)
+        val todo = if (_uiState.value.priority == 1) repository.getTodoById(todoId) else null
+        if (todo != null) {
+            // Medium: transition to the dismissed soft reminder (stays pinned, no flash).
+            val pinned = runCatching {
+                context.startForegroundService(
+                    TodoAlarmForegroundService.startDismissedIntent(context, todoId, todo.title)
+                )
+            }.isSuccess
+            if (!pinned) {
+                notifHelper.showNotification(
+                    TodoNotificationHelper.todoAlarmNotificationId(todoId),
+                    notifHelper.buildMediumDismissedNotification(todoId, todo.title),
+                )
             }
+        } else {
+            stopAlarmForegroundService()
+            notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
         }
     }
 }

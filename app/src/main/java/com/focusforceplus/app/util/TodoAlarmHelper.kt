@@ -24,9 +24,15 @@ class TodoAlarmHelper @Inject constructor(
         private const val RC_SHOW_BASE   = 201_000
         private const val RC_SNOOZE_BASE = 210_000
 
-        // Three fixed slots — slot index is stable, hour/minute can change via settings
-        val DIGEST_SLOT_RCS = listOf(300_001, 300_002, 300_003)
-        const val MAX_DIGEST_SLOTS = 3
+        // Fixed slots — the slot index is stable and maps to a request code, the
+        // hour/minute behind it is user-configurable. Slots 0..2 keep the request
+        // codes they had when there were only three, so upgrading does not orphan
+        // already-scheduled alarms.
+        private const val RC_DIGEST_SLOT_BASE = 300_001
+        const val MAX_DIGEST_SLOTS = 8
+
+        val DIGEST_SLOT_RCS: List<Int> =
+            (0 until MAX_DIGEST_SLOTS).map { RC_DIGEST_SLOT_BASE + it }
 
         /** Small offset so the first cascade alarm fires just after the digest itself. */
         private const val FIRST_CASCADE_DELAY_MILLIS = 5_000L

@@ -3,6 +3,7 @@ package com.focusforceplus.app.ui.alarm
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.content.Intent
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
@@ -24,6 +25,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -120,6 +122,21 @@ class TodoAlarmActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    /**
+     * This activity is singleTask, so a second todo's alarm is delivered here
+     * instead of creating a new screen. The ViewModel is bound to the intent it
+     * was created with, so without this the second alarm would silently show the
+     * first todo — and acting on it would act on the wrong todo.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val newId = intent.getLongExtra("todoId", 0L)
+        if (newId <= 0L || newId == viewModel.todoId) return
+        setIntent(intent)
+        finish()
+        startActivity(intent)
     }
 
     override fun onResume() {
@@ -338,6 +355,7 @@ private fun TodoAlarmScreen(
                 } else {
                     onDone
                 },
+                enabled  = !state.actionInProgress,
                 modifier = Modifier.fillMaxWidth().height(64.dp).scale(scale),
                 shape    = RoundedCornerShape(16.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -354,7 +372,7 @@ private fun TodoAlarmScreen(
             }
             OutlinedButton(
                 onClick  = if (state.canSnooze) { { showSnoozeDialog = true } } else { {} },
-                enabled  = state.canSnooze,
+                enabled  = state.canSnooze && !state.actionInProgress,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape    = RoundedCornerShape(12.dp),
             ) {
@@ -373,7 +391,7 @@ private fun TodoAlarmScreen(
                 } else {
                     {}
                 },
-                enabled  = state.canReschedule || state.priority != 2,
+                enabled  = (state.canReschedule || state.priority != 2) && !state.actionInProgress,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape    = RoundedCornerShape(12.dp),
             ) { Text(rescheduleLabel) }
@@ -423,6 +441,9 @@ private fun TodoAlarmScreen(
             onDismissRequest = { showSnoozeDialog = false },
             title = { Text("Snooze for how long?") },
             text = {
+                // Two compact rows instead of five stacked buttons: the option list
+                // has to fit the dialog's content box on small screens, otherwise the
+                // lower choices sit under the button bar and taps go nowhere.
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (state.priority == 2) {
                         Text(
@@ -430,14 +451,24 @@ private fun TodoAlarmScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Spacer(Modifier.height(4.dp))
                     }
-                    listOf(5 to "5 minutes", 10 to "10 minutes", 15 to "15 minutes",
-                           30 to "30 minutes", 60 to "1 hour").forEach { (mins, label) ->
-                        OutlinedButton(
-                            onClick  = { showSnoozeDialog = false; onSnooze(mins) },
+                    val options = listOf(5 to "5 min", 10 to "10 min", 15 to "15 min",
+                                         30 to "30 min", 60 to "1 hour")
+                    options.chunked(3).forEach { chunk ->
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text(label) }
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            chunk.forEach { (mins, label) ->
+                                OutlinedButton(
+                                    onClick = { showSnoozeDialog = false; onSnooze(mins) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                                ) { Text(label, style = MaterialTheme.typography.labelLarge) }
+                            }
+                            repeat(3 - chunk.size) { Spacer(Modifier.weight(1f)) }
+                        }
                     }
                 }
             },
