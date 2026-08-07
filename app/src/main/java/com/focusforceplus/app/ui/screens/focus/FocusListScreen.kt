@@ -121,16 +121,8 @@ fun FocusListScreen(
               .fillMaxSize()
               .padding(padding),
       ) {
-        // Title and tab row live outside the list so the tabs can run edge to
-        // edge — an inset tab row reads as a floating box, not a switch.
-        Text(
-            text = "Focus & Sleep",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
-        )
-
+        // The tab title lives in the app bar; the tab row runs edge to edge right
+        // under it — an inset tab row reads as a floating box, not a switch.
         PrimaryTabRow(selectedTabIndex = selectedTab) {
             Tab(
                 selected = selectedTab == 0,

@@ -71,8 +71,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.data.model.checklistFromJson
-import com.focusforceplus.app.ui.common.FeatureHeader
-import com.focusforceplus.app.ui.common.FeatureHelpContent
 import com.focusforceplus.app.ui.theme.Warning
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -123,11 +121,8 @@ fun TodoListScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-            FeatureHeader(
-                title = "Todos",
-                help = FeatureHelpContent.TODOS,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
+            // The screen title lives in the app bar (see FocusForceTopBar), so the
+            // list starts as high as possible.
 
             // ── Search bar ────────────────────────────────────────────────────
             OutlinedTextField(
@@ -135,7 +130,7 @@ fun TodoListScreen(
                 onValueChange = { viewModel.setSearchQuery(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 placeholder = { Text("Search todos…") },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 trailingIcon = {

@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -33,6 +34,8 @@ import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.ui.alarm.RoutineAlarmActivity
 import androidx.compose.foundation.layout.Column
 import com.focusforceplus.app.ui.common.AppFooter
+import com.focusforceplus.app.ui.common.FeatureHelpAction
+import com.focusforceplus.app.ui.common.FeatureHelpContent
 import com.focusforceplus.app.ui.common.FocusForceTopBar
 import com.focusforceplus.app.ui.navigation.BottomNavBar
 import com.focusforceplus.app.ui.navigation.NavGraph
@@ -69,6 +72,10 @@ class MainActivity : ComponentActivity() {
         val onboardingState = androidx.compose.runtime.mutableStateOf<Boolean?>(null)
         splashScreen.setKeepOnScreenCondition { onboardingState.value == null }
         lifecycleScope.launch {
+            askForFullScreenIntent.value =
+                PermissionHelper.fullScreenIntentState(this@MainActivity) ==
+                    PermissionHelper.FullScreenIntentState.GRANTABLE &&
+                !settingsRepository.fullScreenIntentPromptShown.first()
             val completed = settingsRepository.onboardingCompleted.first()
             onboardingState.value = completed
             // Prominent disclosure first (Golden Rule #10): new users learn about
@@ -110,10 +117,13 @@ class MainActivity : ComponentActivity() {
                         routineNavRequest         = routineNavRequest.value,
                         canDrawOverlays           = PermissionHelper.canDrawOverlays(this),
                         canScheduleExactAlarms    = PermissionHelper.canScheduleExactAlarms(this),
-                        canFullScreen             = PermissionHelper.canUseFullScreenIntent(this),
+                        askForFullScreen          = askForFullScreenIntent.value,
                         onOpenOverlaySettings     = { PermissionHelper.openOverlaySettings(this) },
                         onOpenExactAlarmSettings  = { PermissionHelper.openExactAlarmSettings(this) },
                         onOpenFullScreenSettings  = { PermissionHelper.openFullScreenIntentSettings(this) },
+                        onFullScreenPromptSeen    = {
+                            lifecycleScope.launch { settingsRepository.markFullScreenIntentPromptShown() }
+                        },
                     )
                 }
             }
@@ -126,6 +136,13 @@ class MainActivity : ComponentActivity() {
      * re-trigger navigation while the activity is alive.
      */
     private val routineNavRequest = androidx.compose.runtime.mutableStateOf(0L to 0)
+
+    /**
+     * Whether to offer the optional lock-screen alarm permission this launch.
+     * Only true when the permission is missing, this device actually has a screen
+     * to grant it on, and we have not asked before.
+     */
+    private val askForFullScreenIntent = androidx.compose.runtime.mutableStateOf(false)
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -146,21 +163,38 @@ private fun AppContent(
     routineNavRequest: Pair<Long, Int> = 0L to 0,
     canDrawOverlays: Boolean = true,
     canScheduleExactAlarms: Boolean = true,
-    canFullScreen: Boolean = true,
+    askForFullScreen: Boolean = false,
     onOpenOverlaySettings: () -> Unit = {},
     onOpenExactAlarmSettings: () -> Unit = {},
     onOpenFullScreenSettings: () -> Unit = {},
+    onFullScreenPromptSeen: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     // Show dialogs in priority order — but never during onboarding, which has its
     // own permission checklist with proper disclosures.
     var showOverlayDialog     by remember { mutableStateOf(onboardingCompleted && !canDrawOverlays) }
     var showExactAlarmDialog  by remember { mutableStateOf(onboardingCompleted && !canScheduleExactAlarms && canDrawOverlays) }
-    var showFullScreenDialog  by remember { mutableStateOf(onboardingCompleted && !canFullScreen && canDrawOverlays && canScheduleExactAlarms) }
+    var showFullScreenDialog  by remember { mutableStateOf(onboardingCompleted && askForFullScreen && canDrawOverlays && canScheduleExactAlarms) }
+    LaunchedEffect(showFullScreenDialog) {
+        if (showFullScreenDialog) onFullScreenPromptSeen()
+    }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val mainTabRoutes = remember { bottomNavScreens.map { it.route }.toSet() }
+    // The top bar carries each tab's title, so no screen repeats it below the bar.
+    // Home keeps the brand wordmark instead of a title.
+    val screenTitle = bottomNavScreens
+        .firstOrNull { it.route == currentRoute && it.route != Screen.Home.route }
+        ?.label
+    // The Focus & Sleep tab has two guides (focus / sleep) and keeps its own
+    // help button next to the sub-tab caption.
+    val routeHelp = when (currentRoute) {
+        Screen.Routines.route -> FeatureHelpContent.ROUTINES
+        Screen.Todos.route    -> FeatureHelpContent.TODOS
+        Screen.Blocker.route  -> FeatureHelpContent.BLOCKER
+        else                  -> null
+    }
     // null = NavController not yet navigated (first frame) → default by onboarding state
     val showTopBar = if (currentRoute == null) onboardingCompleted else currentRoute in mainTabRoutes
     val hideChrome = currentRoute == OnboardingRoutes.ONBOARDING ||
@@ -180,7 +214,9 @@ private fun AppContent(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             if (showTopBar && !hideChrome) FocusForceTopBar(
+                screenTitle = screenTitle,
                 onSettingsClick = { navController.navigate(SettingsRoutes.SETTINGS) },
+                actions = { routeHelp?.let { FeatureHelpAction(it) } },
             )
         },
         bottomBar = {
@@ -194,7 +230,12 @@ private fun AppContent(
     ) { innerPadding ->
         NavGraph(
             navController    = navController,
-            modifier         = Modifier.padding(innerPadding),
+            // consumeWindowInsets is what keeps the status/navigation bar insets
+            // from being applied a second time by every screen's own Scaffold —
+            // that double padding used to eat ~55dp of list space.
+            modifier         = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
             startDestination = if (onboardingCompleted) Screen.Home.route
                                else OnboardingRoutes.ONBOARDING,
         )
@@ -250,18 +291,20 @@ private fun AppContent(
         )
     }
 
-    // USE_FULL_SCREEN_INTENT (Android 14+ only) — needed for the lock-screen alarm.
+    // USE_FULL_SCREEN_INTENT (Android 14+ only) — optional polish for the lock-screen
+    // alarm. Asked at most once, and only on phones that actually have the setting;
+    // it stays available in Settings > Permissions.
     if (showFullScreenDialog) {
         AlertDialog(
             onDismissRequest = { showFullScreenDialog = false },
             title = { Text("Enable lock-screen alarm") },
             text  = {
                 Text(
-                    "This is optional. It lets the routine alarm show over your lock screen. " +
-                    "Without it, alarms still work, they just appear as a notification banner.\n\n" +
-                    "Tap \"Open settings\" and enable full-screen notifications for FocusForce+. " +
-                    "Some phones (Samsung, for example) don't have a separate setting for this, " +
-                    "which is fine, the alarm still fires as a notification.",
+                    "This is optional. It lets alarms show over your lock screen instead " +
+                    "of only as a banner - everything else works either way.\n\n" +
+                    "Tap \"Open settings\" and enable full-screen notifications for " +
+                    "FocusForce+. You will not be asked again; the setting stays under " +
+                    "Settings > Permissions.",
                 )
             },
             confirmButton = {

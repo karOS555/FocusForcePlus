@@ -62,8 +62,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.data.db.entity.RoutineEntity
-import com.focusforceplus.app.ui.common.FeatureHeader
-import com.focusforceplus.app.ui.common.FeatureHelpContent
 import com.focusforceplus.app.ui.common.routineDayLabel
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -100,11 +98,7 @@ fun RoutineListScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            FeatureHeader(
-                title = "Routines",
-                help = FeatureHelpContent.ROUTINES,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
+            // Title + guide live in the app bar (FocusForceTopBar).
             if (routinesWithReschedule.isEmpty()) {
                 EmptyRoutinesHint(modifier = Modifier.weight(1f))
             } else {

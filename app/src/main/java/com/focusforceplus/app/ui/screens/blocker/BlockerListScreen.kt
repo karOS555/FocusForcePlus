@@ -115,30 +115,22 @@ fun BlockerListScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // ── Header row ─────────────────────────────────────────────────────
+            // ── Status row (title + guide live in the app bar) ─────────────────
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            "App Blocker",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        Text(
-                            if (uiState.blockerEnabled) "Blocking is on" else "Blocking is paused",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (uiState.blockerEnabled) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Text(
+                        if (uiState.blockerEnabled) "Blocking is on" else "Blocking is paused",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (uiState.blockerEnabled) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
                     if (!uiState.blockerEnabled) {
                         TextButton(onClick = viewModel::enableBlocking) { Text("Turn on") }
                     }
-                    FeatureHelpAction(FeatureHelpContent.BLOCKER)
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             Icons.Filled.Settings,
