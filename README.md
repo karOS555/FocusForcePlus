@@ -44,48 +44,49 @@
 
 <br/>
 
-## Why it exists
+<p align="center">
+<img src="fastlane/metadata/android/en-US/images/featureGraphic.png" width="100%" alt="Routines, to-dos, app blocking and focus in one fully offline app">
+</p>
 
-I made this for myself, first and foremost.
-
-I kept bouncing between a routine app, a to-do app and a blocker, and none of them held me to anything once the motivation wore off. Everything was a suggestion you could swipe away. So I wrote the thing I actually wanted: one app where a routine wakes you up properly, where a to-do doesn't quietly disappear, and where "just five more minutes" has to get past something first.
-
-I use it every day. Putting it on GitHub came later, almost as an afterthought. But if your brain works anything like mine, there's a decent chance it fits you too, and that turned out to be the best part of having published it.
-
-<br/>
-
-## What it is
+<h2 id="what-it-is"><sub><img src="docs/readme/icons/info.svg" height="24" width="24" alt=""></sub> What it is</h2>
 
 FocusForce+ puts five things that usually live in five separate apps into one: strict **routines**, a nagging **to-do planner**, an **app blocker**, a **focus mode**, and a **sleep mode**. The whole point is that it doesn't let you wriggle out of your own plans the second motivation dips.
 
-It's aimed at people whose brains need more structure than most apps assume: ADHD, trouble reining in your own habits, or just losing too many hours to your phone.
+It's aimed at people whose brains need more structure than most apps assume: ADHD, trouble reining in your own habits, or just losing too many hours to your phone. Everything stays on your phone: no account, no cloud, no ads, no tracking.
 
-Everything stays on your phone. No account, no cloud, no ads, no tracking. The app doesn't even ask for internet access.
+I built it for myself first, and I use it every day. Nothing I tried before held up once the motivation was gone. Putting it on GitHub came later, but if your brain works anything like mine, it might fit you too.
+
+<h2 id="screenshots"><sub><img src="docs/readme/icons/smartphone.svg" height="24" width="24" alt=""></sub> Screenshots</h2>
+
+<p align="center">
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="30%" alt="Your day at a glance"></a>
+&nbsp;
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="30%" alt="Routines, step by step"></a>
+&nbsp;
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="30%" alt="Nothing quietly disappears"></a>
+</p>
+
+<p align="center">
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="30%" alt="Block what pulls you in"></a>
+&nbsp;
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="30%" alt="The block holds"></a>
+&nbsp;
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="30%" alt="Wind down, wake up"></a>
+</p>
+
+<h2 id="whats-inside"><sub><img src="docs/readme/icons/layers.svg" height="24" width="24" alt=""></sub> What's inside</h2>
+
+- **Routines** — a real alarm at the start time and a countdown for every step
+- **To-dos** — a planner that won't let things quietly slip
+- **App blocker** — daily limits, time windows and app groups
+- **Focus mode** — one timed session with Do Not Disturb and blocked apps
+- **Sleep mode** — one nightly schedule, from wind-down to wake-up
+- **Dashboard and statistics** — your day at a glance, plus a weekly view
+
+<details>
+<summary><b>The details</b></summary>
 
 <br/>
-
-## Screenshots
-
-<div align="center">
-<table>
-<tr>
-<td align="center"><img src="docs/screenshots/home.png" alt="Home dashboard" width="140"/><br/><sub><b>Home</b><br/>Your day at a glance,<br/>plus quick actions.</sub></td>
-<td align="center"><img src="docs/screenshots/routine.png" alt="An active routine counting down its current step" width="140"/><br/><sub><b>Routines</b><br/>Multi-step timers<br/>that keep counting.</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="docs/screenshots/todos.png" alt="The to-do list with priority filters" width="140"/><br/><sub><b>To-dos</b><br/>Priority sets how<br/>loud the reminder gets.</sub></td>
-<td align="center"><img src="docs/screenshots/blocker.png" alt="The app blocker with its blocked apps" width="140"/><br/><sub><b>App blocker</b><br/>Daily limits, windows<br/>and app groups.</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="docs/screenshots/focus.png" alt="A focus session in progress" width="140"/><br/><sub><b>Focus mode</b><br/>One timed session,<br/>Do Not Disturb on.</sub></td>
-<td align="center"><img src="docs/screenshots/sleep.png" alt="Sleep mode settings with bedtime and wake-up" width="140"/><br/><sub><b>Sleep mode</b><br/>Wind-down, night<br/>blocking and wake-up.</sub></td>
-</tr>
-</table>
-</div>
-
-<br/>
-
-## What's inside
 
 **Routines.** Multi-step routines with a real alarm at the start time, a countdown for every step, and a heads-up before each one ends. Run over time and the timer keeps going into the negative and keeps reminding you.
 
@@ -101,27 +102,23 @@ Everything stays on your phone. No account, no cloud, no ads, no tracking. The a
 
 **Statistics.** A simple weekly view of routines completed and focus minutes logged.
 
-<br/>
+</details>
 
-## What makes it different
+<h2 id="what-makes-it-different"><sub><img src="docs/readme/icons/sparkles.svg" height="24" width="24" alt=""></sub> What makes it different</h2>
 
 **Invincible Mode is per feature, not one big switch.**
-Most blocking apps give you a single lockdown toggle. Here you turn it on for the individual routine, focus session, or blocking rule you actually want to commit to. Lock in the morning workout while leaving everything else flexible. While an invincible thing is active (routine running, session in progress, limit hit) you can't impulsively cancel or weaken it until it reaches its natural end.
+Most blocking apps give you a single lockdown toggle; here you turn it on for the individual routine, session or rule you want to commit to. While it's active you can't cancel or weaken that one thing until it reaches its natural end.
 
 **It's friction, not a trap.**
-You can always uninstall the app from Android settings, and a factory reset always works. The goal isn't to lock you out of your own phone. It's to make bypassing annoying enough that a bad-day version of you doesn't do it for a dumb reason. The app is upfront about this everywhere it matters.
+You can always uninstall the app from Android settings, and a factory reset always works. The point is to make bypassing annoying enough that a bad-day version of you doesn't do it for a dumb reason.
 
 **Tamper Protection for the settings themselves.**
-Optional second layer. When it's on, loosening your own lock settings only works inside a short daily window you choose, so you can't panic-disable everything in a weak moment.
+Optional second layer: loosening your own lock settings only works inside a short daily window you choose.
 
 **Actually local.**
-No internet permission at all. Your data can't leave the device because the app has no way to send it. You can export and import everything as a plain JSON file whenever you want.
+No internet permission at all, so your data has no way to leave the device. Everything exports and imports as a plain JSON file.
 
-<br/>
-
-## Install
-
-FocusForce+ isn't on the Play Store yet, so you install the APK directly.
+<h2 id="install"><sub><img src="docs/readme/icons/download.svg" height="24" width="24" alt=""></sub> Install</h2>
 
 1. Open [the latest release](https://github.com/karOS555/FocusForcePlus/releases/latest) and download the `.apk` file.
 2. Open it on your phone. Android will ask permission to install from this source the first time. Allow it.
@@ -129,12 +126,12 @@ FocusForce+ isn't on the Play Store yet, so you install the APK directly.
 
 Minimum Android version is 8.0 (API 26).
 
+> [!IMPORTANT]
+> Some permissions (accessibility for app blocking, usage access for time limits, Do Not Disturb for focus mode) are granted in Android's own settings. The setup guide takes you there and tells you exactly what each one does and doesn't do. Nothing is turned on behind your back.
+
 ### Getting updates
 
-FocusForce+ has no internet access, so it can't check for updates itself (that's the point, your data can't leave the device). Two options:
-
-- **Manual:** Settings > About > Check for updates opens the releases page, where you can see if there's a newer version and grab it.
-- **Automatic:** install FocusForce+ through [Obtainium](https://github.com/ImranR98/Obtainium), an app that watches GitHub releases and updates sideloaded apps for you. Point it at this repo once and it handles the rest. The app stays offline, Obtainium does the checking.
+The app can't check for updates itself, that's the point. Either use **Settings > About > Check for updates**, which opens the releases page, or let [Obtainium](https://github.com/ImranR98/Obtainium) watch this repo and update the APK for you.
 
 <div align="center">
 
@@ -142,21 +139,15 @@ FocusForce+ has no internet access, so it can't check for updates itself (that's
 <img src="https://img.shields.io/badge/Get_updates_via-Obtainium-1a3a6b?style=for-the-badge&logoColor=white" alt="Get updates via Obtainium"/>
 </a>
 
-<sub>Install Obtainium, then add `https://github.com/karOS555/FocusForcePlus` as a source.</sub>
-
 </div>
 
-> [!NOTE]
-> Some permissions (accessibility for app blocking, usage access for time limits, Do Not Disturb for focus mode) are granted in Android's own settings. The setup guide takes you there and tells you exactly what each one does and doesn't do. Nothing is turned on behind your back.
-
-<br/>
+> [!TIP]
+> Install Obtainium, then add `https://github.com/karOS555/FocusForcePlus` as a source.
 
 ---
 
-<br/>
-
 <details>
-<summary><b>Tech stack</b></summary>
+<summary><sub><img src="docs/readme/icons/wrench.svg" height="18" width="18" alt=""></sub> <b>Tech stack</b></summary>
 
 <br/>
 
@@ -175,7 +166,7 @@ FocusForce+ has no internet access, so it can't check for updates itself (that's
 </details>
 
 <details>
-<summary><b>Project status and roadmap</b></summary>
+<summary><sub><img src="docs/readme/icons/milestone.svg" height="18" width="18" alt=""></sub> <b>Project status and roadmap</b></summary>
 
 <br/>
 
@@ -199,7 +190,7 @@ Later ideas: home-screen widgets, calendar sync, a Pomodoro mode, streaks and ga
 </details>
 
 <details>
-<summary><b>Privacy</b></summary>
+<summary><sub><img src="docs/readme/icons/lock-keyhole.svg" height="18" width="18" alt=""></sub> <b>Privacy</b></summary>
 
 <br/>
 
@@ -212,7 +203,7 @@ Full details are in [PRIVACY.md](PRIVACY.md).
 </details>
 
 <details>
-<summary><b>Contributing</b></summary>
+<summary><sub><img src="docs/readme/icons/git-pull-request.svg" height="18" width="18" alt=""></sub> <b>Contributing</b></summary>
 
 <br/>
 
@@ -221,7 +212,7 @@ Bug reports, ideas, and pull requests are all welcome, especially notes on how t
 </details>
 
 <details>
-<summary><b>Credits</b></summary>
+<summary><sub><img src="docs/readme/icons/users.svg" height="18" width="18" alt=""></sub> <b>Credits</b></summary>
 
 <br/>
 
@@ -232,34 +223,25 @@ The code is written from scratch in Kotlin, but the ideas and some of the archit
 - [Curbox / DigiPaws](https://github.com/nethical6/digipaws) by nethical6, for gamified blocking ideas
 - [Routinery](https://play.google.com/store/apps/details?id=com.routinery.routinery), for routine-execution UX
 
+Icons in this README are from [Lucide](https://github.com/lucide-icons/lucide), used under the ISC License.
+
 </details>
 
-<br/>
+---
 
-## License
+<h2 id="license"><sub><img src="docs/readme/icons/scale.svg" height="24" width="24" alt=""></sub> License</h2>
 
-GNU General Public License v3.0. See [LICENSE](LICENSE). You're free to use, study, change, and share the app and its code. Anything built on top has to stay open under the same license, with the original credit kept.
+GNU General Public License v3.0, see [LICENSE](LICENSE). Anything built on top has to stay open under the same license, with the original credit kept.
 
-<br/>
-
-## A note on health
+<h2 id="a-note-on-health"><sub><img src="docs/readme/icons/heart-pulse.svg" height="24" width="24" alt=""></sub> A note on health</h2>
 
 FocusForce+ is a self-help tool for building focus and habits. It is not a medical device and does not diagnose, treat, cure, or prevent ADHD or any other condition, and it is not a substitute for professional care. If you're struggling, please talk to a qualified healthcare professional.
 
-<br/>
+<h2 id="if-it-helps-you"><sub><img src="docs/readme/icons/star.svg" height="24" width="24" alt=""></sub> If it helps you</h2>
 
-## If it helps you
+The app collects nothing and never phones home, which means I have no idea whether anyone is actually using it. So if it's doing something for you, a ⭐ on the repo or an [issue](../../issues) is the only signal I get — bugs, rough edges, ideas, or just a line saying it works.
 
-The app collects nothing and never phones home, which I'm glad about, but it does mean I have no idea whether anyone out there is actually using this.
-
-So if it's doing something for you:
-
-- **Leave a ⭐ on the repo.** Two seconds, and it's the only signal I get.
-- **[Open an issue](../../issues)** for bugs, rough edges, or ideas. And if nothing broke, that's worth a line too, without analytics I have no other way of knowing what works.
-
-Either one genuinely makes my day.
-
-<br/>
+<div align="right"><table><td><a href="#start-of-content">↥ Scroll to top</a></td></table></div>
 
 ---
 
