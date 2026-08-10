@@ -4,23 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FocusForce+ — offline routines and app blocker for Android</title>
-<meta name="description" content="FocusForce+ is an open source ADHD app for Android: strict routines, to-dos, an app blocker and focus mode. Fully offline, no account, no internet permission.">
+<meta name="description" content="FocusForce+ is an open source ADHD app for Android: strict routines, to-dos, an app blocker, focus and sleep mode. Fully offline, no account, no internet permission.">
+<meta name="theme-color" content="#050508">
 <link rel="canonical" href="https://karos555.github.io/FocusForcePlus/">
 <link rel="icon" href="logo.png" type="image/png">
+<link rel="apple-touch-icon" href="logo.png">
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="FocusForce+ — offline routines and app blocker for Android">
-<meta property="og:description" content="FocusForce+ is an open source ADHD app for Android: strict routines, to-dos, an app blocker and focus mode. Fully offline, no account, no internet permission.">
+<meta property="og:description" content="Routines, to-dos, app blocking, focus and sleep mode in one Android app, with reminders that are hard to ignore. Fully offline.">
 <meta property="og:url" content="https://karos555.github.io/FocusForcePlus/">
-<meta property="og:image" content="https://karos555.github.io/FocusForcePlus/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image" content="https://karos555.github.io/FocusForcePlus/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="FocusForce+ — built for brains that need structure">
 <meta property="og:locale" content="en_US">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FocusForce+ — offline routines and app blocker for Android">
-<meta name="twitter:description" content="FocusForce+ is an open source ADHD app for Android: strict routines, to-dos, an app blocker and focus mode. Fully offline, no account, no internet permission.">
-<meta name="twitter:image" content="https://karos555.github.io/FocusForcePlus/og-image.png">
+<meta name="twitter:description" content="Routines, to-dos, app blocking, focus and sleep mode in one Android app, with reminders that are hard to ignore. Fully offline.">
+<meta name="twitter:image" content="https://karos555.github.io/FocusForcePlus/social-preview.png">
 
 <script type="application/ld+json">
 {
@@ -29,49 +32,78 @@
   "name": "FocusForce+",
   "operatingSystem": "Android 8.0+",
   "applicationCategory": "UtilitiesApplication",
-  "softwareVersion": "0.9.3-beta",
+  "softwareVersion": "0.9.4-beta",
   "isAccessibleForFree": true,
   "license": "https://spdx.org/licenses/GPL-3.0-only.html",
   "downloadUrl": "https://github.com/karOS555/FocusForcePlus/releases/latest",
   "url": "https://karos555.github.io/FocusForcePlus/",
   "description": "Strict routines, a nagging to-do planner, an app blocker, a focus mode and a sleep mode in one Android app. Everything stays on the device; the app has no internet permission.",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "EUR"
-  },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
   "screenshot": [
     "https://karos555.github.io/FocusForcePlus/screenshots/home.png",
     "https://karos555.github.io/FocusForcePlus/screenshots/routine.png",
+    "https://karos555.github.io/FocusForcePlus/screenshots/todos.png",
     "https://karos555.github.io/FocusForcePlus/screenshots/blocker.png",
     "https://karos555.github.io/FocusForcePlus/screenshots/focus.png",
-    "https://karos555.github.io/FocusForcePlus/screenshots/sleep.png",
-    "https://karos555.github.io/FocusForcePlus/screenshots/todos.png"
+    "https://karos555.github.io/FocusForcePlus/screenshots/sleep.png"
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does FocusForce+ need an internet connection?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. The app has no internet permission at all, so it cannot send or receive anything. Every feature works offline." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it really free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is free software under the GNU General Public License v3.0. There is nothing to buy, no subscription, no ads and no tracking." }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is it not on the Play Store?",
+      "acceptedAnswer": { "@type": "Answer", "text": "It is still in public beta and ships as a signed APK attached to each GitHub release. A Play Store submission is planned after a wider testing round." }
+    },
+    {
+      "@type": "Question",
+      "name": "Which Android versions are supported?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Android 8.0 (API 26) and newer." }
+    }
   ]
 }
 </script>
 
 <style>
-  /* Palette is the app's own (ui/theme/Color.kt): background #050508, accent #1d4ed8,
-     surfaces #0f2847 / #152e54 / #1a3a6b, on-colors #e2e8f0 / #cbd5e1 / #94a3b8 / #93c5fd. */
+  /* Palette is the app's own (ui/theme/Color.kt): background #050508, primary #1d4ed8,
+     surfaces #0f2847 / #152e54 / #1a3a6b, on-colors #e2e8f0 / #cbd5e1 / #94a3b8 / #93c5fd.
+     #3b82f6 (the same accent the store artwork uses) carries anything set on a dark
+     surface -- #1d4ed8 only reaches 2.2:1 there and was unreadable. */
   :root {
     --bg: #050508;
-    --accent: #1d4ed8;
+    --primary: #1d4ed8;
+    --accent: #3b82f6;
     --surface-1: #0f2847;
     --surface-2: #152e54;
     --surface-3: #1a3a6b;
+    --card: #0b1220;
     --text: #e2e8f0;
     --text-body: #cbd5e1;
     --text-dim: #94a3b8;
     --link: #93c5fd;
     --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --wrap: 62rem;
+    --wrap: 66rem;
+    --radius: 14px;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
-
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 
   body {
     margin: 0;
@@ -82,57 +114,54 @@
     line-height: 1.65;
   }
 
-  .wrap {
-    width: 100%;
-    max-width: var(--wrap);
-    margin-inline: auto;
-    padding-inline: 1.25rem;
-  }
-
-  section { padding-block: 3.5rem; border-top: 1px solid var(--surface-1); }
+  .wrap { width: 100%; max-width: var(--wrap); margin-inline: auto; padding-inline: 1.25rem; }
+  section { padding-block: 4rem; border-top: 1px solid var(--surface-1); }
 
   h1, h2, h3 { color: var(--text); line-height: 1.2; text-wrap: balance; }
-  h1 { font-size: clamp(2.25rem, 7vw, 3.25rem); margin: 0 0 .5rem; letter-spacing: -.02em; }
-  h2 { font-size: clamp(1.5rem, 4.5vw, 2rem); margin: 0 0 1.5rem; letter-spacing: -.01em; }
-  h3 { font-size: 1.1875rem; margin: 0 0 .5rem; }
+  h1 { font-size: clamp(2.25rem, 7vw, 3.5rem); margin: 0 0 .5rem; letter-spacing: -.02em; }
+  h2 { font-size: clamp(1.5rem, 4.5vw, 2rem); margin: 0 0 .5rem; letter-spacing: -.01em; }
+  h3 { font-size: 1.125rem; margin: 0 0 .5rem; }
 
   p { margin: 0 0 1rem; }
   p:last-child { margin-bottom: 0; }
 
   a { color: var(--link); }
   a:hover { color: #bfdbfe; }
-
-  /* Keyboard focus has to stay obvious on every interactive element. */
   a:focus-visible, button:focus-visible {
     outline: 3px solid var(--link);
     outline-offset: 3px;
     border-radius: 4px;
   }
 
-  /* ---------- Hero ---------- */
-  .hero { border-top: 0; padding-block: 4rem 4.5rem; text-align: center; }
-  .hero img.logo { width: 88px; height: 88px; margin-bottom: 1.25rem; }
-  .tagline {
-    max-width: 34rem;
-    margin: 0 auto 2.25rem;
-    color: var(--text-body);
-    font-size: 1.125rem;
+  /* A subhead under every section title, so the eye gets a landing spot. */
+  .section-intro { max-width: 44rem; margin: 0 0 2.5rem; color: var(--text-dim); }
+
+  .skip {
+    position: absolute; left: -9999px;
+    background: var(--primary); color: #fff;
+    padding: .75rem 1rem; border-radius: 0 0 8px 0; z-index: 10;
   }
+  .skip:focus { left: 0; top: 0; color: #fff; }
+
+  /* ---------- Hero ---------- */
+  .hero { border-top: 0; padding-block: 4rem 3.5rem; text-align: center; }
+  .hero img.logo { width: 92px; height: 92px; margin-bottom: 1.25rem; }
+  .tagline { max-width: 36rem; margin: 0 auto 2rem; color: var(--text-body); font-size: 1.125rem; }
 
   /* The signature element: a timer that has already run past zero. */
   .overtime {
-    margin: 0 auto 2.25rem;
-    padding: 2rem 1rem;
-    max-width: 30rem;
+    margin: 0 auto 2rem;
+    padding: 1.75rem 1rem;
+    max-width: 28rem;
     background: linear-gradient(180deg, var(--surface-1), #0a1b32);
     border: 1px solid var(--surface-3);
-    border-radius: 14px;
+    border-radius: var(--radius);
   }
   .overtime .clock {
     display: block;
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    font-size: clamp(3.25rem, 17vw, 6rem);
+    font-size: clamp(3rem, 16vw, 5.5rem);
     font-weight: 700;
     line-height: 1;
     letter-spacing: -.02em;
@@ -142,7 +171,6 @@
     display: block;
     margin-top: .875rem;
     font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
     font-size: .8125rem;
     letter-spacing: .04em;
     color: var(--text-dim);
@@ -156,42 +184,78 @@
     font-weight: 600;
     text-decoration: none;
   }
-  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary { background: var(--primary); color: #fff; }
   .btn-primary:hover { background: #2559e8; color: #fff; }
-  .btn-secondary {
-    background: transparent;
-    color: var(--link);
-    border: 1px solid var(--surface-3);
-  }
+  .btn-secondary { background: transparent; color: var(--link); border: 1px solid var(--surface-3); }
   .btn-secondary:hover { background: var(--surface-1); color: var(--link); }
 
-  /* ---------- Features ---------- */
-  .lead-shot { margin: 0 0 2.5rem; text-align: center; }
-  .lead-shot img { width: 100%; max-width: 240px; height: auto; border-radius: 12px; border: 1px solid var(--surface-2); }
-  .lead-shot figcaption { margin-top: .75rem; font-size: .875rem; color: var(--text-dim); }
-
-  .feature { margin-bottom: 3rem; }
-  .feature:last-child { margin-bottom: 0; }
-  .feature-media { margin: 0 0 1.25rem; }
-  .feature-media img {
-    width: 100%;
-    max-width: 220px;
-    height: auto;
-    border-radius: 12px;
+  /* Four facts that answer the questions people actually open a page like this with. */
+  .facts {
+    list-style: none; margin: 2.25rem 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center;
+  }
+  .facts li {
+    margin: 0;
+    padding: .375rem .875rem;
+    background: var(--surface-1);
     border: 1px solid var(--surface-2);
+    border-radius: 999px;
+    font-size: .875rem;
+    color: var(--text-body);
   }
 
-  @media (min-width: 40rem) {
-    .feature.has-shot {
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      gap: 2rem;
-      align-items: start;
+  /* ---------- Screenshot gallery ---------- */
+  /* A scroll-snapping rail on narrow screens, a grid once there is room. */
+  .shots {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 62%;
+    gap: 1.25rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 1rem;
+    margin: 0;
+    list-style: none;
+    scrollbar-color: var(--surface-3) transparent;
+  }
+  .shots li { scroll-snap-align: center; margin: 0; }
+  .shots figure { margin: 0; }
+  .shots img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 18px;
+    border: 1px solid var(--surface-3);
+    background: var(--card);
+  }
+  .shots figcaption { margin-top: .75rem; font-size: .875rem; color: var(--text-dim); }
+
+  @media (min-width: 48rem) {
+    .shots {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-columns: auto;
+      overflow: visible;
+      gap: 1.75rem 1.5rem;
+      padding-bottom: 0;
     }
-    .feature-media { margin: 0; }
   }
 
-  /* ---------- Lists and panels ---------- */
+  /* ---------- Cards ---------- */
+  .cards { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
+  @media (min-width: 44rem) { .cards { grid-template-columns: repeat(2, 1fr); } }
+
+  .cards li {
+    margin: 0;
+    padding: 1.25rem 1.375rem;
+    background: var(--card);
+    border: 1px solid var(--surface-1);
+    border-radius: var(--radius);
+  }
+  .cards h3 { color: var(--text); }
+  .cards p { color: var(--text-body); font-size: .9875rem; margin: 0; }
+
+  /* ---------- Lists, panels, steps ---------- */
   ul, ol { margin: 0 0 1rem; padding-left: 1.25rem; }
   li { margin-bottom: .5rem; }
   li:last-child { margin-bottom: 0; }
@@ -199,16 +263,16 @@
   .panel {
     background: var(--surface-1);
     border: 1px solid var(--surface-2);
-    border-radius: 12px;
+    border-radius: var(--radius);
     padding: 1.25rem 1.5rem;
   }
   .panel h2 { margin-bottom: .75rem; font-size: 1.25rem; }
-
-  .diff { margin-bottom: 1.75rem; }
-  .diff:last-child { margin-bottom: 0; }
-  .diff h3 { color: var(--text); }
-
   .note { color: var(--text-dim); font-size: .9375rem; }
+
+  .faq { margin: 0; }
+  .faq dt { color: var(--text); font-weight: 600; margin-top: 1.25rem; }
+  .faq dt:first-child { margin-top: 0; }
+  .faq dd { margin: .25rem 0 0; }
 
   footer {
     border-top: 1px solid var(--surface-1);
@@ -220,13 +284,16 @@
   footer li { margin: 0; }
 
   @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
     * { animation: none !important; transition: none !important; }
   }
 </style>
 </head>
 <body>
 
-<main>
+<a class="skip" href="#main">Skip to content</a>
+
+<main id="main">
 
   <!-- 1. Hero -->
   <header class="hero">
@@ -249,176 +316,180 @@
         <a class="btn btn-primary" href="https://github.com/karOS555/FocusForcePlus/releases/latest">Download the APK</a>
         <a class="btn btn-secondary" href="https://github.com/karOS555/FocusForcePlus">View on GitHub</a>
       </div>
+
+      <ul class="facts">
+        <li>No internet permission</li>
+        <li>No ads, no tracking</li>
+        <li>GPLv3, open source</li>
+        <li>Android 8.0 and up</li>
+      </ul>
     </div>
   </header>
 
-  <!-- 2. Why it exists -->
+  <!-- 2. Screenshots -->
+  <section id="screenshots">
+    <div class="wrap">
+      <h2>What it looks like</h2>
+      <p class="section-intro">Dark by default, built around the thing you are supposed to be doing right now.</p>
+
+      <ul class="shots">
+        <li><figure>
+          <img src="screenshots/home.png" alt="The home dashboard with today's routines, the next to-dos and screen time" width="1005" height="2048" loading="lazy" decoding="async">
+          <figcaption>Your day at a glance, plus quick actions.</figcaption>
+        </figure></li>
+        <li><figure>
+          <img src="screenshots/routine.png" alt="An active routine counting down its current step" width="1005" height="2048" loading="lazy" decoding="async">
+          <figcaption>Multi-step timers that keep counting.</figcaption>
+        </figure></li>
+        <li><figure>
+          <img src="screenshots/todos.png" alt="The to-do list with priority filters" width="1005" height="2048" loading="lazy" decoding="async">
+          <figcaption>Priority sets how loud the reminder gets.</figcaption>
+        </figure></li>
+        <li><figure>
+          <img src="screenshots/blocker.png" alt="The app blocker with its blocked apps and daily limits" width="1005" height="2048" loading="lazy" decoding="async">
+          <figcaption>Daily limits, windows and app groups.</figcaption>
+        </figure></li>
+        <li><figure>
+          <img src="screenshots/focus.png" alt="A focus session in progress" width="1005" height="2048" loading="lazy" decoding="async">
+          <figcaption>One timed session, Do Not Disturb on.</figcaption>
+        </figure></li>
+        <li><figure>
+          <img src="screenshots/sleep.png" alt="Sleep mode settings with bedtime and wake-up" width="1005" height="2048" loading="lazy" decoding="async">
+          <figcaption>Wind-down, night blocking and wake-up.</figcaption>
+        </figure></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3. Why it exists -->
   <section id="why">
     <div class="wrap">
       <h2>Why it exists</h2>
       <p>
-        I made this for myself, first and foremost. I kept bouncing between a routine app,
-        a to-do app and a blocker, and none of them held me to anything once the motivation
-        wore off. Everything was a suggestion you could swipe away.
+        I built it for myself first, and I use it every day. Nothing I tried before held up once
+        the motivation was gone: everything was a suggestion you could swipe away. So I wrote the
+        thing I actually wanted, where a routine keeps counting past zero, a to-do doesn't quietly
+        disappear, and "just five more minutes" has to get past something first.
       </p>
       <p>
-        So I wrote the thing I actually wanted: a routine app that keeps counting past zero,
-        where a to-do doesn't quietly disappear, and where "just five more minutes" has to get
-        past something first. I use it every day. Putting it on GitHub came later, and if your
-        brain works anything like mine, there's a decent chance it fits you too.
-      </p>
-      <p>
-        What came out of it is an open source ADHD app for Android, free under the GPL, with no
-        account to make, nothing to buy, and no data leaving your phone.
+        Putting it on GitHub came later, but if your brain works anything like mine, it might fit
+        you too. What came out of it is an open source ADHD app for Android, free under the GPL,
+        with no account to make, nothing to buy, and no data leaving your phone.
       </p>
     </div>
   </section>
 
-  <!-- 3. What's inside -->
+  <!-- 4. What's inside -->
   <section id="features">
     <div class="wrap">
       <h2>What's inside</h2>
+      <p class="section-intro">Five things that usually live in five separate apps, plus the two views that tie them together.</p>
 
-      <figure class="lead-shot">
-        <img src="screenshots/home.png"
-             alt="The FocusForce+ home dashboard, showing today's routines, the next to-dos and screen time"
-             width="1005" height="2048" loading="lazy" decoding="async">
-        <figcaption>The home dashboard: your day at a glance, plus quick actions.</figcaption>
-      </figure>
-
-      <div class="feature has-shot">
-        <figure class="feature-media">
-          <img src="screenshots/routine.png"
-               alt="An active routine, counting down the current step with the next step listed below"
-               width="1005" height="2048" loading="lazy" decoding="async">
-        </figure>
-        <div>
+      <ul class="cards">
+        <li>
           <h3>Routines</h3>
           <p>
             Multi-step routines with a real alarm at the start time, a countdown for every step,
-            and a heads-up before each one ends. Run over time and the timer keeps going into
-            the negative and keeps reminding you. The session runs in the background, so leaving
-            the app doesn't quietly freeze it.
+            and a heads-up before each one ends. Run over time and the timer keeps going into the
+            negative and keeps reminding you. The session runs in the background, so leaving the
+            app doesn't quietly freeze it.
           </p>
-        </div>
-      </div>
-
-      <div class="feature has-shot">
-        <figure class="feature-media">
-          <img src="screenshots/todos.png"
-               alt="The to-do list with a search field, priority filters, and open items tagged High and Medium"
-               width="1005" height="2048" loading="lazy" decoding="async">
-        </figure>
-        <div>
+        </li>
+        <li>
           <h3>To-dos</h3>
           <p>
-            A planner that won't let things quietly slip. Timed to-dos alarm you like a routine does.
-            Loose ones resurface a few times a day. Overdue ones stay pinned until you deal with them.
-            Every item carries a priority that decides how insistent its reminder is.
+            A planner that won't let things quietly slip. Timed to-dos alarm you like a routine
+            does. Loose ones resurface a few times a day. Overdue ones stay pinned until you deal
+            with them, and every item carries a priority that decides how insistent it gets.
           </p>
-        </div>
-      </div>
-
-      <div class="feature has-shot">
-        <figure class="feature-media">
-          <img src="screenshots/blocker.png"
-               alt="The app blocker, listing blocked apps with their daily time limits"
-               width="1005" height="2048" loading="lazy" decoding="async">
-        </figure>
-        <div>
+        </li>
+        <li>
           <h3>App blocker</h3>
           <p>
             An app blocker without internet permission: blocking happens entirely on the device.
-            Block distracting apps by a daily time limit, a fixed time window (overnight works too),
-            or automatically during routines and focus sessions. Bundle apps into groups that share
-            one limit, one blocking schedule, and one set of rules.
+            Block by a daily time limit, a fixed time window (overnight works too), or automatically
+            during routines and focus sessions. Bundle apps into groups that share one limit and one
+            schedule.
           </p>
-        </div>
-      </div>
-
-      <div class="feature has-shot">
-        <figure class="feature-media">
-          <img src="screenshots/focus.png"
-               alt="A running focus session with its remaining time and the apps it blocks"
-               width="1005" height="2048" loading="lazy" decoding="async">
-        </figure>
-        <div>
+        </li>
+        <li>
           <h3>Focus mode</h3>
           <p>
-            One session that turns on Do Not Disturb, silences notifications, and blocks the apps
-            or groups you pick, for a set stretch of time. Start one on the spot or schedule it.
-            It is an offline focus app that needs no account and no sign-up of any kind.
+            One session that turns on Do Not Disturb, silences notifications, and blocks the apps or
+            groups you pick, for a set stretch of time. Start one on the spot or schedule it. An
+            offline focus app that needs no account and no sign-up of any kind.
           </p>
-        </div>
-      </div>
-
-      <div class="feature has-shot">
-        <figure class="feature-media">
-          <img src="screenshots/sleep.png"
-               alt="Sleep mode settings: bedtime 23:00, wake-up 07:00, the weekdays it runs on, and a 30-minute wind-down reminder"
-               width="1005" height="2048" loading="lazy" decoding="async">
-        </figure>
-        <div>
+        </li>
+        <li>
           <h3>Sleep mode</h3>
           <p>
             One nightly schedule: a wind-down reminder, Do Not Disturb, and your distracting apps
             out of reach until morning. Bedtime and wake-up can each kick off a routine, and it can
             put backup alarms in your phone's own clock app, so waking up never depends on this one.
           </p>
-        </div>
-      </div>
+        </li>
+        <li>
+          <h3>Dashboard and statistics</h3>
+          <p>
+            Your day at a glance: today's routines and their status, the to-dos that need you next,
+            screen time, and quick actions. Plus a weekly view of routines completed and focus
+            minutes logged.
+          </p>
+        </li>
+      </ul>
     </div>
   </section>
 
-  <!-- 4. What makes it different -->
+  <!-- 5. What makes it different -->
   <section id="different">
     <div class="wrap">
       <h2>What makes it different</h2>
+      <p class="section-intro">Four decisions that separate this from the usual blocking app.</p>
 
-      <div class="diff">
-        <h3>Invincible Mode is per feature, not one big switch</h3>
-        <p>
-          Most blocking apps give you a single lockdown toggle. Here you turn it on for the
-          individual routine, focus session, or blocking rule you actually want to commit to.
-          Lock in the morning workout while leaving everything else flexible. While an invincible
-          thing is active you can't impulsively cancel or weaken it until it reaches its natural end.
-        </p>
-      </div>
-
-      <div class="diff">
-        <h3>It's friction, not a trap</h3>
-        <p>
-          You can always uninstall the app from Android settings, and a factory reset always works.
-          The goal isn't to lock you out of your own phone. It's to make bypassing annoying enough
-          that a bad-day version of you doesn't do it for a dumb reason. The app is upfront about
-          this everywhere it matters.
-        </p>
-      </div>
-
-      <div class="diff">
-        <h3>Tamper Protection for the settings themselves</h3>
-        <p>
-          An optional second layer. When it's on, loosening your own lock settings only works inside
-          a short daily window you choose, so you can't panic-disable everything in a weak moment.
-        </p>
-      </div>
-
-      <div class="diff">
-        <h3>No internet access at all</h3>
-        <p>
-          The app has no internet permission, so your data can't leave the device: there is simply
-          no way for it to be sent. No account, no cloud, no ads, no analytics, no crash reporting.
-          You can export and import everything as a plain JSON file whenever you want.
-        </p>
-      </div>
+      <ul class="cards">
+        <li>
+          <h3>Invincible Mode is per feature</h3>
+          <p>
+            Most blocking apps give you a single lockdown toggle. Here you turn it on for the
+            individual routine, focus session or blocking rule you actually want to commit to. Lock
+            in the morning workout while leaving everything else flexible. While an invincible thing
+            is active you can't impulsively cancel or weaken it until it reaches its natural end.
+          </p>
+        </li>
+        <li>
+          <h3>It's friction, not a trap</h3>
+          <p>
+            You can always uninstall the app from Android settings, and a factory reset always
+            works. The goal isn't to lock you out of your own phone. It's to make bypassing annoying
+            enough that a bad-day version of you doesn't do it for a dumb reason. The app is upfront
+            about this everywhere it matters.
+          </p>
+        </li>
+        <li>
+          <h3>Tamper Protection for the settings</h3>
+          <p>
+            An optional second layer. When it's on, loosening your own lock settings only works
+            inside a short daily window you choose, so you can't panic-disable everything in a weak
+            moment.
+          </p>
+        </li>
+        <li>
+          <h3>No internet access at all</h3>
+          <p>
+            The app has no internet permission, so your data can't leave the device: there is simply
+            no way for it to be sent. No account, no cloud, no ads, no analytics, no crash reporting.
+            You can export and import everything as a plain JSON file whenever you want.
+          </p>
+        </li>
+      </ul>
     </div>
   </section>
 
-  <!-- 5. Install -->
+  <!-- 6. Install -->
   <section id="install">
     <div class="wrap">
       <h2>Install</h2>
-      <p>FocusForce+ isn't on the Play Store yet, so you install the APK directly.</p>
+      <p class="section-intro">FocusForce+ isn't on the Play Store yet, so you install the APK directly.</p>
       <ol>
         <li>
           Open <a href="https://github.com/karOS555/FocusForcePlus/releases/latest">the latest release</a>
@@ -438,7 +509,30 @@
     </div>
   </section>
 
-  <!-- 6. Privacy -->
+  <!-- 7. FAQ -->
+  <section id="faq">
+    <div class="wrap">
+      <h2>Questions</h2>
+      <dl class="faq">
+        <dt>Does it need an internet connection?</dt>
+        <dd>No. The app has no internet permission at all, so it cannot send or receive anything. Every feature works offline.</dd>
+
+        <dt>Is it really free?</dt>
+        <dd>Yes. It is free software under the GNU General Public License v3.0. Nothing to buy, no subscription, no ads, no tracking.</dd>
+
+        <dt>Why isn't it on the Play Store?</dt>
+        <dd>It is still in public beta and ships as a signed APK attached to each GitHub release. A Play Store submission is planned after a wider testing round.</dd>
+
+        <dt>Which Android versions work?</dt>
+        <dd>Android 8.0 (API 26) and newer.</dd>
+
+        <dt>What happens to my data if I switch phones?</dt>
+        <dd>You can export everything to a plain JSON file and import it again on the new device. Nothing is stored anywhere but on your phone.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 8. Privacy -->
   <section id="privacy">
     <div class="wrap">
       <h2>Privacy</h2>
@@ -454,7 +548,7 @@
     </div>
   </section>
 
-  <!-- 7. Health disclaimer -->
+  <!-- 9. Health disclaimer -->
   <section id="health">
     <div class="wrap">
       <div class="panel">
@@ -471,12 +565,13 @@
 
 </main>
 
-<!-- 8. Footer -->
+<!-- 10. Footer -->
 <footer>
   <div class="wrap">
     <ul>
       <li><a href="https://github.com/karOS555/FocusForcePlus">Source on GitHub</a></li>
       <li><a href="https://github.com/karOS555/FocusForcePlus/issues">Issues and feedback</a></li>
+      <li><a href="https://github.com/karOS555/FocusForcePlus/blob/main/CHANGELOG.md">Changelog</a></li>
       <li><a href="https://github.com/karOS555/FocusForcePlus/blob/main/LICENSE">GPLv3</a></li>
     </ul>
     <p>
