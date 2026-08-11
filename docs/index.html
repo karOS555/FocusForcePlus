@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FocusForce+ — offline routines and app blocker for Android</title>
-<meta name="description" content="FocusForce+ is an open source ADHD app for Android: strict routines, to-dos, an app blocker, focus and sleep mode. Fully offline, no account, no internet permission.">
+<meta name="description" content="Open source ADHD app for Android: strict routines, to-dos, an app blocker, focus and sleep mode. Fully offline, with no account and no internet permission.">
 <meta name="theme-color" content="#050508">
 <link rel="canonical" href="https://karos555.github.io/FocusForcePlus/">
-<link rel="icon" href="logo.png" type="image/png">
-<link rel="apple-touch-icon" href="logo.png">
+<link rel="icon" href="logo-192.png" type="image/png">
+<link rel="apple-touch-icon" href="logo-192.png">
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="FocusForce+ — offline routines and app blocker for Android">
@@ -96,6 +96,7 @@
     --text-body: #cbd5e1;
     --text-dim: #94a3b8;
     --link: #93c5fd;
+    --warn: #fbbf24;
     --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --wrap: 66rem;
@@ -148,33 +149,56 @@
   .hero img.logo { width: 92px; height: 92px; margin-bottom: 1.25rem; }
   .tagline { max-width: 36rem; margin: 0 auto 2rem; color: var(--text-body); font-size: 1.125rem; }
 
-  /* The signature element: a timer that has already run past zero. */
+  /* The signature element: a step that has run past its own timer. It is built to
+     look like the app's live routine notification, down to the segmented timeline
+     - one block per step, the current one overrun in the app's warning amber. */
   .overtime {
     margin: 0 auto 2rem;
-    padding: 1.75rem 1rem;
-    max-width: 28rem;
-    background: linear-gradient(180deg, var(--surface-1), #0a1b32);
+    padding: 1.25rem 1.375rem 1.5rem;
+    max-width: 27rem;
+    text-align: left;
+    background: linear-gradient(180deg, #0d1a2e, #070d18);
     border: 1px solid var(--surface-3);
-    border-radius: var(--radius);
+    border-radius: 18px;
+    box-shadow: 0 18px 40px -24px rgba(0, 0, 0, .9);
   }
-  .overtime .clock {
-    display: block;
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    font-size: clamp(3rem, 16vw, 5.5rem);
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -.02em;
-    color: var(--accent);
-  }
-  .overtime .step {
-    display: block;
-    margin-top: .875rem;
-    font-family: var(--font-mono);
-    font-size: .8125rem;
-    letter-spacing: .04em;
+  .ot-head {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 0 .875rem;
+    font-size: .75rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
     color: var(--text-dim);
   }
+  .ot-dot {
+    width: .5rem; height: .5rem; flex: none;
+    border-radius: 50%;
+    background: var(--warn);
+    animation: ot-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes ot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+  .ot-clock {
+    display: block;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(2.75rem, 15vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.03em;
+    color: var(--warn);
+  }
+  .ot-label { margin: .5rem 0 0; font-size: .875rem; color: var(--text-dim); }
+
+  /* One block per step: done, the one running over, and what is still ahead. */
+  .ot-bar { display: flex; gap: .3125rem; margin-top: 1.125rem; }
+  .ot-bar span { height: .375rem; border-radius: 999px; background: #1e293b; }
+  .ot-bar .done { flex: 2; background: var(--accent); }
+  .ot-bar .over { flex: 3; background: var(--warn); }
+  .ot-bar .ahead { flex: 2; }
 
   .actions { display: flex; flex-wrap: wrap; gap: .875rem; justify-content: center; }
   .btn {
@@ -269,6 +293,17 @@
   .panel h2 { margin-bottom: .75rem; font-size: 1.25rem; }
   .note { color: var(--text-dim); font-size: .9375rem; }
 
+  /* Closing call to action: the store banner, then the two buttons again. */
+  .cta { text-align: center; }
+  .cta img {
+    width: 100%;
+    max-width: 46rem;
+    height: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--surface-2);
+    margin-bottom: 2rem;
+  }
+
   .faq { margin: 0; }
   .faq dt { color: var(--text); font-weight: 600; margin-top: 1.25rem; }
   .faq dt:first-child { margin-top: 0; }
@@ -298,13 +333,17 @@
   <!-- 1. Hero -->
   <header class="hero">
     <div class="wrap">
-      <img class="logo" src="logo.png" alt="" width="1024" height="1024" decoding="async">
+      <img class="logo" src="logo-192.png" alt="" width="192" height="192" decoding="async">
       <h1>FocusForce+</h1>
 
-      <p class="overtime">
-        <span class="clock" id="clock">-04:17</span>
-        <span class="step">Step: Morning workout &middot; over time</span>
-      </p>
+      <div class="overtime">
+        <p class="ot-head"><span class="ot-dot" aria-hidden="true"></span>Morning workout &middot; step 3 of 5</p>
+        <p class="ot-clock" id="clock">-04:17</p>
+        <p class="ot-label">Over time, and still counting.</p>
+        <div class="ot-bar" aria-hidden="true">
+          <span class="done"></span><span class="done"></span><span class="over"></span><span class="ahead"></span><span class="ahead"></span>
+        </div>
+      </div>
 
       <p class="tagline">
         Routines, to-dos, app blocking, focus and sleep mode in one Android app,
@@ -332,29 +371,49 @@
       <h2>What it looks like</h2>
       <p class="section-intro">Dark by default, built around the thing you are supposed to be doing right now.</p>
 
+      <!-- WebP at display size with the full PNG as fallback: the PNGs are
+           1005x2048 and were shown at about a third of that, which cost 2.7 MB. -->
       <ul class="shots">
         <li><figure>
-          <img src="screenshots/home.png" alt="The home dashboard with today's routines, the next to-dos and screen time" width="1005" height="2048" loading="lazy" decoding="async">
+          <picture>
+            <source srcset="screenshots/home.webp" type="image/webp">
+            <img src="screenshots/home.png" alt="The home dashboard with today's routines, the next to-dos and screen time" width="1005" height="2048" loading="lazy" decoding="async">
+          </picture>
           <figcaption>Your day at a glance, plus quick actions.</figcaption>
         </figure></li>
         <li><figure>
-          <img src="screenshots/routine.png" alt="An active routine counting down its current step" width="1005" height="2048" loading="lazy" decoding="async">
+          <picture>
+            <source srcset="screenshots/routine.webp" type="image/webp">
+            <img src="screenshots/routine.png" alt="An active routine counting down its current step" width="1005" height="2048" loading="lazy" decoding="async">
+          </picture>
           <figcaption>Multi-step timers that keep counting.</figcaption>
         </figure></li>
         <li><figure>
-          <img src="screenshots/todos.png" alt="The to-do list with priority filters" width="1005" height="2048" loading="lazy" decoding="async">
+          <picture>
+            <source srcset="screenshots/todos.webp" type="image/webp">
+            <img src="screenshots/todos.png" alt="The to-do list with priority filters" width="1005" height="2048" loading="lazy" decoding="async">
+          </picture>
           <figcaption>Priority sets how loud the reminder gets.</figcaption>
         </figure></li>
         <li><figure>
-          <img src="screenshots/blocker.png" alt="The app blocker with its blocked apps and daily limits" width="1005" height="2048" loading="lazy" decoding="async">
+          <picture>
+            <source srcset="screenshots/blocker.webp" type="image/webp">
+            <img src="screenshots/blocker.png" alt="The app blocker with its blocked apps and daily limits" width="1005" height="2048" loading="lazy" decoding="async">
+          </picture>
           <figcaption>Daily limits, windows and app groups.</figcaption>
         </figure></li>
         <li><figure>
-          <img src="screenshots/focus.png" alt="A focus session in progress" width="1005" height="2048" loading="lazy" decoding="async">
+          <picture>
+            <source srcset="screenshots/focus.webp" type="image/webp">
+            <img src="screenshots/focus.png" alt="A focus session in progress" width="1005" height="2048" loading="lazy" decoding="async">
+          </picture>
           <figcaption>One timed session, Do Not Disturb on.</figcaption>
         </figure></li>
         <li><figure>
-          <img src="screenshots/sleep.png" alt="Sleep mode settings with bedtime and wake-up" width="1005" height="2048" loading="lazy" decoding="async">
+          <picture>
+            <source srcset="screenshots/sleep.webp" type="image/webp">
+            <img src="screenshots/sleep.png" alt="Sleep mode settings with bedtime and wake-up" width="1005" height="2048" loading="lazy" decoding="async">
+          </picture>
           <figcaption>Wind-down, night blocking and wake-up.</figcaption>
         </figure></li>
       </ul>
@@ -548,7 +607,21 @@
     </div>
   </section>
 
-  <!-- 9. Health disclaimer -->
+  <!-- 9. Closing call to action -->
+  <section id="get">
+    <div class="wrap cta">
+      <picture>
+        <source srcset="feature-graphic.webp" type="image/webp">
+        <img src="feature-graphic.png" alt="Routines, to-dos, app blocking and focus in one fully offline app" width="1024" height="500" loading="lazy" decoding="async">
+      </picture>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://github.com/karOS555/FocusForcePlus/releases/latest">Download the APK</a>
+        <a class="btn btn-secondary" href="https://github.com/karOS555/FocusForcePlus">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. Health disclaimer -->
   <section id="health">
     <div class="wrap">
       <div class="panel">
