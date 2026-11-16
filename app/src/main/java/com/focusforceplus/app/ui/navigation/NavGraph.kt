@@ -31,17 +31,17 @@ import com.focusforceplus.app.ui.screens.todo.TodoListScreen
 fun NavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Home.route,
+    startDestination: String = AppModule.HOME.route,
 ) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
     ) {
-        composable(Screen.Home.route) {
+        composable(AppModule.HOME.route) {
             fun goToTab(route: String) {
                 navController.navigate(route) {
-                    popUpTo(Screen.Home.route) { saveState = true }
+                    popUpTo(AppModule.HOME.route) { saveState = true }
                     launchSingleTop = true
                     restoreState = true
                 }
@@ -69,7 +69,7 @@ fun NavGraph(
         composable(OnboardingRoutes.ONBOARDING) {
             OnboardingScreen(
                 onFinish = { createFirstRoutine ->
-                    val target = if (createFirstRoutine) RoutineRoutes.CREATE else Screen.Home.route
+                    val target = if (createFirstRoutine) RoutineRoutes.CREATE else AppModule.HOME.route
                     navController.navigate(target) {
                         popUpTo(OnboardingRoutes.ONBOARDING) { inclusive = true }
                     }
@@ -196,6 +196,7 @@ fun NavGraph(
         composable(SleepRoutes.SLEEP) {
             SleepScreen(
                 onNavigateBack = { navController.popBackStack() },
+                topLevel = true,
                 onCreateRoutine = { linkTarget ->
                     navController.navigate(SleepRoutes.createLinkedRoutine(linkTarget))
                 },
@@ -221,6 +222,11 @@ fun NavGraph(
                     else sleepViewModel.setMorningRoutine(savedId)
                 },
             )
+        }
+
+        // ── Lists ─────────────────────────────────────────────────────────────
+        composable(ListRoutes.LIST) {
+            com.focusforceplus.app.ui.screens.lists.ListsScreen()
         }
 
         // ── Settings ──────────────────────────────────────────────────────────

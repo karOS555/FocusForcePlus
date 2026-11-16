@@ -1,33 +1,11 @@
-<!--
-  Monochrome status-bar / notification icon: the FocusForce+ target, reduced to
-  what survives being drawn as a pure alpha silhouette at ~18dp.
-
-  Notification small icons are flattened to alpha, so this uses only a stroked
-  ring, four solid crosshair arms and a centre dot — no gradients, no fine
-  detail, no group transforms. The detailed launcher artwork came out as the
-  grey Android placeholder at this size, which is why a plain bolt stood here
-  before; this keeps the app's own mark instead.
--->
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FocusForce+ mark. Generated geometry: two rings cut by a crosshair, one stroke weight. Status-bar icon: drawn as a pure alpha silhouette by the system. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-
-    <!-- Ring -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:fillColor="#00000000"
-        android:pathData="M12,4.5a7.5,7.5 0 1,0 0.01,0z" />
-
-    <!-- Crosshair arms, crossing the ring from outside to inside -->
+    android:viewportWidth="120"
+    android:viewportHeight="120">
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M11,1.5h2v5.5h-2z M11,17h2v5.5h-2z M1.5,11h5.5v2h-5.5z M17,11h5.5v2h-5.5z" />
-
-    <!-- Centre -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M12,9.8a2.2,2.2 0 1,0 0.01,0z" />
+        android:pathData="M70.5,33.5 A28.5,28.5 0 0 1 86.5,49.5 L78.76,49.5 A21.5,21.5 0 0 0 70.5,41.24 Z M70.5,86.5 A28.5,28.5 0 0 0 86.5,70.5 L78.76,70.5 A21.5,21.5 0 0 1 70.5,78.76 Z M49.5,86.5 A28.5,28.5 0 0 1 33.5,70.5 L41.24,70.5 A21.5,21.5 0 0 0 49.5,78.76 Z M49.5,33.5 A28.5,28.5 0 0 0 33.5,49.5 L41.24,49.5 A21.5,21.5 0 0 1 49.5,41.24 Z M70.5,18.82 A42.5,42.5 0 0 1 101.18,49.5 L93.91,49.5 A35.5,35.5 0 0 0 70.5,26.09 Z M70.5,101.18 A42.5,42.5 0 0 0 101.18,70.5 L93.91,70.5 A35.5,35.5 0 0 1 70.5,93.91 Z M49.5,101.18 A42.5,42.5 0 0 1 18.82,70.5 L26.09,70.5 A35.5,35.5 0 0 0 49.5,93.91 Z M49.5,18.82 A42.5,42.5 0 0 0 18.82,49.5 L26.09,49.5 A35.5,35.5 0 0 1 49.5,26.09 Z M56.5,8 H63.5 V112 H56.5 Z M8,56.5 H112 V63.5 H8 Z M50.5,60 A9.5,9.5 0 1 1 69.5,60 A9.5,9.5 0 1 1 50.5,60 Z" />
 </vector>

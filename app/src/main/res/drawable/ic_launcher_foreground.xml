@@ -1,30 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FocusForce+ mark. Generated geometry: two rings cut by a crosshair, one stroke weight. Adaptive icon foreground. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+    <group
+        android:scaleX="0.4038"
+        android:scaleY="0.4038"
+        android:translateX="29.769"
+        android:translateY="29.769">
+        <path
+            android:fillColor="#2F6FED"
+            android:pathData="M70.5,33.5 A28.5,28.5 0 0 1 86.5,49.5 L78.76,49.5 A21.5,21.5 0 0 0 70.5,41.24 Z M70.5,86.5 A28.5,28.5 0 0 0 86.5,70.5 L78.76,70.5 A21.5,21.5 0 0 1 70.5,78.76 Z M49.5,86.5 A28.5,28.5 0 0 1 33.5,70.5 L41.24,70.5 A21.5,21.5 0 0 0 49.5,78.76 Z M49.5,33.5 A28.5,28.5 0 0 0 33.5,49.5 L41.24,49.5 A21.5,21.5 0 0 1 49.5,41.24 Z M70.5,18.82 A42.5,42.5 0 0 1 101.18,49.5 L93.91,49.5 A35.5,35.5 0 0 0 70.5,26.09 Z M70.5,101.18 A42.5,42.5 0 0 0 101.18,70.5 L93.91,70.5 A35.5,35.5 0 0 1 70.5,93.91 Z M49.5,101.18 A42.5,42.5 0 0 1 18.82,70.5 L26.09,70.5 A35.5,35.5 0 0 0 49.5,93.91 Z M49.5,18.82 A42.5,42.5 0 0 0 18.82,49.5 L26.09,49.5 A35.5,35.5 0 0 1 49.5,26.09 Z M56.5,8 H63.5 V112 H56.5 Z M8,56.5 H112 V63.5 H8 Z M50.5,60 A9.5,9.5 0 1 1 69.5,60 A9.5,9.5 0 1 1 50.5,60 Z" />
+    </group>
 </vector>

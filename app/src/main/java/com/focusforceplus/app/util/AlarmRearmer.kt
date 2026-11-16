@@ -1,10 +1,12 @@
 package com.focusforceplus.app.util
 
 import com.focusforceplus.app.data.repository.FocusRepository
+import com.focusforceplus.app.data.repository.NavRepository
 import com.focusforceplus.app.data.repository.RoutineRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.SleepRepository
 import com.focusforceplus.app.data.repository.TodoRepository
+import com.focusforceplus.app.ui.navigation.AppModule
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,6 +28,7 @@ class AlarmRearmer @Inject constructor(
     private val focusRepository: FocusRepository,
     private val settingsRepository: SettingsRepository,
     private val sleepRepository: SleepRepository,
+    private val navRepository: NavRepository,
     private val alarmHelper: AlarmHelper,
     private val todoAlarmHelper: TodoAlarmHelper,
     private val focusAlarmHelper: FocusAlarmHelper,
@@ -33,17 +36,22 @@ class AlarmRearmer @Inject constructor(
     private val sleepStateReconciler: SleepStateReconciler,
 ) {
     suspend fun rearmAll() {
-        runCatching {
+        // A module the user switched off stays quiet: its alarms are not re-armed
+        // until it is switched back on (which calls this again).
+        val nav = runCatching { navRepository.current() }.getOrNull()
+        fun on(module: AppModule) = nav?.isOn(module) ?: true
+
+        if (on(AppModule.ROUTINES)) runCatching {
             alarmHelper.rescheduleAll(routineRepository.getAllRoutines().first())
         }
-        runCatching {
+        if (on(AppModule.TODOS)) runCatching {
             val digestTimes = settingsRepository.digestTimes.first()
             todoAlarmHelper.rescheduleAll(todoRepository.getAllTodos().first(), digestTimes)
         }
-        runCatching {
+        if (on(AppModule.FOCUS)) runCatching {
             focusAlarmHelper.rescheduleAll(focusRepository.getAllSessions().first())
         }
-        runCatching {
+        if (on(AppModule.SLEEP)) runCatching {
             sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
         }
         // A reboot during the night can swallow the wake-up; make sure DND and the

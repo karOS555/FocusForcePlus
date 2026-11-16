@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -33,17 +34,28 @@ import androidx.navigation.compose.rememberNavController
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.ui.alarm.RoutineAlarmActivity
 import androidx.compose.foundation.layout.Column
-import com.focusforceplus.app.ui.common.AppFooter
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.ui.common.FeatureHelpAction
 import com.focusforceplus.app.ui.common.FeatureHelpContent
 import com.focusforceplus.app.ui.common.FocusForceTopBar
-import com.focusforceplus.app.ui.navigation.BottomNavBar
+import com.focusforceplus.app.ui.components.ConfirmDialog
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.navigation.Dock
+import com.focusforceplus.app.ui.navigation.DockFooter
+import com.focusforceplus.app.ui.navigation.NavEditSheet
 import com.focusforceplus.app.ui.navigation.NavGraph
+import com.focusforceplus.app.ui.navigation.NavViewModel
 import com.focusforceplus.app.ui.navigation.OnboardingRoutes
 import com.focusforceplus.app.ui.navigation.RoutineRoutes
-import com.focusforceplus.app.ui.navigation.Screen
 import com.focusforceplus.app.ui.navigation.SettingsRoutes
-import com.focusforceplus.app.ui.navigation.bottomNavScreens
+import com.focusforceplus.app.ui.navigation.StatsRoutes
+import com.focusforceplus.app.ui.navigation.isFocusedRoute
+import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.ui.theme.FocusForceTheme
 import com.focusforceplus.app.util.AlarmEventBus
 import com.focusforceplus.app.util.PermissionHelper
@@ -65,7 +77,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The app draws its own dark background edge to edge, so the system bars
+        // always need light icons, whatever the phone's own light/dark setting is.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
 
         // Keep the splash visible until we know whether onboarding is needed.
         // Compose state so setContent recomposes once the value arrives.
@@ -179,27 +196,43 @@ private fun AppContent(
         if (showFullScreenDialog) onFullScreenPromptSeen()
     }
 
+    val navViewModel: NavViewModel = hiltViewModel()
+    val navConfig by navViewModel.config.collectAsState()
+    val playDockHint by navViewModel.showDockHint.collectAsState()
+    val navMessage by navViewModel.message.collectAsState()
+    var showNavEdit by remember { mutableStateOf(false) }
+    var showRateInfo by remember { mutableStateOf(false) }
+
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val mainTabRoutes = remember { bottomNavScreens.map { it.route }.toSet() }
+    val currentModule = AppModule.fromRoute(currentRoute)?.takeIf { it in AppModule.topLevel }
     // The top bar carries each tab's title, so no screen repeats it below the bar.
-    // Home keeps the brand wordmark instead of a title.
-    val screenTitle = bottomNavScreens
-        .firstOrNull { it.route == currentRoute && it.route != Screen.Home.route }
-        ?.label
-    // The Focus & Sleep tab has two guides (focus / sleep) and keeps its own
-    // help button next to the sub-tab caption.
-    val routeHelp = when (currentRoute) {
-        Screen.Routines.route -> FeatureHelpContent.ROUTINES
-        Screen.Todos.route    -> FeatureHelpContent.TODOS
-        Screen.Blocker.route  -> FeatureHelpContent.BLOCKER
-        else                  -> null
+    // Home keeps the wordmark instead of a title.
+    val screenTitle = currentModule?.takeIf { it != AppModule.HOME }?.label
+    val routeHelp = when (currentModule) {
+        AppModule.ROUTINES -> FeatureHelpContent.ROUTINES
+        AppModule.TODOS -> FeatureHelpContent.TODOS
+        AppModule.BLOCKER -> FeatureHelpContent.BLOCKER
+        AppModule.FOCUS -> FeatureHelpContent.FOCUS
+        AppModule.SLEEP -> FeatureHelpContent.SLEEP
+        else -> null
     }
-    // null = NavController not yet navigated (first frame) → default by onboarding state
-    val showTopBar = if (currentRoute == null) onboardingCompleted else currentRoute in mainTabRoutes
-    val hideChrome = currentRoute == OnboardingRoutes.ONBOARDING ||
-        (currentRoute == null && !onboardingCompleted) ||
-        currentRoute?.startsWith("blocker/disclosure") == true
+    // null = NavController not yet navigated (first frame): default by onboarding state.
+    val showTopBar = if (currentRoute == null) onboardingCompleted else currentModule != null
+    val hideChrome = isFocusedRoute(currentRoute) || (currentRoute == null && !onboardingCompleted)
+
+    fun openModule(module: AppModule) {
+        if (module.route == currentRoute) return
+        if (module in AppModule.topLevel) {
+            navController.navigate(module.route) {
+                popUpTo(AppModule.HOME.route) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        } else {
+            navController.navigate(module.route) { launchSingleTop = true }
+        }
+    }
 
     // Navigate to active routine when launched (or re-launched) from an alarm
     // notification or the task-end wake-up. Keyed on the nonce so re-launches with
@@ -212,18 +245,35 @@ private fun AppContent(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = FfTheme.colors.background,
         topBar = {
             if (showTopBar && !hideChrome) FocusForceTopBar(
                 screenTitle = screenTitle,
                 onSettingsClick = { navController.navigate(SettingsRoutes.SETTINGS) },
-                actions = { routeHelp?.let { FeatureHelpAction(it) } },
+                actions = {
+                    routeHelp?.let { FeatureHelpAction(it) }
+                    if (currentModule == AppModule.HOME) {
+                        IconButton(onClick = { navController.navigate(StatsRoutes.STATS) }) {
+                            Icon(Icons.Filled.BarChart, contentDescription = "Statistics")
+                        }
+                    }
+                },
             )
         },
         bottomBar = {
-            if (!hideChrome) {
+            val config = navConfig
+            if (!hideChrome && config != null) {
                 Column {
-                    BottomNavBar(navController)
-                    AppFooter()
+                    Dock(
+                        entries = config.dock,
+                        currentRoute = currentRoute,
+                        onSelect = ::openModule,
+                        onEdit = { showNavEdit = true },
+                        playHint = playDockHint,
+                        onHintPlayed = navViewModel::noteHintPlayed,
+                        onUserScrolled = navViewModel::noteUserScrolled,
+                    )
+                    DockFooter(onRate = { showRateInfo = true })
                 }
             }
         },
@@ -231,13 +281,48 @@ private fun AppContent(
         NavGraph(
             navController    = navController,
             // consumeWindowInsets is what keeps the status/navigation bar insets
-            // from being applied a second time by every screen's own Scaffold —
-            // that double padding used to eat ~55dp of list space.
+            // from being applied a second time by every screen's own Scaffold.
             modifier         = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
-            startDestination = if (onboardingCompleted) Screen.Home.route
+            startDestination = if (onboardingCompleted) AppModule.HOME.route
                                else OnboardingRoutes.ONBOARDING,
+        )
+    }
+
+    navConfig?.let { config ->
+        if (showNavEdit) {
+            NavEditSheet(
+                config = config,
+                onMove = navViewModel::move,
+                onSetShown = navViewModel::setShown,
+                onSetModuleOn = navViewModel::setModuleOn,
+                onReset = navViewModel::resetOrder,
+                onDismiss = { showNavEdit = false },
+            )
+        }
+    }
+
+    navMessage?.let { text ->
+        ConfirmDialog(
+            title = "Not right now",
+            message = text,
+            confirmLabel = "OK",
+            dismissLabel = "Close",
+            onConfirm = navViewModel::clearMessage,
+            onDismiss = navViewModel::clearMessage,
+        )
+    }
+
+    if (showRateInfo) {
+        ConfirmDialog(
+            title = "Coming soon",
+            message = "FocusForce+ is not on the Play Store yet. This link goes live with " +
+                "the first release there. Thanks for wanting to rate it already.",
+            confirmLabel = "OK",
+            dismissLabel = "Close",
+            onConfirm = { showRateInfo = false },
+            onDismiss = { showRateInfo = false },
         )
     }
 

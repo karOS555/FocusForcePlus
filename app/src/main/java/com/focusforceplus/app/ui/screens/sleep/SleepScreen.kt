@@ -63,6 +63,7 @@ import com.focusforceplus.app.ui.common.routineDayLabel
 fun SleepScreen(
     onNavigateBack: () -> Unit,
     onCreateRoutine: (linkTo: String) -> Unit,
+    topLevel: Boolean = false,
     viewModel: SleepViewModel = hiltViewModel(),
 ) {
     val s by viewModel.uiState.collectAsState()
@@ -81,7 +82,7 @@ fun SleepScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            if (!topLevel) TopAppBar(
                 title = { Text("Sleep mode") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {

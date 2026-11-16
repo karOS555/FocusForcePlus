@@ -1,50 +1,9 @@
 package com.focusforceplus.app.ui.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.ViewDay
-import androidx.compose.ui.graphics.vector.ImageVector
-
-sealed class Screen(
-    val route: String,
-    val label: String,
-    val icon: ImageVector
-) {
-    data object Home : Screen(
-        route = "home",
-        label = "Home",
-        icon = Icons.Filled.Home
-    )
-    data object Routines : Screen(
-        route = "routines",
-        label = "Routines",
-        icon = Icons.Filled.ViewDay
-    )
-    data object Todos : Screen(
-        route = "todos",
-        label = "Todos",
-        icon = Icons.Filled.CheckCircle
-    )
-    data object Blocker : Screen(
-        route = "blocker",
-        label = "Blocker",
-        icon = Icons.Filled.Block
-    )
-    /** Focus sessions and sleep mode share one tab — both are deliberate
-     *  restriction modes (DND + app blocking), timed vs. scheduled. A sixth tab
-     *  would overflow the bottom bar. This label needs the two-line handling in
-     *  [BottomNavBar] to survive narrow screens. */
-    data object Focus : Screen(
-        route = "focus",
-        label = "Focus & Sleep",
-        icon = Icons.Filled.SelfImprovement
-    )
-}
-
-// Sub-screens (not in bottom nav)
+/**
+ * Route strings of every screen that is not a top-level module. The top-level
+ * routes themselves live on [AppModule].
+ */
 object SettingsRoutes {
     const val SETTINGS = "settings"
 }
@@ -102,10 +61,29 @@ object FocusRoutes {
     fun active(sessionId: Long) = "focus/active/$sessionId"
 }
 
-val bottomNavScreens = listOf(
-    Screen.Home,
-    Screen.Routines,
-    Screen.Todos,
-    Screen.Blocker,
-    Screen.Focus,
-)
+
+object ListRoutes {
+    const val LIST = "lists"
+    const val DETAIL = "list/{listId}"
+
+    fun detail(listId: Long) = "list/$listId"
+}
+
+object TrashRoutes {
+    const val TRASH = "trash"
+}
+
+/**
+ * Screens that take over the whole display: forms and first-run flows. The
+ * navigation bar is hidden on them so the action at the bottom has no competition.
+ */
+fun isFocusedRoute(route: String?): Boolean {
+    if (route == null) return false
+    return route == OnboardingRoutes.ONBOARDING ||
+        route.startsWith("blocker/disclosure") ||
+        route.startsWith("blocker/block") ||
+        route == RoutineRoutes.CREATE || route.startsWith("routine/edit") ||
+        route == TodoRoutes.CREATE || route.startsWith("todo/edit") ||
+        route == FocusRoutes.CREATE || route.startsWith("focus/edit") ||
+        route.startsWith("sleep/routine/create")
+}

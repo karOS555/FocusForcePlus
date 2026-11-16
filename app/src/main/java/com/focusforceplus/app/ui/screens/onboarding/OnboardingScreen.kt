@@ -157,12 +157,8 @@ private fun WelcomePage(onContinue: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            painter = painterResource(R.mipmap.ic_launcher_foreground),
-            contentDescription = null,
-            tint = Color.Unspecified,
-            modifier = Modifier.size(120.dp),
-        )
+        com.focusforceplus.app.ui.components.LogoMark(size = 88.dp)
+        Spacer(Modifier.height(20.dp))
 
         Row {
             Text(
