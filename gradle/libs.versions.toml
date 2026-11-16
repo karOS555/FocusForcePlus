@@ -1,7 +1,7 @@
 [versions]
-agp = "9.1.1"
-kotlin = "2.2.10"
-ksp = "2.3.2"
+agp = "9.5.1"
+kotlin = "2.4.21"
+ksp = "2.3.14"
 
 # AndroidX Core
 # 1.17+ is required for NotificationCompat.ProgressStyle / Live Updates (Now Bar).
@@ -20,7 +20,7 @@ navigationCompose = "2.8.9"
 room = "2.7.1"
 
 # Hilt
-hilt = "2.59.2"
+hilt = "2.60.1"
 
 # WorkManager
 workmanager = "2.10.1"
