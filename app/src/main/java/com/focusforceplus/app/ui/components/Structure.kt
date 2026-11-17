@@ -515,3 +515,54 @@ val ScreenContentPadding = PaddingValues(
     top = 6.dp,
     bottom = 24.dp,
 )
+
+/**
+ * A plain sub-page: a back arrow and the title on top, then whatever the page
+ * shows. Settings pages and the trash use it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PageScaffold(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    val colors = FfTheme.colors
+    Scaffold(
+        modifier = modifier,
+        containerColor = colors.background,
+        snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colors.text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colors.textSecondary,
+                        )
+                    }
+                },
+                actions = actions,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colors.background,
+                    scrolledContainerColor = colors.background,
+                    actionIconContentColor = colors.textMuted,
+                ),
+            )
+        },
+        content = content,
+    )
+}

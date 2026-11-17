@@ -272,6 +272,11 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { it[guardKey(slot)] = guard.clamped().encode() }
     }
 
+    /** One slot back to its built-in default. */
+    suspend fun resetGuard(slot: GuardSlot) {
+        dataStore.edit { it.remove(guardKey(slot)) }
+    }
+
     /** Every slot back to its built-in default. */
     suspend fun resetGuards() {
         dataStore.edit { prefs -> GuardSlot.entries.forEach { prefs.remove(guardKey(it)) } }

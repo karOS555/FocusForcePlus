@@ -6,6 +6,7 @@ package com.focusforceplus.app.ui.navigation
  */
 object SettingsRoutes {
     const val SETTINGS = "settings"
+    const val SPEED_BUMPS = "settings/speed-bumps"
 }
 
 object OnboardingRoutes {

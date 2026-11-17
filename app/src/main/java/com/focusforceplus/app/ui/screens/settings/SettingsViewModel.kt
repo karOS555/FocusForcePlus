@@ -4,6 +4,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardSettings
+import com.focusforceplus.app.compliance.GuardSlot
+import com.focusforceplus.app.compliance.NagPolicy
 import com.focusforceplus.app.compliance.TamperProtectionConfig
 import com.focusforceplus.app.compliance.TamperProtectionGuard
 import com.focusforceplus.app.compliance.isInTpWindow
@@ -12,6 +16,7 @@ import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.util.BackupManager
 import com.focusforceplus.app.util.PermissionHelper
 import com.focusforceplus.app.util.TodoAlarmScheduler
+import com.focusforceplus.app.util.TodoReminderEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +59,12 @@ data class SettingsUiState(
     val tpWindowStartMinutes: Int = 8 * 60,
     val tpWindowDurationMinutes: Int = 30,
     val tpWindowOpenNow: Boolean = false,
+    // Speed bumps and how todos come back
+    val guards: GuardSettings = GuardSettings(),
+    val nagHigh: NagPolicy = NagPolicy.HIGH_DEFAULT,
+    val nagMedium: NagPolicy = NagPolicy.MEDIUM_DEFAULT,
+    val todoRingSeconds: Int = 60,
+    val trashRetentionDays: Int = SettingsRepository.DEFAULT_TRASH_RETENTION_DAYS,
 )
 
 @HiltViewModel
@@ -64,6 +75,7 @@ class SettingsViewModel @Inject constructor(
     private val todoAlarmScheduler: TodoAlarmScheduler,
     private val backupManager: BackupManager,
     private val tamperGuard: TamperProtectionGuard,
+    private val todoReminders: TodoReminderEngine,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState(appVersion = readVersionName()))
@@ -118,7 +130,64 @@ class SettingsViewModel @Inject constructor(
                 refreshTpWindowState()
             }
         }
+        viewModelScope.launch {
+            settingsRepository.guardSettings.collect { g -> _uiState.update { it.copy(guards = g) } }
+        }
+        viewModelScope.launch {
+            settingsRepository.nagPolicy(2).collect { p -> _uiState.update { it.copy(nagHigh = p) } }
+        }
+        viewModelScope.launch {
+            settingsRepository.nagPolicy(1).collect { p -> _uiState.update { it.copy(nagMedium = p) } }
+        }
+        viewModelScope.launch {
+            settingsRepository.todoRingSeconds.collect { s -> _uiState.update { it.copy(todoRingSeconds = s) } }
+        }
+        viewModelScope.launch {
+            settingsRepository.trashRetentionDays.collect { d -> _uiState.update { it.copy(trashRetentionDays = d) } }
+        }
         refreshPermissions()
+    }
+
+    // ── Speed bumps ───────────────────────────────────────────────────────────
+
+    fun setGuardsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.saveGuardsEnabled(enabled)
+            // The buttons on waiting todo notifications depend on it.
+            todoReminders.syncAll()
+        }
+    }
+
+    /** null puts the slot back to its built-in default. */
+    fun setGuard(slot: GuardSlot, guard: Guard?) {
+        viewModelScope.launch {
+            if (guard == null) settingsRepository.resetGuard(slot) else settingsRepository.saveGuard(slot, guard)
+            todoReminders.syncAll()
+        }
+    }
+
+    fun resetGuards() {
+        viewModelScope.launch {
+            settingsRepository.resetGuards()
+            todoReminders.syncAll()
+        }
+    }
+
+    // ── How todos come back ───────────────────────────────────────────────────
+
+    fun setNagPolicy(priority: Int, policy: NagPolicy) {
+        viewModelScope.launch {
+            settingsRepository.saveNagPolicy(priority, policy)
+            todoReminders.syncAll()
+        }
+    }
+
+    fun setTodoRingSeconds(seconds: Int) {
+        viewModelScope.launch { settingsRepository.saveTodoRingSeconds(seconds) }
+    }
+
+    fun setTrashRetentionDays(days: Int) {
+        viewModelScope.launch { settingsRepository.saveTrashRetentionDays(days) }
     }
 
     private fun readVersionName(): String = runCatching {

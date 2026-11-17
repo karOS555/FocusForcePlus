@@ -239,7 +239,16 @@ class TodoReminderEngine @Inject constructor(
 
     suspend fun restoreFromTrash(todoId: Long): Outcome = act(todoId) { todo, now ->
         repository.restoreFromTrash(todo.id)
-        apply(todo.copy(deletedAt = null), now)
+        // Like reopening: an overdue todo comes back quietly and waits for the next
+        // daily reminder instead of ringing the moment it is restored.
+        val overdue = !todo.isCompleted && todo.dueDateTime != null && todo.dueDateTime <= now
+        val restored = todo.copy(
+            deletedAt = null,
+            snoozedUntil = null,
+            nagCount = if (overdue) TodoEntity.NAG_DISMISSED else todo.nagCount,
+        )
+        repository.updateTodo(restored)
+        apply(restored, now)
         Outcome.OK
     }
 

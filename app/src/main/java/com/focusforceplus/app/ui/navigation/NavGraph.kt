@@ -237,6 +237,21 @@ fun NavGraph(
                 onOpenDisclosure = { type -> navController.navigate(BlockerRoutes.disclosure(type)) },
                 onReplayOnboarding = { navController.navigate(OnboardingRoutes.ONBOARDING) },
                 onOpenSleepMode = { navController.navigate(SleepRoutes.SLEEP) },
+                onOpenSpeedBumps = { navController.navigate(SettingsRoutes.SPEED_BUMPS) },
+                onOpenTrash = { navController.navigate(TrashRoutes.TRASH) },
+            )
+        }
+
+        composable(SettingsRoutes.SPEED_BUMPS) {
+            com.focusforceplus.app.ui.screens.settings.SpeedBumpsScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        // ── Trash ─────────────────────────────────────────────────────────────
+        composable(TrashRoutes.TRASH) {
+            com.focusforceplus.app.ui.screens.trash.TrashScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
     }

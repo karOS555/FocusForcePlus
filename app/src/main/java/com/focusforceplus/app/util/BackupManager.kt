@@ -2,12 +2,19 @@ package com.focusforceplus.app.util
 
 import android.content.Context
 import android.net.Uri
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardSettings
+import com.focusforceplus.app.compliance.GuardSlot
+import com.focusforceplus.app.compliance.NagPolicy
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.navigation.NavConfig
 import androidx.room.withTransaction
 import com.focusforceplus.app.data.db.AppDatabase
 import com.focusforceplus.app.data.db.dao.BlockedAppDao
 import com.focusforceplus.app.data.db.dao.BlockerGroupDao
 import com.focusforceplus.app.data.db.dao.FocusCompletionDao
 import com.focusforceplus.app.data.db.dao.FocusSessionDao
+import com.focusforceplus.app.data.db.dao.ListDao
 import com.focusforceplus.app.data.db.dao.RoutineCompletionDao
 import com.focusforceplus.app.data.db.dao.RoutineDao
 import com.focusforceplus.app.data.db.dao.RoutineTaskDao
@@ -16,10 +23,14 @@ import com.focusforceplus.app.data.db.entity.BlockedAppEntity
 import com.focusforceplus.app.data.db.entity.BlockerGroupEntity
 import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.db.entity.FocusSessionEntity
+import com.focusforceplus.app.data.db.entity.ListEntity
+import com.focusforceplus.app.data.db.entity.ListItemEntity
+import com.focusforceplus.app.data.db.entity.ListSuggestionEntity
 import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineEntity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
 import com.focusforceplus.app.data.db.entity.TodoEntity
+import com.focusforceplus.app.data.repository.NavRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.SleepRepository
 import com.focusforceplus.app.data.repository.SleepSchedule
@@ -37,11 +48,16 @@ import javax.inject.Singleton
  * rules and groups, focus sessions, completion history, **all app settings** and
  * the **sleep schedule**. Import replaces all current data and re-arms every alarm.
  *
- * Version 2 added the `settings` and `sleep` objects — before that a restored
+ * Version 2 added the `settings` and `sleep` objects. Before that a restored
  * backup silently dropped everything that lives in DataStore rather than Room
  * (reminder times, default priority, alarm spacing, blocker master switch, the
- * whole sleep schedule). Version 1 files still import; the missing sections are
- * simply left at their current values.
+ * whole sleep schedule).
+ *
+ * Version 3 added lists, icons, the trash, speed bumps, how often todos come back,
+ * how long they ring, and the arrangement of the navigation bar.
+ *
+ * Older files still import; whatever they do not carry is left at its current
+ * value or its default.
  *
  * Uses org.json for consistency with the existing checklist serialization — no new
  * dependency, nothing leaves the device except through the user's chosen file.
@@ -60,13 +76,15 @@ class BackupManager @Inject constructor(
     private val focusCompletionDao: FocusCompletionDao,
     private val settingsRepository: SettingsRepository,
     private val sleepRepository: SleepRepository,
+    private val listDao: ListDao,
+    private val navRepository: NavRepository,
     private val alarmHelper: AlarmHelper,
     private val todoReminders: TodoReminderEngine,
     private val focusAlarmHelper: FocusAlarmHelper,
-    private val sleepAlarmHelper: SleepAlarmHelper,
+    private val alarmRearmer: AlarmRearmer,
 ) {
     companion object {
-        const val BACKUP_VERSION = 2
+        const val BACKUP_VERSION = 3
         const val SUGGESTED_FILE_NAME = "focusforceplus-backup.json"
     }
 
@@ -79,6 +97,7 @@ class BackupManager @Inject constructor(
         val todos = todoDao.getAllOnce()
         val blockedApps = blockedAppDao.getAllOnce()
         val focusSessions = focusSessionDao.getAllOnce()
+        val lists = listDao.getAllListsOnce()
 
         val root = JSONObject().apply {
             put("backupVersion", BACKUP_VERSION)
@@ -90,6 +109,9 @@ class BackupManager @Inject constructor(
             put("focusSessions", JSONArray(focusSessions.map { focusSessionJson(it) }))
             put("routineCompletions", JSONArray(routineCompletionDao.getAllOnce().map { routineCompletionJson(it) }))
             put("focusCompletions", JSONArray(focusCompletionDao.getAllOnce().map { focusCompletionJson(it) }))
+            put("lists", JSONArray(lists.map { listJson(it) }))
+            put("listItems", JSONArray(listDao.getAllItemsOnce().map { listItemJson(it) }))
+            put("listSuggestions", JSONArray(listDao.getAllSuggestionsOnce().map { suggestionJson(it) }))
             put("settings", settingsJson())
             put("sleep", sleepJson(sleepRepository.schedule.first()))
         }
@@ -98,7 +120,7 @@ class BackupManager @Inject constructor(
             stream.write(root.toString(2).toByteArray(Charsets.UTF_8))
         } ?: throw IllegalStateException("Could not open the selected file for writing.")
 
-        "Exported ${routines.size} routines, ${todos.size} todos, " +
+        "Exported ${routines.size} routines, ${todos.size} todos, ${lists.size} lists, " +
             "${blockedApps.size} blocker rules, ${focusSessions.size} focus sessions, " +
             "plus your settings and sleep schedule."
     }
@@ -135,6 +157,11 @@ class BackupManager @Inject constructor(
             ?.mapObjects { routineCompletionFromJson(it) } ?: emptyList()
         val focusCompletions = root.optJSONArray("focusCompletions")
             ?.mapObjects { focusCompletionFromJson(it) } ?: emptyList()
+        // Version 3 and later; older files simply have no lists.
+        val lists = root.optJSONArray("lists")?.mapObjects { listFromJson(it) } ?: emptyList()
+        val listItems = root.optJSONArray("listItems")?.mapObjects { listItemFromJson(it) } ?: emptyList()
+        val listSuggestions = root.optJSONArray("listSuggestions")
+            ?.mapObjects { suggestionFromJson(it) } ?: emptyList()
         // Version 1 files carry neither of these; leaving them null keeps the
         // current settings instead of resetting them to defaults.
         val settings = root.optJSONObject("settings")
@@ -155,6 +182,9 @@ class BackupManager @Inject constructor(
             focusSessionDao.deleteAll()
             routineCompletionDao.deleteAll()
             focusCompletionDao.deleteAll()
+            listDao.deleteAllItems()
+            listDao.deleteAllSuggestions()
+            listDao.deleteAllLists()
 
             routines.forEach { routineDao.insert(it) }
             routineTaskDao.insertAll(tasks)
@@ -164,6 +194,9 @@ class BackupManager @Inject constructor(
             focusSessions.forEach { focusSessionDao.insert(it) }
             routineCompletions.forEach { routineCompletionDao.insert(it) }
             focusCompletions.forEach { focusCompletionDao.insert(it) }
+            lists.forEach { listDao.insertList(it) }
+            listDao.insertItems(listItems)
+            listSuggestions.forEach { listDao.upsertSuggestion(it) }
         }
 
         // Settings live in DataStore, outside the Room transaction. They are applied
@@ -171,15 +204,12 @@ class BackupManager @Inject constructor(
         settings?.let { applySettings(it) }
         sleep?.let { sleepRepository.saveSchedule(it) }
 
-        // Re-arm alarms for the imported data — including the restored reminder
-        // times and sleep schedule, not the ones that happened to be set before.
-        alarmHelper.rescheduleAll(routines)
-        todoReminders.syncAll()
-        focusAlarmHelper.rescheduleAll(focusSessions)
-        sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
+        // Re-arm alarms for the imported data, with the restored reminder times,
+        // sleep schedule and module switches, not the ones set before.
+        alarmRearmer.rearmAll()
 
         buildString {
-            append("Imported ${routines.size} routines, ${todos.size} todos, ")
+            append("Imported ${routines.size} routines, ${todos.size} todos, ${lists.size} lists, ")
             append("${blockedApps.size} blocker rules, ${focusSessions.size} focus sessions")
             when {
                 settings != null && sleep != null -> append(", settings and sleep schedule.")
@@ -205,6 +235,8 @@ class BackupManager @Inject constructor(
         put("maxRescheduleCount", r.maxRescheduleCount)
         putNullable("iconKey", r.iconKey)
         put("createdAt", r.createdAt)
+        putNullable("deletedAt", r.deletedAt)
+        putNullable("guards", r.guards)
         put("tasks", JSONArray(routineTasks.map { taskJson(it) }))
     }
 
@@ -222,6 +254,8 @@ class BackupManager @Inject constructor(
         maxRescheduleCount = o.getInt("maxRescheduleCount"),
         iconKey = o.optStringOrNull("iconKey"),
         createdAt = o.getLong("createdAt"),
+        deletedAt = o.optLongOrNull("deletedAt"),
+        guards = o.optStringOrNull("guards"),
     )
 
     private fun taskJson(t: RoutineTaskEntity) = JSONObject().apply {
@@ -265,9 +299,13 @@ class BackupManager @Inject constructor(
         putNullable("completedAt", t.completedAt)
         putNullable("postponedTo", t.postponedTo)
         putNullable("checklistJson", t.checklistJson)
+        putNullable("iconKey", t.iconKey)
+        putNullable("deletedAt", t.deletedAt)
+        putNullable("guards", t.guards)
+        putNullable("listId", t.listId)
     }
 
-    private fun todoFromJson(o: JSONObject) = TodoEntity(
+    private fun todoFromJson(o: JSONObject, now: Long = System.currentTimeMillis()) = TodoEntity(
         id = o.getLong("id"),
         title = o.getString("title"),
         description = o.optStringOrNull("description"),
@@ -284,6 +322,16 @@ class BackupManager @Inject constructor(
         completedAt = o.optLongOrNull("completedAt"),
         postponedTo = o.optLongOrNull("postponedTo"),
         checklistJson = o.optStringOrNull("checklistJson"),
+        iconKey = o.optStringOrNull("iconKey"),
+        deletedAt = o.optLongOrNull("deletedAt"),
+        guards = o.optStringOrNull("guards"),
+        listId = o.optLongOrNull("listId"),
+        // Reminder state is not carried over. A todo that is already overdue waits
+        // for the next daily reminder, so restoring a backup does not set off every
+        // overdue todo at once.
+        nagCount = o.optLongOrNull("dueDateTime")
+            ?.takeIf { due -> due <= now && !o.getBoolean("isCompleted") }
+            ?.let { TodoEntity.NAG_DISMISSED } ?: 0,
     )
 
     private fun blockedAppJson(b: BlockedAppEntity) = JSONObject().apply {
@@ -329,6 +377,8 @@ class BackupManager @Inject constructor(
         g.windowDaysCsv?.let { put("windowDaysCsv", it) }
         g.blockDuringRoutines?.let { put("blockDuringRoutines", it) }
         g.blockDuringFocus?.let { put("blockDuringFocus", it) }
+        putNullable("iconKey", g.iconKey)
+        put("alwaysBlock", g.alwaysBlock)
     }
 
     private fun groupFromJson(o: JSONObject) = BlockerGroupEntity(
@@ -341,6 +391,8 @@ class BackupManager @Inject constructor(
         windowDaysCsv = o.optStringOrNull("windowDaysCsv"),
         blockDuringRoutines = if (o.has("blockDuringRoutines")) o.getBoolean("blockDuringRoutines") else null,
         blockDuringFocus = if (o.has("blockDuringFocus")) o.getBoolean("blockDuringFocus") else null,
+        iconKey = o.optStringOrNull("iconKey"),
+        alwaysBlock = o.optBoolean("alwaysBlock", false),
     )
 
     private fun focusSessionJson(f: FocusSessionEntity) = JSONObject().apply {
@@ -358,6 +410,8 @@ class BackupManager @Inject constructor(
         putNullable("scheduledTimeMinute", f.scheduledTimeMinute)
         put("isActive", f.isActive)
         put("createdAt", f.createdAt)
+        putNullable("iconKey", f.iconKey)
+        putNullable("deletedAt", f.deletedAt)
     }
 
     private fun focusSessionFromJson(o: JSONObject) = FocusSessionEntity(
@@ -375,6 +429,68 @@ class BackupManager @Inject constructor(
         scheduledTimeMinute = o.optIntOrNull("scheduledTimeMinute"),
         isActive = o.getBoolean("isActive"),
         createdAt = o.getLong("createdAt"),
+        iconKey = o.optStringOrNull("iconKey"),
+        deletedAt = o.optLongOrNull("deletedAt"),
+    )
+
+    // ── Lists ─────────────────────────────────────────────────────────────────
+
+    private fun listJson(l: ListEntity) = JSONObject().apply {
+        put("id", l.id)
+        put("name", l.name)
+        putNullable("iconKey", l.iconKey)
+        put("sortOrder", l.sortOrder)
+        put("createdAt", l.createdAt)
+        putNullable("deletedAt", l.deletedAt)
+    }
+
+    private fun listFromJson(o: JSONObject) = ListEntity(
+        id = o.getLong("id"),
+        name = o.getString("name"),
+        iconKey = o.optStringOrNull("iconKey"),
+        sortOrder = o.optInt("sortOrder", 0),
+        createdAt = o.getLong("createdAt"),
+        deletedAt = o.optLongOrNull("deletedAt"),
+    )
+
+    private fun listItemJson(i: ListItemEntity) = JSONObject().apply {
+        put("id", i.id)
+        put("listId", i.listId)
+        put("text", i.text)
+        putNullable("note", i.note)
+        put("isChecked", i.isChecked)
+        putNullable("checkedAt", i.checkedAt)
+        put("sortOrder", i.sortOrder)
+        put("createdAt", i.createdAt)
+    }
+
+    private fun listItemFromJson(o: JSONObject) = ListItemEntity(
+        id = o.getLong("id"),
+        listId = o.getLong("listId"),
+        text = o.getString("text"),
+        note = o.optStringOrNull("note"),
+        isChecked = o.optBoolean("isChecked", false),
+        checkedAt = o.optLongOrNull("checkedAt"),
+        sortOrder = o.optInt("sortOrder", 0),
+        createdAt = o.getLong("createdAt"),
+    )
+
+    private fun suggestionJson(s: ListSuggestionEntity) = JSONObject().apply {
+        put("id", s.id)
+        put("listId", s.listId)
+        put("key", s.key)
+        put("text", s.text)
+        put("useCount", s.useCount)
+        put("lastUsedAt", s.lastUsedAt)
+    }
+
+    private fun suggestionFromJson(o: JSONObject) = ListSuggestionEntity(
+        id = o.getLong("id"),
+        listId = o.getLong("listId"),
+        key = o.getString("key"),
+        text = o.getString("text"),
+        useCount = o.optInt("useCount", 1),
+        lastUsedAt = o.getLong("lastUsedAt"),
     )
 
     private fun routineCompletionJson(c: RoutineCompletionEntity) = JSONObject().apply {
@@ -441,7 +557,35 @@ class BackupManager @Inject constructor(
         put("alarmVibrationEnabled", settingsRepository.alarmVibrationEnabled.first())
         put("tpWindowStartMinutes", settingsRepository.tpWindowStartMinutes.first())
         put("tpWindowDurationMinutes", settingsRepository.tpWindowDurationMinutes.first())
+
+        val guards = settingsRepository.guardSettings.first()
+        put("guardsEnabled", guards.enabled)
+        put("guards", JSONObject().apply { guards.slots.forEach { (slot, guard) -> put(slot.key, guard.encode()) } })
+        put("nagHigh", nagJson(settingsRepository.nagPolicy(2).first()))
+        put("nagMedium", nagJson(settingsRepository.nagPolicy(1).first()))
+        put("todoRingSeconds", settingsRepository.todoRingSeconds.first())
+        put("trashRetentionDays", settingsRepository.trashRetentionDays.first())
+
+        val nav = navRepository.current()
+        put("nav", JSONObject().apply {
+            put("order", JSONArray(nav.order.map { it.key }))
+            put("hidden", JSONArray(nav.hidden.map { it.key }))
+            put("off", JSONArray(nav.off.map { it.key }))
+        })
     }
+
+    private fun nagJson(policy: NagPolicy) = JSONObject().apply {
+        put("intervalMinutes", policy.intervalMinutes)
+        put("maxRepeats", policy.maxRepeats)
+    }
+
+    private fun nagFromJson(o: JSONObject) = NagPolicy(
+        intervalMinutes = o.getInt("intervalMinutes"),
+        maxRepeats = o.getInt("maxRepeats"),
+    )
+
+    private fun JSONArray.modules(): List<AppModule> =
+        (0 until length()).mapNotNull { AppModule.fromKey(getString(it)) }
 
     private suspend fun applySettings(o: JSONObject) {
         o.optJSONArray("digestTimes")?.let { array ->
@@ -472,6 +616,31 @@ class BackupManager @Inject constructor(
             settingsRepository.saveTpWindow(
                 o.getInt("tpWindowStartMinutes"),
                 o.getInt("tpWindowDurationMinutes"),
+            )
+        }
+        if (o.has("guardsEnabled") || o.has("guards")) {
+            val stored = o.optJSONObject("guards")
+            val slots = GuardSlot.entries.mapNotNull { slot ->
+                val text = if (stored != null && stored.has(slot.key)) stored.getString(slot.key) else null
+                Guard.decode(text)?.let { slot to it }
+            }.toMap()
+            settingsRepository.saveGuardSettings(
+                GuardSettings(enabled = o.optBoolean("guardsEnabled", true), slots = slots)
+            )
+        }
+        o.optJSONObject("nagHigh")?.let { settingsRepository.saveNagPolicy(2, nagFromJson(it)) }
+        o.optJSONObject("nagMedium")?.let { settingsRepository.saveNagPolicy(1, nagFromJson(it)) }
+        if (o.has("todoRingSeconds")) settingsRepository.saveTodoRingSeconds(o.getInt("todoRingSeconds"))
+        if (o.has("trashRetentionDays")) settingsRepository.saveTrashRetentionDays(o.getInt("trashRetentionDays"))
+        o.optJSONObject("nav")?.let { nav ->
+            val order = nav.optJSONArray("order")?.modules().orEmpty()
+            navRepository.restore(
+                NavConfig(
+                    order = order + AppModule.entries.filterNot { it in order },
+                    hidden = nav.optJSONArray("hidden")?.modules()?.toSet()
+                        ?: AppModule.entries.filterNot { it.shownByDefault }.toSet(),
+                    off = nav.optJSONArray("off")?.modules()?.toSet().orEmpty(),
+                )
             )
         }
     }

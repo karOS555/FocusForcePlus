@@ -84,6 +84,15 @@ class NavRepository @Inject constructor(
         dataStore.edit { it[OFF_KEY] = next.map { m -> m.key }.toSet() }
     }
 
+    /** Writes a whole setup at once, for restoring a backup. */
+    suspend fun restore(config: NavConfig) {
+        dataStore.edit {
+            it[ORDER_KEY] = config.order.joinToString(",") { m -> m.key }
+            it[HIDDEN_KEY] = config.hidden.filter { m -> m.canHide }.map { m -> m.key }.toSet()
+            it[OFF_KEY] = config.off.filter { m -> m.isFeature }.map { m -> m.key }.toSet()
+        }
+    }
+
     suspend fun resetToDefaults() {
         dataStore.edit {
             it.remove(ORDER_KEY)
