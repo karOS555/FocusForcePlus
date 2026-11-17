@@ -2,10 +2,10 @@ package com.focusforceplus.app.ui.screens.blocker
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.focusforceplus.app.compliance.TamperProtectionGuard
-import com.focusforceplus.app.compliance.isRuleLocked
-import com.focusforceplus.app.data.repository.BlockerRepository
+import com.focusforceplus.app.compliance.GuardSettings
 import com.focusforceplus.app.data.repository.SettingsRepository
+import com.focusforceplus.app.service.ActiveRoutineRegistry
+import com.focusforceplus.app.service.FocusSessionRegistry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,81 +14,56 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 
 data class BlockerSettingsUiState(
-    val blockerEnabled: Boolean = false,
     val blockDuringRoutines: Boolean = true,
     val blockDuringFocus: Boolean = true,
     val message: String? = null,
 )
 
+/**
+ * Settings that apply to every block. The master switch lives on the blocker
+ * screen itself, next to the blocks it pauses, with its lock checks there.
+ */
 @HiltViewModel
 class BlockerSettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val blockerRepository: BlockerRepository,
-    private val tamperGuard: TamperProtectionGuard,
+    private val routineRegistry: ActiveRoutineRegistry,
+    private val focusRegistry: FocusSessionRegistry,
 ) : ViewModel() {
 
     private val _message = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<BlockerSettingsUiState> = combine(
-        settingsRepository.blockerEnabled,
         settingsRepository.blockDuringRoutines,
         settingsRepository.blockDuringFocus,
         _message,
-    ) { enabled, routines, focus, message ->
-        BlockerSettingsUiState(
-            blockerEnabled = enabled,
-            blockDuringRoutines = routines,
-            blockDuringFocus = focus,
-            message = message,
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = BlockerSettingsUiState(),
-    )
+    ) { routines, focus, message ->
+        BlockerSettingsUiState(blockDuringRoutines = routines, blockDuringFocus = focus, message = message)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BlockerSettingsUiState())
+
+    /** Speed bump defaults: switching blocking off during sessions counts as pausing. */
+    val guards: StateFlow<GuardSettings> = settingsRepository.guardSettings
+        .stateIn(viewModelScope, SharingStarted.Eagerly, GuardSettings())
 
     fun clearMessage() = _message.update { null }
 
-    /**
-     * The master switch would be a side door around per-rule Invincible locks, so
-     * turning it OFF is refused while any rule is currently locked (Golden Rule #11).
-     */
-    fun setBlockerEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            if (!enabled) {
-                val cal = Calendar.getInstance()
-                val minutesOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-                val rules = blockerRepository.getAllAppsOnce()
-                val lockedCount = rules.count { isRuleLocked(it, minutesOfDay) }
-                if (lockedCount > 0) {
-                    _message.value = "Cannot turn blocking off: $lockedCount rule(s) are " +
-                        "locked by Invincible Mode right now. They release at midnight or " +
-                        "their window end."
-                    return@launch
-                }
-                // The master switch would neutralize every invincible rule at once —
-                // with any such rule present it is a protected change (TP window only).
-                if (rules.any { it.invincibleMode && it.isBlocked }) {
-                    val verdict = tamperGuard.checkProtectedChange()
-                    if (!verdict.allowed) {
-                        _message.value = verdict.message
-                        return@launch
-                    }
-                }
-            }
-            settingsRepository.saveBlockerEnabled(enabled)
-        }
-    }
-
+    // A running invincible session keeps its blocking: switching it off here would
+    // be a side door around the lock (Golden Rule #11). It frees up when it ends.
     fun setBlockDuringRoutines(enabled: Boolean) {
+        if (!enabled && routineRegistry.activeSession.value?.let { it.invincible && it.blocksApps } == true) {
+            _message.value = "An invincible routine is running. This can change once it is over."
+            return
+        }
         viewModelScope.launch { settingsRepository.saveBlockDuringRoutines(enabled) }
     }
 
     fun setBlockDuringFocus(enabled: Boolean) {
+        if (!enabled && focusRegistry.activeSession.value?.let { it.invincible && it.blocksApps } == true) {
+            _message.value = "An invincible focus session is running. This can change once it is over."
+            return
+        }
         viewModelScope.launch { settingsRepository.saveBlockDuringFocus(enabled) }
     }
 }

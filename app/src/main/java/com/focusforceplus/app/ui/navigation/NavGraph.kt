@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import com.focusforceplus.app.ui.screens.blocker.BlockerListScreen
 import com.focusforceplus.app.ui.screens.blocker.BlockerSettingsScreen
 import com.focusforceplus.app.ui.screens.blocker.DisclosureScreen
+import com.focusforceplus.app.ui.screens.blocker.DisclosureType
 import com.focusforceplus.app.ui.screens.focus.ActiveFocusScreen
 import com.focusforceplus.app.ui.screens.focus.CreateFocusScreen
 import com.focusforceplus.app.ui.screens.focus.FocusListScreen
@@ -66,7 +67,10 @@ fun NavGraph(
 
         // ── Statistics ────────────────────────────────────────────────────────
         composable(StatsRoutes.STATS) {
-            StatsScreen(onNavigateBack = { navController.popBackStack() })
+            StatsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenUsageDisclosure = { navController.navigate(BlockerRoutes.disclosure(DisclosureType.USAGE_ACCESS)) },
+            )
         }
 
         // ── Onboarding (first launch only) ────────────────────────────────────

@@ -49,7 +49,7 @@ import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.util.GroupTemplates
 
 private val DAY_LABELS = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-private val LIMIT_CHOICES = listOf(15, 30, 45, 60, 90, 120, 180)
+internal val LIMIT_CHOICES = listOf(15, 30, 45, 60, 90, 120, 180)
 
 /**
  * One block, on a full screen: its apps, and when they are blocked. Any mix of

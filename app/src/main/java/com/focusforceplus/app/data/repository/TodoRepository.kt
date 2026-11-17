@@ -23,6 +23,8 @@ class TodoRepository @Inject constructor(
 
     fun getCompletedTodos(): Flow<List<TodoEntity>> = todoDao.getCompleted()
 
+    fun getCompletionTimesSince(since: Long): Flow<List<Long>> = todoDao.getCompletionTimesSince(since)
+
     fun getTrashedTodos(): Flow<List<TodoEntity>> = todoDao.getTrashed()
 
     fun observeTodo(id: Long): Flow<TodoEntity?> = todoDao.observeById(id)

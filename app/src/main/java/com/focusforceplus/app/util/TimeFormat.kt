@@ -41,6 +41,17 @@ object TimeFormat {
     /** "Today 14:00", "Mon 09:30", "Nov 3 18:00". */
     fun dayAndClock(millis: Long): String = "${day(millis)} ${clock(millis)}"
 
+    /** "45m", "1h 20m", "2h": for tiles and charts, where space is short. */
+    fun compact(totalMinutes: Int): String {
+        val h = totalMinutes / 60
+        val m = totalMinutes % 60
+        return when {
+            h > 0 && m > 0 -> "${h}h ${m}m"
+            h > 0 -> "${h}h"
+            else -> "${m}m"
+        }
+    }
+
     /** "45 min", "1 h 20 min", "2 h". */
     fun duration(totalMinutes: Int): String {
         val h = totalMinutes / 60

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -47,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.data.repository.SettingsRepository
+import com.focusforceplus.app.ui.theme.FfTheme
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -73,51 +72,40 @@ object FeatureHelpContent {
     val ROUTINES = FeatureHelp(
         key = "routines",
         title = "How routines work",
-        intro = "A routine is a fixed sequence of timed steps (like a morning routine) " +
-            "that starts with a real alarm — loud, over the lock screen, hard to ignore.",
+        intro = "A routine is a row of timed steps, like getting ready in the morning. " +
+            "It starts with a real alarm and then walks you through it step by step.",
         sections = listOf(
             HelpSection(
-                "Alarms",
-                "On the days you pick, the routine fires a full alarm at its start time, " +
-                    "plus a gentle heads-up 15 minutes before. Tapping Start walks you " +
-                    "through each step with a countdown timer.",
+                "The alarm",
+                "On the days you pick, the routine rings at its start time, over the lock " +
+                    "screen. Fifteen minutes before, a quiet heads-up lets you know it is coming.",
             ),
             HelpSection(
                 "Running late on a step",
-                "When a step's time is up, the timer keeps counting into the negative " +
-                    "and reminds you at an interval you set - you can always add extra " +
-                    "time or mark the step done.",
+                "When a step's time is up, the timer keeps counting and reminds you at an " +
+                    "interval you set. You can always add time or mark the step done.",
             ),
             HelpSection(
-                "The notification while it runs",
-                "A running routine shows up as a timeline: one section per step, " +
-                    "coloured for done, running and still ahead, with the countdown of " +
-                    "the current step. Done, +5 min and Cancel work straight from there, " +
-                    "and it stays readable on the lock screen so you never have to " +
-                    "unlock to see where you are.",
+                "While it runs",
+                "The notification shows every step as a timeline with the current " +
+                    "countdown, and works from the lock screen: Done, +5 min and Cancel " +
+                    "without unlocking.",
             ),
             HelpSection(
                 "Snooze and reschedule",
-                "Snoozes and reschedules are limited per routine (you choose the caps " +
-                    "when editing). Once they are used up, the routine expects to be done.",
+                "Each routine has its own number of snoozes and reschedules. By default " +
+                    "a small sum stands in front of them, so they are a decision and not " +
+                    "a reflex. Change that in Settings > Speed bumps or per routine.",
             ),
             HelpSection(
-                "Invincible Mode",
-                "While an invincible routine is running there is no cancel button - " +
-                    "only completing or rescheduling it. The setting itself can only be " +
-                    "changed while the routine is NOT running. Honest limits: you can " +
-                    "always uninstall the app from Android settings; this is friction " +
-                    "against impulsive quitting, not a cage.",
+                "Invincible mode",
+                "A running invincible routine has no Cancel, only Done or Reschedule. The " +
+                    "setting can only change while the routine is not running.",
             ),
             HelpSection(
-                "The switch on each card",
-                "The switch pauses future scheduled runs (alarms) without deleting " +
-                    "anything. A currently running session keeps going.",
-            ),
-            HelpSection(
-                "App blocking",
-                "If a routine has \"App Blocker\" enabled, your configured blocked apps " +
-                    "are covered while it runs (see the Blocker tab).",
+                "Copy what you have",
+                "Long-press a routine to duplicate it. In the editor you can copy steps " +
+                    "from another routine or start from a few common ones.",
             ),
         ),
     )
@@ -125,97 +113,111 @@ object FeatureHelpContent {
     val TODOS = FeatureHelp(
         key = "todos",
         title = "How todos work",
-        intro = "A planner that refuses to let things quietly slip. How pushy a todo is " +
-            "depends entirely on the priority you give it.",
+        intro = "A todo list that does not let things slip quietly. How pushy a todo is " +
+            "depends on its priority.",
         sections = listOf(
             HelpSection(
                 "Priorities",
-                "Low: a normal notification you can swipe away. Medium: a silent alarm " +
-                    "screen with snooze, reschedule, and dismiss - after dismissing, a " +
-                    "soft reminder stays pinned. High: a loud alarm with sound and " +
-                    "vibration, no dismiss, and a pinned notification until you complete it.",
+                "Low: one ordinary notification when it is due. Medium: comes up on " +
+                    "screen without sound, stays as a notification and comes back a " +
+                    "couple of times. High: rings, stays, and rings again every few minutes.",
             ),
             HelpSection(
-                "Snoozes and reschedules",
-                "High-priority todos have hard caps you choose when creating them (1-5 " +
-                    "each). Medium and Low stay flexible. Even when everything is used " +
-                    "up, the todo itself always stays editable and deletable in this list.",
+                "It always stops",
+                "After its repeats a todo rests as a notification until your next daily " +
+                    "reminder. Nothing rings forever, and every todo can always be edited, " +
+                    "moved or deleted from the list.",
+            ),
+            HelpSection(
+                "Ticking off",
+                "On the alarm screen you press Done first. High priority asks once more, " +
+                    "then a slider finishes it. These speed bumps are adjustable in Settings " +
+                    "> Speed bumps, and each todo can have its own.",
+            ),
+            HelpSection(
+                "Snoozes and moves",
+                "Each todo has a number of snoozes and moves. When they are used up, a " +
+                    "high-priority alarm only offers Done. Lower priorities can still be " +
+                    "dismissed until the next reminder.",
             ),
             HelpSection(
                 "Daily reminders",
-                "Undated and overdue todos resurface as notifications at fixed times " +
-                    "each day - add as many times as you like under Settings > Todos.",
+                "Todos without a date and overdue ones come back at fixed times each day. " +
+                    "Set the times in Settings > Todos.",
             ),
             HelpSection(
-                "Swiping a reminder away",
-                "High and Medium reminders come straight back when you swipe them - " +
-                    "that is the point of them. Every one of them always carries Done, " +
-                    "Snooze and Dismiss, so there is a way out; it just has to be a " +
-                    "decision instead of a reflex. Low priority stays an ordinary " +
-                    "notification you can wipe away.",
+                "Recurring todos and checklists",
+                "Ticking off a recurring todo creates the next one. A todo can carry a " +
+                    "checklist that you tick off on the alarm screen.",
             ),
             HelpSection(
-                "Recurring todos",
-                "Completing a recurring todo automatically creates the next occurrence " +
-                    "(daily, weekly on chosen days, or monthly).",
+                "Deleting",
+                "Deleted todos go to the trash first and can be restored from Settings > Trash.",
+            ),
+        ),
+    )
+
+    val LISTS = FeatureHelp(
+        key = "lists",
+        title = "How lists work",
+        intro = "Lists are for things you collect rather than do on time: shopping, " +
+            "packing, ideas. No alarms, no deadlines.",
+        sections = listOf(
+            HelpSection(
+                "Adding fast",
+                "Type several items at once, separated by commas. Things you added before " +
+                    "come back as suggestions.",
             ),
             HelpSection(
-                "Checklists",
-                "A todo can carry sub-items. On the alarm screen you tick them off one " +
-                    "by one - when all are done, it offers to complete the todo.",
+                "Ticking off",
+                "Ticked items move to the bottom. Clear them all at once when you are done, " +
+                    "or untick them to use the list again.",
+            ),
+            HelpSection(
+                "Shopping mode",
+                "Keeps the screen on while the list is open, so it does not lock between aisles.",
             ),
         ),
     )
 
     val BLOCKER = FeatureHelp(
         key = "blocker",
-        title = "How the app blocker works",
-        intro = "Pick apps that pull you away, and FocusForce+ covers them with a " +
-            "blocking screen the moment they open.",
+        title = "How the blocker works",
+        intro = "A block is a set of apps, or a single app, with a rule for when it is " +
+            "closed. When you open a blocked app, a blocking screen covers it.",
         sections = listOf(
             HelpSection(
-                "Three ways to block",
-                "Always: blocked whenever the rule is on. Daily limit: allowed until " +
-                    "you used it for X minutes today, then blocked until midnight. Time " +
-                    "window: blocked during a fixed daily range of up to 12 hours - " +
-                    "overnight windows like 22:00-06:00 work too. Tap any app row to " +
-                    "configure this.",
+                "When a block applies",
+                "Always, after a daily time limit, or during a schedule of up to 12 hours " +
+                    "(overnight works too). A block can also apply during routines and " +
+                    "focus sessions. A shared limit counts all apps in the block together.",
             ),
             HelpSection(
-                "Groups",
-                "Bundle related apps (e.g. all your social media) into a group with ONE " +
-                    "shared daily limit - their combined usage counts against it, and when " +
-                    "it's up the whole group is blocked until midnight. Create groups at the " +
-                    "top of this screen; focus sessions can then block whole groups at once.",
+                "A few more minutes",
+                "Twice a day per app you can allow yourself 5 more minutes from the " +
+                    "blocking screen, after a short wait. Not while the block is invincible.",
             ),
             HelpSection(
-                "During routines and focus",
-                "Apps can additionally be blocked whenever a routine or focus session " +
-                    "with app blocking is running - regardless of limits. Focus sessions " +
-                    "can narrow this to specific groups.",
+                "Invincible blocks",
+                "Only blocks with a limit or a schedule can be invincible, because they " +
+                    "end on their own: at midnight or at the end of the schedule. Until " +
+                    "then the block cannot be weakened or switched off.",
             ),
             HelpSection(
-                "Invincible Mode (per rule)",
-                "Locks a rule while it is actively blocking for a bounded reason: limit " +
-                    "reached (releases at midnight) or inside its window (releases at " +
-                    "the window end). While locked, the rule cannot be weakened or " +
-                    "turned off. An always-on block never locks - it would have no end.",
+                "Reels and Shorts",
+                "Instead of blocking Instagram or YouTube completely, a separate optional " +
+                    "service can leave just Reels and Shorts when they open.",
             ),
             HelpSection(
-                "5-minute exceptions",
-                "Twice per day and app you can grant yourself 5 more minutes from the " +
-                    "blocking screen - unless the rule or the running session is invincible.",
+                "Permissions",
+                "The blocking service only learns which app is in front and reads nothing " +
+                    "on the screen. Usage access measures app time for limits and statistics. " +
+                    "Nothing leaves your phone.",
             ),
             HelpSection(
-                "The two permissions",
-                "The accessibility service only detects which app comes to the " +
-                    "foreground - it cannot read screen content. Usage access only " +
-                    "measures your app time for limits and stats. Nothing leaves your device.",
-            ),
-            HelpSection(
-                "Always allowed",
-                "Android settings, the phone app, emergency services, your launcher, " +
-                    "and FocusForce+ itself can never be blocked.",
+                "Never blocked",
+                "Android settings, the phone app, emergency calls, your home screen, your " +
+                    "clock app and FocusForce+ itself.",
             ),
         ),
     )
@@ -223,46 +225,34 @@ object FeatureHelpContent {
     val FOCUS = FeatureHelp(
         key = "focus",
         title = "How focus sessions work",
-        intro = "A focus session is a distraction-free countdown: silence interruptions, " +
-            "block tempting apps, and commit to a block of deep work.",
+        intro = "A focus session is a countdown for one piece of work, with notifications " +
+            "and distracting apps out of the way.",
         sections = listOf(
             HelpSection(
-                "Session types",
-                "Study, Work, Creative, and Custom are presets: picking one fills in a " +
-                    "fitting duration and toggle setup (Study 45 min with visible " +
-                    "notifications, Work 50 min of total silence, Creative 90 min flow) " +
-                    "and color-codes the session in your list. Every field stays freely " +
-                    "adjustable - the behavior always comes from the toggles, not the label.",
+                "Quick focus",
+                "Pick a length and start. Nothing is saved, and it is never invincible.",
+            ),
+            HelpSection(
+                "Saved sessions",
+                "Study, Work and Creative fill in a fitting length and settings, which you " +
+                    "can change freely. A session can remind you at fixed times; it never " +
+                    "starts by itself.",
             ),
             HelpSection(
                 "Do Not Disturb",
-                "\"Enable DND\" silences everything except priority interruptions; " +
-                    "\"Block all notifications\" is total silence. Both need the Do Not " +
-                    "Disturb access you grant once in Android settings. DND is always " +
-                    "restored when the session ends - even if you swipe the app away.",
+                "A session can switch on Do Not Disturb, or silence everything. Both need " +
+                    "Do Not Disturb access, granted once in Android settings. Your previous " +
+                    "setting comes back when the session ends, even if the app is closed.",
             ),
             HelpSection(
-                "Invincible Mode",
-                "An invincible session cannot be paused or ended early - it simply runs " +
-                    "to the end of the timer (capped at 4 hours). Toggle it only while " +
-                    "the session is not running.",
+                "Blocking apps",
+                "With app blocking on, a session closes every block that applies during " +
+                    "focus, or only the ones you pick.",
             ),
             HelpSection(
-                "Scheduling",
-                "Scheduled sessions send a reminder with a \"Start now\" button at the " +
-                    "chosen time. Nothing ever starts by itself - DND switching on " +
-                    "unannounced would be worse than the distraction.",
-            ),
-            HelpSection(
-                "What gets blocked",
-                "With App Blocker on, a session blocks all your configured apps by default, " +
-                    "or just the blocker groups you pick. Choosing a preset type also " +
-                    "suggests fitting groups automatically.",
-            ),
-            HelpSection(
-                "Quick start",
-                "The Quick start button runs an unsaved one-off session - pick a " +
-                    "duration, go. It is never invincible.",
+                "Ending early",
+                "Ending before the timer is up asks first and then makes you wait a moment. " +
+                    "An invincible session cannot end early at all and runs for at most 4 hours.",
             ),
         ),
     )
@@ -270,50 +260,33 @@ object FeatureHelpContent {
     val SLEEP = FeatureHelp(
         key = "sleep",
         title = "How sleep mode works",
-        intro = "One nightly schedule that winds you down, quiets the phone, puts your " +
-            "distracting apps out of reach until morning, and can hand you straight " +
-            "into a bedtime and a morning routine.",
+        intro = "One schedule for the night: a reminder to wind down, a quiet phone, " +
+            "distracting apps closed until morning, and routines for bedtime and wake-up.",
         sections = listOf(
             HelpSection(
                 "Bedtime and wake-up",
-                "Pick the two times and the nights it applies to. The window may run " +
-                    "past midnight - it belongs to the evening it started on, so " +
-                    "\"Friday\" means Friday night into Saturday morning.",
-            ),
-            HelpSection(
-                "Wind-down",
-                "An optional heads-up before bedtime, so sleep mode never starts out " +
-                    "of nowhere. Set it to Off if you don't want it.",
+                "Pick both times and the nights. A night belongs to the evening it starts " +
+                    "on, so Friday means Friday night into Saturday morning.",
             ),
             HelpSection(
                 "During the night",
-                "Do Not Disturb silences interruptions, and any blocker groups you pick " +
-                    "are blocked until wake-up. Blocking needs the app blocker switched " +
-                    "on; group blocking is capped at 12 hours like every other window.",
+                "Do Not Disturb keeps it quiet, and the blocks you pick stay closed until " +
+                    "wake-up. Blocking needs the blocker to be on.",
             ),
             HelpSection(
-                "Linked routines",
-                "Bedtime and wake-up can each trigger one of your routines with the full " +
-                    "routine alarm. Pick an existing routine or create one right from the " +
-                    "picker - it gets linked automatically once saved.",
+                "Routines",
+                "Bedtime and wake-up can each start one of your routines with its full " +
+                    "alarm. You can create one right from the picker.",
             ),
             HelpSection(
                 "Backup alarms",
-                "Optionally, up to three alarms are created in your phone's own clock " +
-                    "app each night, spaced a few minutes apart in case you sleep through " +
-                    "the first. They live in the clock app, ring even if FocusForce+ " +
-                    "isn't running, and you can delete them there anytime.",
+                "Up to three alarms in your phone's own clock app, a few minutes apart, so " +
+                    "you wake up even if FocusForce+ is not running. Delete them there any time.",
             ),
             HelpSection(
-                "Your alarm always gets through",
-                "Your clock app can never be blocked - not by sleep mode, not by any " +
-                    "other rule. Waking up must never depend on this app.",
-            ),
-            HelpSection(
-                "Invincible Mode",
-                "While the sleep window is running, an invincible schedule cannot be " +
-                    "weakened or switched off - it releases at wake-up. You can still " +
-                    "tighten it. Outside the window it is freely editable.",
+                "Invincible mode",
+                "While the night runs, an invincible schedule cannot be weakened or " +
+                    "switched off until wake-up. You can still make it stricter.",
             ),
         ),
     )
@@ -423,35 +396,27 @@ fun FeatureHelpAction(
 
 @Composable
 fun FeatureHelpDialog(help: FeatureHelp, onDismiss: () -> Unit) {
+    val colors = FfTheme.colors
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(help.title) },
+        containerColor = colors.surfaceVariant,
+        titleContentColor = colors.text,
+        title = { Text(help.title, style = MaterialTheme.typography.titleLarge) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    help.intro,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                Text(help.intro, style = MaterialTheme.typography.bodyMedium, color = colors.text)
                 help.sections.forEach { section ->
-                    Spacer(Modifier.height(14.dp))
-                    Text(
-                        section.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        section.body,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(section.title, style = MaterialTheme.typography.titleSmall, color = colors.text)
+                    Spacer(Modifier.height(2.dp))
+                    Text(section.body, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Got it") }
+            TextButton(onClick = onDismiss) {
+                Text("Got it", style = MaterialTheme.typography.labelLarge, color = colors.accent)
+            }
         },
     )
 }
@@ -529,38 +494,5 @@ fun FirstRunHintButton(
                 }
             }
         }
-    }
-}
-
-/**
- * Slim header used at the top of the main feature tabs: title left, help right.
- */
-@Composable
-fun FeatureHeader(
-    title: String,
-    help: FeatureHelp,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            if (subtitle != null) {
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        FeatureHelpAction(help)
     }
 }

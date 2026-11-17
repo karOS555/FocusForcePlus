@@ -43,6 +43,10 @@ interface TodoDao {
     )
     fun getCompleted(): Flow<List<TodoEntity>>
 
+    /** When todos were ticked off, for the statistics; trashed ones still count. */
+    @Query("SELECT completedAt FROM todos WHERE completedAt IS NOT NULL AND completedAt >= :since")
+    fun getCompletionTimesSince(since: Long): Flow<List<Long>>
+
     @Query("SELECT * FROM todos WHERE id = :id")
     suspend fun getById(id: Long): TodoEntity?
 

@@ -2,199 +2,128 @@ package com.focusforceplus.app.ui.screens.blocker
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.focusforceplus.app.compliance.GuardSlot
+import com.focusforceplus.app.ui.components.FfCard
+import com.focusforceplus.app.ui.components.FfPaddedCard
+import com.focusforceplus.app.ui.components.FormSection
+import com.focusforceplus.app.ui.components.PageScaffold
+import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.components.SwitchRow
+import com.focusforceplus.app.ui.guards.GuardCopy
+import com.focusforceplus.app.ui.guards.GuardDialog
+import com.focusforceplus.app.ui.theme.FfTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The few blocker settings that apply to every block. Switching blocking off during
+ * sessions counts as pausing, so it goes through the same speed bump.
+ */
 @Composable
 fun BlockerSettingsScreen(
     onNavigateBack: () -> Unit,
     viewModel: BlockerSettingsViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val state by viewModel.uiState.collectAsState()
+    val guards by viewModel.guards.collectAsState()
+    val colors = FfTheme.colors
+    val snackbar = remember { SnackbarHostState() }
+    var pausing by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val pauseGuard = guards[GuardSlot.BLOCKER_PAUSE]
 
-    LaunchedEffect(uiState.message) {
-        uiState.message?.let {
-            snackbarHostState.showSnackbar(it)
+    LaunchedEffect(state.message) {
+        state.message?.let {
+            snackbar.showSnackbar(it)
             viewModel.clearMessage()
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Blocker Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
+    fun toggle(on: Boolean, apply: (Boolean) -> Unit) {
+        if (on || pauseGuard.isNone) apply(on) else pausing = { apply(false) }
+    }
+
+    PageScaffold(title = "Blocker settings", onBack = onNavigateBack, snackbarHostState = snackbar) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            SettingCard(
-                title = "App blocking",
-                subtitle = "Master switch. When off, no app is blocked — rules stay saved.",
-                checked = uiState.blockerEnabled,
-                onChange = viewModel::setBlockerEnabled,
-            )
-
-            SettingCard(
-                title = "Block during routines",
-                subtitle = "While a routine with app blocking runs, its blocking applies to " +
-                    "all apps that have \"block during routines\" enabled.",
-                checked = uiState.blockDuringRoutines,
-                onChange = viewModel::setBlockDuringRoutines,
-            )
-
-            SettingCard(
-                title = "Block during focus sessions",
-                subtitle = "Same as above, for focus sessions.",
-                checked = uiState.blockDuringFocus,
-                onChange = viewModel::setBlockDuringFocus,
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            FormSection(
+                title = "During sessions",
+                hint = "Which blocks take part is set in each block.",
             ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        "About Invincible Mode",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
+                FfCard {
+                    SwitchRow(
+                        title = "Routines",
+                        subtitle = "Blocks close while a routine with app blocking runs.",
+                        checked = state.blockDuringRoutines,
+                        onCheckedChange = { on -> toggle(on, viewModel::setBlockDuringRoutines) },
                     )
-                    Text(
-                        "Invincible Mode is set per app rule, not globally. A rule locks " +
-                            "only while it is actively blocking for a bounded reason — daily " +
-                            "limit reached (until midnight) or inside its time window — and " +
-                            "releases at that natural end.\n\n" +
-                            "Honest limits: this app cannot truly lock you in. You can always " +
-                            "uninstall FocusForce+ from Android settings, and a factory reset " +
-                            "always works. The point is making impulsive bypassing annoying, " +
-                            "not making escape impossible.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    RowDivider()
+                    SwitchRow(
+                        title = "Focus sessions",
+                        subtitle = "Blocks close while a focus session with app blocking runs.",
+                        checked = state.blockDuringFocus,
+                        onCheckedChange = { on -> toggle(on, viewModel::setBlockDuringFocus) },
                     )
                 }
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
+            FormSection(title = "Good to know") {
+                FfPaddedCard(spacing = 6.dp) {
+                    Text("Never blocked", style = MaterialTheme.typography.titleSmall, color = colors.text)
                     Text(
-                        "Always allowed",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
+                        "Android settings, the phone app, emergency calls, your home screen, " +
+                            "your clock app and FocusForce+ itself.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
                     )
+                }
+                Spacer(Modifier.height(10.dp))
+                FfPaddedCard(spacing = 6.dp) {
+                    Text("How strict it can get", style = MaterialTheme.typography.titleSmall, color = colors.text)
                     Text(
-                        "Android system settings, the phone/dialer app, emergency services, " +
-                            "your launcher, and FocusForce+ itself can never be blocked.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        "An invincible block stays closed until its limit resets at midnight or " +
+                            "its schedule ends. FocusForce+ cannot lock you in beyond that: you can " +
+                            "always uninstall it from Android settings. It is there to stop a " +
+                            "reflex, not to trap you.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
                     )
                 }
             }
         }
     }
-}
 
-@Composable
-private fun SettingCard(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                ),
-            )
-        }
+    pausing?.let { action ->
+        GuardDialog(
+            guard = pauseGuard,
+            copy = GuardCopy.BLOCKER_PAUSE,
+            onPassed = {
+                pausing = null
+                action()
+            },
+            onDismiss = { pausing = null },
+        )
     }
 }

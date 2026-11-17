@@ -233,6 +233,7 @@ private fun AppContent(
     val routeHelp = when (currentModule) {
         AppModule.ROUTINES -> FeatureHelpContent.ROUTINES
         AppModule.TODOS -> FeatureHelpContent.TODOS
+        AppModule.LISTS -> FeatureHelpContent.LISTS
         AppModule.BLOCKER -> FeatureHelpContent.BLOCKER
         AppModule.FOCUS -> FeatureHelpContent.FOCUS
         AppModule.SLEEP -> FeatureHelpContent.SLEEP

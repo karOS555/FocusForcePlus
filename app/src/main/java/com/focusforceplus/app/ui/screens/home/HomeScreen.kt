@@ -54,6 +54,7 @@ import com.focusforceplus.app.ui.components.FfPaddedCard
 import com.focusforceplus.app.ui.components.FfSwitch
 import com.focusforceplus.app.ui.components.IconCircle
 import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.NumberTile
 import com.focusforceplus.app.ui.components.PrimaryButton
 import com.focusforceplus.app.ui.components.RowDivider
 import com.focusforceplus.app.ui.components.SectionHeader
@@ -181,7 +182,7 @@ fun HomeScreen(
             item(key = "numbers") {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     NumberTile(
-                        value = if (s.usage.permissionGranted) TimeFormat.duration(s.usage.totalScreenTimeMinutes) else "–",
+                        value = if (s.usage.permissionGranted) TimeFormat.compact(s.usage.totalScreenTimeMinutes) else "–",
                         label = "Screen time",
                         onClick = onOpenStats,
                         modifier = Modifier.weight(1f),
@@ -196,7 +197,7 @@ fun HomeScreen(
                     }
                     if (s.isOn(AppModule.FOCUS)) {
                         NumberTile(
-                            value = if (s.focusedMinutesToday > 0) TimeFormat.duration(s.focusedMinutesToday) else "0",
+                            value = TimeFormat.compact(s.focusedMinutesToday),
                             label = "Focused",
                             onClick = onGoToFocus,
                             modifier = Modifier.weight(1f),
@@ -383,20 +384,6 @@ fun HomeScreen(
 }
 
 // ── Pieces ────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun NumberTile(value: String, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = FfTheme.colors
-    FfPaddedCard(modifier = modifier, spacing = 2.dp, onClick = onClick) {
-        Text(
-            value,
-            style = FfType.number.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize),
-            color = colors.text,
-            maxLines = 1,
-        )
-        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 2)
-    }
-}
 
 @Composable
 private fun RoutineRow(today: TodayRoutine, onOpen: () -> Unit) {

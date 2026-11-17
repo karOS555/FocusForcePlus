@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -277,5 +278,25 @@ fun GroupLabel(
             style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
             color = color,
         )
+    }
+}
+
+/** A number with a short label under it, for rows of key figures. */
+@Composable
+fun NumberTile(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    val colors = FfTheme.colors
+    FfPaddedCard(modifier = modifier, spacing = 2.dp, onClick = onClick) {
+        Text(
+            value,
+            style = FfType.number.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize),
+            color = colors.text,
+            maxLines = 1,
+        )
+        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 2)
     }
 }

@@ -317,8 +317,9 @@ fun BlockerListScreen(
             row = row,
             existingGroups = state.groupNames,
             onSave = { rule ->
-                viewModel.saveRule(rule)
                 editingApp = null
+                // Saving a block as switched off is a pause like the switch in the list.
+                if (row.rule?.isBlocked == true && !rule.isBlocked) pause { viewModel.saveRule(rule) } else viewModel.saveRule(rule)
             },
             onDelete = { rule ->
                 viewModel.deleteRule(rule)
