@@ -27,6 +27,9 @@ interface RoutineTaskDao {
     @Query("SELECT * FROM routine_tasks WHERE routineId = :routineId ORDER BY sortOrder")
     fun getTasksForRoutine(routineId: Long): Flow<List<RoutineTaskEntity>>
 
+    @Query("SELECT * FROM routine_tasks WHERE routineId = :routineId ORDER BY sortOrder")
+    suspend fun getTasksForRoutineOnce(routineId: Long): List<RoutineTaskEntity>
+
     @Query("DELETE FROM routine_tasks WHERE routineId = :routineId")
     suspend fun deleteTasksForRoutine(routineId: Long)
 

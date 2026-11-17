@@ -82,6 +82,25 @@ class RoutineRepository @Inject constructor(
         routineTaskDao.insertAll(tasks)
     }
 
+    /**
+     * Copies a routine with all its steps. The copy starts paused, so it does not
+     * ring at the same time as the original before it has been adjusted.
+     */
+    suspend fun duplicate(id: Long): RoutineEntity? {
+        val original = routineDao.getByIdIncludingTrashed(id) ?: return null
+        val copy = original.copy(
+            id = 0L,
+            name = "${original.name} (copy)",
+            isActive = false,
+            deletedAt = null,
+            createdAt = System.currentTimeMillis(),
+        )
+        val newId = routineDao.insert(copy)
+        val steps = routineTaskDao.getTasksForRoutineOnce(id)
+        routineTaskDao.insertAll(steps.map { it.copy(id = 0L, routineId = newId) })
+        return copy.copy(id = newId)
+    }
+
     // --- Completion history ---
 
     suspend fun recordCompletion(completion: RoutineCompletionEntity) =

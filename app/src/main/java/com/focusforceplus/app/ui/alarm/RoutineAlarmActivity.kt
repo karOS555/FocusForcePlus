@@ -14,16 +14,12 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,23 +29,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ViewDay
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,17 +48,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.focusforceplus.app.MainActivity
+import com.focusforceplus.app.compliance.Guard
 import com.focusforceplus.app.ui.common.RoutineIcons
+import com.focusforceplus.app.ui.components.ConfirmDialog
+import com.focusforceplus.app.ui.components.FfChip
+import com.focusforceplus.app.ui.components.IconCircle
+import com.focusforceplus.app.ui.components.OutlineButton
+import com.focusforceplus.app.ui.components.PrimaryButton
+import com.focusforceplus.app.ui.components.TabItem
+import com.focusforceplus.app.ui.components.TextAction
+import com.focusforceplus.app.ui.components.TonalButton
+import com.focusforceplus.app.ui.components.UnderlineTabs
+import com.focusforceplus.app.ui.guards.GuardCopy
+import com.focusforceplus.app.ui.guards.GuardDialog
+import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.ui.theme.FocusForceTheme
 import com.focusforceplus.app.util.NotificationHelper
+import com.focusforceplus.app.util.TimeFormat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -89,6 +86,10 @@ class RoutineAlarmActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
 
         val isPreAlarm = intent.getBooleanExtra("isPreAlarm", false)
 
@@ -98,36 +99,44 @@ class RoutineAlarmActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                 setShowWhenLocked(true)
                 setTurnScreenOn(true)
-            }
-            @Suppress("DEPRECATION")
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) {
+            } else {
+                @Suppress("DEPRECATION")
                 window.addFlags(
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
                 )
             }
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-            // Block back-press so the alarm cannot be silently dismissed.
+            // Back does not silently dismiss a ringing alarm.
             onBackPressedDispatcher.addCallback(this) { /* block */ }
 
             playAlarmSound()
         }
-        // Pre-alarm: back works normally, no sound, no lock-screen overlay.
+        // The heads-up 15 minutes before: no sound, Back works, no lock-screen overlay.
 
         val routineId = intent.getLongExtra("routineId", 0L)
 
         setContent {
             FocusForceTheme {
-                val s by viewModel.uiState.collectAsState()
-                RoutineAlarmScreen(
-                    state        = s,
-                    isPreAlarm   = isPreAlarm,
-                    onStartNow   = { startRoutineAndFinish(routineId) },
-                    onSnooze     = { minutes ->
+                val state by viewModel.uiState.collectAsState()
+                // A routine deleted after its alarm was set: stop and go away quietly.
+                LaunchedEffect(state.notFound) {
+                    if (state.notFound) {
                         stopAlarmSound()
-                        // When snoozing from the pre-alarm screen, remove the pre-alarm
-                        // notification so the snooze notification replaces it cleanly.
+                        notificationHelper.cancelNotification(NotificationHelper.alarmNotificationId(routineId))
+                        notificationHelper.cancelNotification(NotificationHelper.preAlarmNotificationId(routineId))
+                        finish()
+                    }
+                }
+                RoutineAlarmScreen(
+                    state = state,
+                    isPreAlarm = isPreAlarm,
+                    onStartNow = { startRoutineAndFinish(routineId) },
+                    onSnooze = { minutes ->
+                        stopAlarmSound()
+                        // From the heads-up screen, the snooze notification replaces the
+                        // heads-up notification.
                         if (isPreAlarm) {
                             notificationHelper.cancelNotification(
                                 NotificationHelper.preAlarmNotificationId(routineId)
@@ -141,19 +150,15 @@ class RoutineAlarmActivity : ComponentActivity() {
                         viewModel.reschedule(hour, minute, tomorrow)
                         finish()
                     },
-                    // Pre-alarm "Dismiss": just close the screen, notification stays, routine fires normally.
-                    // Full alarm "Cancel Routine": stop sound, cancel all notifications, close.
-                    onDismiss    = {
+                    // Heads-up: just close; the notification stays and the alarm comes on
+                    // time. Full alarm: skip this run.
+                    onDismiss = {
                         if (isPreAlarm) {
                             finish()
                         } else {
                             stopAlarmSound()
-                            notificationHelper.cancelNotification(
-                                NotificationHelper.alarmNotificationId(routineId)
-                            )
-                            notificationHelper.cancelNotification(
-                                NotificationHelper.preAlarmNotificationId(routineId)
-                            )
+                            notificationHelper.cancelNotification(NotificationHelper.alarmNotificationId(routineId))
+                            notificationHelper.cancelNotification(NotificationHelper.preAlarmNotificationId(routineId))
                             finish()
                         }
                     },
@@ -176,23 +181,19 @@ class RoutineAlarmActivity : ComponentActivity() {
             val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val attrs = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
-                    .setAudioAttributes(attrs)
-                    .build()
-                audioFocusRequest = req
-                audioManager.requestAudioFocus(req)
-            }
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(attrs)
+                .build()
+            audioFocusRequest = req
+            audioManager.requestAudioFocus(req)
 
             ringtone = RingtoneManager.getRingtone(this, uri)?.also {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    it.isLooping = true
-                }
+                it.audioAttributes = attrs
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) it.isLooping = true
                 it.play()
             }
         } catch (_: Exception) {}
@@ -202,10 +203,8 @@ class RoutineAlarmActivity : ComponentActivity() {
         try {
             ringtone?.stop()
             ringtone = null
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                audioFocusRequest?.let {
-                    (getSystemService(AUDIO_SERVICE) as AudioManager).abandonAudioFocusRequest(it)
-                }
+            audioFocusRequest?.let {
+                (getSystemService(AUDIO_SERVICE) as AudioManager).abandonAudioFocusRequest(it)
             }
         } catch (_: Exception) {}
         stopVibration()
@@ -223,19 +222,15 @@ class RoutineAlarmActivity : ComponentActivity() {
                 getSystemService(VIBRATOR_SERVICE) as Vibrator
             }
             vibrator = vib
-
-            // Alarm-style pattern: 800ms on, 400ms off, 800ms on, 800ms off — loops from index 0.
-            val timings    = longArrayOf(0, 800, 400, 800, 800)
-            val amplitudes = intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0,
-                                        VibrationEffect.DEFAULT_AMPLITUDE, 0)
-            val effect = VibrationEffect.createWaveform(timings, amplitudes, 0)
-
-            // On Android 13+ use USAGE_ALARM so vibration plays even in silent mode.
+            // 800 ms on, 400 off, 800 on, 800 off, looping.
+            val effect = VibrationEffect.createWaveform(
+                longArrayOf(0, 800, 400, 800, 800),
+                intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE, 0),
+                0,
+            )
+            // Android 13+: USAGE_ALARM so it vibrates in silent mode too.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val attrs = VibrationAttributes.Builder()
-                    .setUsage(VibrationAttributes.USAGE_ALARM)
-                    .build()
-                vib.vibrate(effect, attrs)
+                vib.vibrate(effect, VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_ALARM).build())
             } else {
                 vib.vibrate(effect)
             }
@@ -265,7 +260,8 @@ class RoutineAlarmActivity : ComponentActivity() {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
+private enum class RoutineDeferral { SNOOZE, RESCHEDULE }
+
 @Composable
 private fun RoutineAlarmScreen(
     state: AlarmUiState,
@@ -275,289 +271,261 @@ private fun RoutineAlarmScreen(
     onReschedule: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var showSnoozeDialog     by remember { mutableStateOf(false) }
-    var showRescheduleDialog by remember { mutableStateOf(false) }
+    val colors = FfTheme.colors
+    var gateFor by remember { mutableStateOf<RoutineDeferral?>(null) }
+    var pickerFor by remember { mutableStateOf<RoutineDeferral?>(null) }
+    var confirmSkip by remember { mutableStateOf(false) }
 
-    // Live clock.
-    var timeStr by remember { mutableStateOf(currentTimeString()) }
+    var clock by remember { mutableStateOf(currentTime()) }
     LaunchedEffect(Unit) {
-        while (true) { timeStr = currentTimeString(); delay(1_000) }
+        while (true) {
+            clock = currentTime()
+            delay(1_000)
+        }
     }
 
-    // Pulsing start button (only for full alarm, not pre-alarm).
-    val pulse = rememberInfiniteTransition(label = "pulse")
-    val scale by pulse.animateFloat(
-        initialValue  = 1f,
-        targetValue   = if (isPreAlarm) 1f else 1.06f,
-        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-        label         = "scale",
-    )
+    fun guardOf(deferral: RoutineDeferral): Guard =
+        if (deferral == RoutineDeferral.SNOOZE) state.snoozeGuard else state.rescheduleGuard
+
+    fun request(deferral: RoutineDeferral) {
+        if (guardOf(deferral).isNone) pickerFor = deferral else gateFor = deferral
+    }
 
     Box(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF050508), Color(0xFF0f2847)))),
-        contentAlignment = Alignment.Center,
+            .background(colors.background),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = 24.dp)
+                .padding(top = 20.dp, bottom = 16.dp),
         ) {
+            Text(text = clock, style = MaterialTheme.typography.displayLarge, color = colors.text)
+            Spacer(Modifier.height(10.dp))
             Text(
-                text       = timeStr,
-                fontSize   = 72.sp,
-                fontWeight = FontWeight.Light,
-                color      = Color.White,
-                textAlign  = TextAlign.Center,
+                text = if (isPreAlarm) "Routine · starts in 15 minutes" else "Routine · time to start",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
             )
 
-            Text(
-                text      = if (isPreAlarm) "Starting in 15 minutes" else "Time to start your routine",
-                style     = MaterialTheme.typography.titleMedium,
-                color     = Color.White.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center,
-            )
-
-            // Routine icon
-            val routineIcon = RoutineIcons.find(state.routineIconKey)
-            if (routineIcon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(
-                            Color.White.copy(alpha = 0.12f),
-                            CircleShape,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector     = routineIcon.vector,
-                        contentDescription = null,
-                        tint            = Color.White,
-                        modifier        = Modifier.size(40.dp),
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 24.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                IconCircle(
+                    icon = RoutineIcons.find(state.routineIconKey)?.vector ?: Icons.Filled.ViewDay,
+                    size = 52.dp,
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = state.routineName,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = colors.text,
+                )
+                if (state.stepCount > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "${state.stepCount} steps · ${TimeFormat.duration(state.totalMinutes)}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textMuted,
+                    )
+                }
+                if (!state.routineDescription.isNullOrBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = state.routineDescription,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textSecondary,
                     )
                 }
             }
 
-            Text(
-                text       = state.routineName,
-                style      = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color      = Color.White,
-                textAlign  = TextAlign.Center,
-            )
-
-            // Optional description
-            if (!state.routineDescription.isNullOrBlank()) {
-                Text(
-                    text      = state.routineDescription,
-                    style     = MaterialTheme.typography.bodyMedium,
-                    color     = Color.White.copy(alpha = 0.55f),
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Start button
-            Button(
-                onClick  = onStartNow,
+            PrimaryButton(
+                text = if (isPreAlarm) "Start now" else "Start the routine",
+                onClick = onStartNow,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
-                    .scale(scale),
-                shape  = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                ),
-            ) {
-                Text(
-                    "Start Routine",
-                    style      = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+                    .height(56.dp),
+            )
+            Spacer(Modifier.height(12.dp))
 
             if (isPreAlarm) {
-                // ── Pre-alarm actions ─────────────────────────────────────────
-                // "Snooze 15 min" delays the routine start (uses the routine's snooze allowance).
-                if (state.canSnooze) {
-                    OutlinedButton(
-                        onClick  = { onSnooze(15) },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                    ) {
-                        Text(
-                            "Snooze 15 min (${state.remainingSnoozes} left)",
-                            color = Color.White,
-                        )
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick  = {},
-                        enabled  = false,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                    ) {
-                        Text("No snoozes left")
-                    }
+                OutlineButton(
+                    text = if (state.canSnooze) "Snooze 15 min · ${state.remainingSnoozes} left" else "No snoozes left",
+                    onClick = {
+                        if (state.snoozeGuard.isNone) onSnooze(15) else gateFor = RoutineDeferral.SNOOZE
+                    },
+                    enabled = state.canSnooze,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextAction("Close", onClick = onDismiss, color = colors.textMuted)
                 }
-
-                // "Close" just closes the screen — notification stays, routine fires on time.
-                TextButton(onClick = onDismiss) {
-                    Text("Close", color = Color.White.copy(alpha = 0.4f))
-                }
-
             } else {
-                // ── Full alarm actions ────────────────────────────────────────
-                if (state.canSnooze) {
-                    OutlinedButton(
-                        onClick  = { showSnoozeDialog = true },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                    ) {
-                        Text(
-                            "Snooze (${state.remainingSnoozes} left)",
-                            color = Color.White,
-                        )
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick  = {},
-                        enabled  = false,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                    ) {
-                        Text("No snoozes left")
-                    }
-                }
-
-                if (state.maxRescheduleCount > 0) {
-                    FilledTonalButton(
-                        onClick  = { if (state.canReschedule) showRescheduleDialog = true },
-                        enabled  = state.canReschedule,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                    ) {
-                        Text(
-                            if (state.canReschedule)
-                                "Reschedule (${state.remainingReschedules} left)"
-                            else
-                                "No reschedules left",
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlineButton(
+                        text = if (state.canSnooze) "Snooze · ${state.remainingSnoozes} left" else "No snoozes left",
+                        onClick = { request(RoutineDeferral.SNOOZE) },
+                        enabled = state.canSnooze,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (state.maxRescheduleCount > 0) {
+                        TonalButton(
+                            text = if (state.canReschedule) "Move · ${state.remainingReschedules} left" else "No moves left",
+                            onClick = { request(RoutineDeferral.RESCHEDULE) },
+                            enabled = state.canReschedule,
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
-
-                // "Cancel Routine" — hidden in invincible mode. Also hidden while loading
-                // to avoid a flash before invincibleMode is read from the database.
-                if (!state.isLoading && !state.invincibleMode) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel Routine", color = Color.White.copy(alpha = 0.4f))
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (state.invincibleMode) {
+                            "Invincible: this run can be started, snoozed or moved, not skipped."
+                        } else {
+                            "Left unanswered, it stays in your notifications."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textFaint,
+                        modifier = Modifier.weight(1f),
+                    )
+                    // Hidden while loading too, so it never flashes before the mode is known.
+                    if (!state.isLoading && !state.invincibleMode) {
+                        TextAction("Skip this run", onClick = { confirmSkip = true }, color = colors.textMuted)
                     }
                 }
             }
         }
     }
 
-    // ── Snooze dialog ─────────────────────────────────────────────────────────
-
-    if (showSnoozeDialog) {
-        AlertDialog(
-            onDismissRequest = { showSnoozeDialog = false },
-            title = { Text("Snooze for how long?") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "${state.remainingSnoozes} snooze(s) remaining",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    listOf(5 to "5 minutes", 10 to "10 minutes", 15 to "15 minutes",
-                           30 to "30 minutes", 60 to "1 hour").forEach { (mins, label) ->
-                        OutlinedButton(
-                            onClick  = { showSnoozeDialog = false; onSnooze(mins) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(label) }
-                    }
-                }
+    gateFor?.let { deferral ->
+        GuardDialog(
+            guard = guardOf(deferral),
+            copy = if (deferral == RoutineDeferral.SNOOZE) GuardCopy.SNOOZE else GuardCopy.RESCHEDULE,
+            subject = state.routineName,
+            onPassed = {
+                gateFor = null
+                // The heads-up screen snoozes by a fixed 15 minutes.
+                if (isPreAlarm && deferral == RoutineDeferral.SNOOZE) onSnooze(15) else pickerFor = deferral
             },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showSnoozeDialog = false }) { Text("Cancel") }
-            },
+            onDismiss = { gateFor = null },
         )
     }
 
-    // ── Reschedule dialog ─────────────────────────────────────────────────────
+    when (pickerFor) {
+        RoutineDeferral.SNOOZE -> SnoozeDialog(
+            onPick = { pickerFor = null; onSnooze(it) },
+            onDismiss = { pickerFor = null },
+        )
+        RoutineDeferral.RESCHEDULE -> RescheduleDialog(
+            onConfirm = { h, m, tomorrow -> pickerFor = null; onReschedule(h, m, tomorrow) },
+            onDismiss = { pickerFor = null },
+        )
+        null -> Unit
+    }
 
-    if (showRescheduleDialog) {
-        RescheduleDialog(
-            remainingReschedules = state.remainingReschedules,
-            onConfirm = { hour, minute, tomorrow ->
-                showRescheduleDialog = false
-                onReschedule(hour, minute, tomorrow)
+    if (confirmSkip) {
+        ConfirmDialog(
+            title = "Skip this run?",
+            message = "The alarm stops and the routine comes back at its next scheduled time.",
+            confirmLabel = "Skip",
+            onConfirm = {
+                confirmSkip = false
+                onDismiss()
             },
-            onDismiss = { showRescheduleDialog = false },
+            onDismiss = { confirmSkip = false },
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RescheduleDialog(
-    remainingReschedules: Int,
-    onConfirm: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val timeState = rememberTimePickerState(is24Hour = true)
-
+private fun SnoozeDialog(onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+    val colors = FfTheme.colors
+    val options = listOf(5 to "5 min", 10 to "10 min", 15 to "15 min", 30 to "30 min", 60 to "1 hour")
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Reschedule routine") },
+        containerColor = colors.surfaceVariant,
+        title = { Text("Snooze for how long?", style = MaterialTheme.typography.titleLarge, color = colors.text) },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "$remainingReschedules reschedule(s) remaining",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(12.dp))
-
-                PrimaryTabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick  = { selectedTab = 0 },
-                        text     = { Text("Today") },
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick  = { selectedTab = 1 },
-                        text     = { Text("Tomorrow") },
-                    )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                options.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { (minutes, label) ->
+                            FfChip(label = label, selected = false, onClick = { onPick(minutes) })
+                        }
+                    }
                 }
-
-                Spacer(Modifier.height(16.dp))
-
-                TimePicker(state = timeState)
             }
         },
-        confirmButton = {
-            Button(onClick = {
-                onConfirm(timeState.hour, timeState.minute, selectedTab == 1)
-            }) { Text("Reschedule") }
-        },
+        confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            }
         },
     )
 }
 
-private fun currentTimeString(): String {
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun RescheduleDialog(
+    onConfirm: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = FfTheme.colors
+    var day by remember { mutableIntStateOf(0) }
+    val time = androidx.compose.material3.rememberTimePickerState(is24Hour = true)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surfaceVariant,
+        title = { Text("Move to when?", style = MaterialTheme.typography.titleLarge, color = colors.text) },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                UnderlineTabs(
+                    tabs = listOf(TabItem("Today"), TabItem("Tomorrow")),
+                    selectedIndex = day,
+                    onSelect = { day = it },
+                )
+                Spacer(Modifier.height(16.dp))
+                androidx.compose.material3.TimePicker(
+                    state = time,
+                    colors = androidx.compose.material3.TimePickerDefaults.colors(
+                        clockDialColor = colors.surface,
+                        selectorColor = colors.primary,
+                        timeSelectorSelectedContainerColor = colors.container,
+                        timeSelectorSelectedContentColor = colors.onContainer,
+                        timeSelectorUnselectedContainerColor = colors.surface,
+                        timeSelectorUnselectedContentColor = colors.text,
+                        clockDialSelectedContentColor = colors.onPrimary,
+                        clockDialUnselectedContentColor = colors.textSecondary,
+                        containerColor = Color.Transparent,
+                    ),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(time.hour, time.minute, day == 1) }) {
+                Text("Move", style = MaterialTheme.typography.labelLarge, color = colors.accent)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            }
+        },
+    )
+}
+
+private fun currentTime(): String {
     val cal = Calendar.getInstance()
     return "%02d:%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
 }

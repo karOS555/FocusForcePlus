@@ -1,70 +1,41 @@
 package com.focusforceplus.app.ui.screens.routine
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,20 +43,47 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.focusforceplus.app.compliance.GuardAction
 import com.focusforceplus.app.ui.common.DiscardChangesDialog
 import com.focusforceplus.app.ui.common.IconPickerButton
-import com.focusforceplus.app.ui.common.IconPickerDialog
-import com.focusforceplus.app.ui.common.routineDayLabel
+import com.focusforceplus.app.ui.components.DeleteDialog
+import com.focusforceplus.app.ui.components.FfCard
+import com.focusforceplus.app.ui.components.FfChip
+import com.focusforceplus.app.ui.components.FfPaddedCard
+import com.focusforceplus.app.ui.components.FfTextField
+import com.focusforceplus.app.ui.components.FfTimePickerDialog
+import com.focusforceplus.app.ui.components.FormScaffold
+import com.focusforceplus.app.ui.components.FormSection
+import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.OutlineButton
+import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.components.StepperRow
+import com.focusforceplus.app.ui.components.SwitchRow
+import com.focusforceplus.app.ui.components.TextAction
+import com.focusforceplus.app.ui.components.ValueRow
+import com.focusforceplus.app.ui.guards.GuardEditorDialog
+import com.focusforceplus.app.ui.guards.GuardRow
+import com.focusforceplus.app.ui.theme.FfTheme
+import com.focusforceplus.app.ui.theme.FfType
+import com.focusforceplus.app.util.TimeFormat
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val DAYS = listOf(
+    "MO" to "Mon", "DI" to "Tue", "MI" to "Wed", "DO" to "Thu",
+    "FR" to "Fri", "SA" to "Sat", "SO" to "Sun",
+)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CreateRoutineScreen(
     onNavigateBack: () -> Unit,
@@ -93,466 +91,370 @@ fun CreateRoutineScreen(
     onRoutineSaved: (Long) -> Unit = {},
     viewModel: RoutineViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    var showDiscardDialog by remember { mutableStateOf(false) }
-    val attemptClose = {
-        if (viewModel.hasUnsavedChanges) showDiscardDialog = true else onNavigateBack()
-    }
+    val state by viewModel.uiState.collectAsState()
+    val templates by viewModel.taskTemplates.collectAsState()
+    val others by viewModel.otherRoutines.collectAsState()
+    val colors = FfTheme.colors
+    val snackbar = remember { SnackbarHostState() }
+    val running = viewModel.isCurrentlyRunning
+
+    var showDiscard by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
+    var showTime by remember { mutableStateOf(false) }
+    var showCopyFrom by remember { mutableStateOf(false) }
+    var editGuard by remember { mutableStateOf<GuardAction?>(null) }
+
+    val attemptClose = { if (viewModel.hasUnsavedChanges) showDiscard = true else onNavigateBack() }
     BackHandler { attemptClose() }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { snackbarHostState.showSnackbar(it) }
+    LaunchedEffect(state.error) {
+        state.error?.let {
+            snackbar.showSnackbar(it)
+            viewModel.clearError()
+        }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(if (viewModel.isEditMode) "Edit Routine" else "New Routine")
-                },
-                navigationIcon = {
-                    IconButton(onClick = attemptClose) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (viewModel.isEditMode) {
-                        IconButton(onClick = { viewModel.deleteRoutine(onNavigateBack) }) {
-                            Icon(
-                                Icons.Filled.DeleteForever,
-                                contentDescription = "Delete routine",
-                                tint = MaterialTheme.colorScheme.error,
+    val totalMinutes = viewModel.tasks.sumOf { it.durationMinutes }
+    val endMinutes = (state.startTimeHour * 60 + state.startTimeMinute + totalMinutes) % (24 * 60)
+
+    FormScaffold(
+        title = if (viewModel.isEditMode) "Edit routine" else "New routine",
+        onClose = attemptClose,
+        primaryLabel = if (viewModel.isEditMode) "Save changes" else "Save routine",
+        onPrimary = {
+            viewModel.saveRoutine { savedId ->
+                onRoutineSaved(savedId)
+                onNavigateBack()
+            }
+        },
+        primaryLoading = state.isSaving,
+        snackbarHostState = snackbar,
+        actions = {
+            if (viewModel.isEditMode) {
+                IconButton(onClick = { showDelete = true }) {
+                    Icon(Icons.Filled.DeleteOutline, contentDescription = "Delete routine")
+                }
+            }
+        },
+    ) {
+        if (running) {
+            FfPaddedCard(color = colors.container) {
+                Text(
+                    "This routine is running right now. Changes apply to its next runs. " +
+                        "Invincible mode and the limits stay as they are until this run ends.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onContainer,
+                )
+            }
+        }
+
+        // ── What ──────────────────────────────────────────────────────────────
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconPickerButton(selectedKey = state.iconKey, size = 56.dp, onSelect = viewModel::updateIconKey)
+            FfTextField(
+                value = state.name,
+                onValueChange = viewModel::updateName,
+                label = "Name",
+                isError = state.nameError,
+                supportingText = if (state.nameError) "Give it a name" else null,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next,
+                ),
+                modifier = Modifier.weight(1f),
+            )
+        }
+        FfTextField(
+            value = state.description,
+            onValueChange = viewModel::updateDescription,
+            label = "Note for the alarm screen",
+            singleLine = false,
+            minLines = 2,
+            maxLines = 4,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        )
+
+        // ── When ──────────────────────────────────────────────────────────────
+        FormSection(title = "When") {
+            FfCard {
+                ValueRow(
+                    title = "Starts at",
+                    value = TimeFormat.clock(state.startTimeHour * 60 + state.startTimeMinute),
+                    onClick = { showTime = true },
+                )
+                RowDivider()
+                Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    Text("Days", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        DAYS.forEach { (key, label) ->
+                            FfChip(
+                                label = label,
+                                selected = key in state.activeDays,
+                                onClick = { viewModel.toggleDay(key) },
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                    if (state.daysError) {
+                        Text("Pick at least one day", style = MaterialTheme.typography.bodySmall, color = colors.error)
+                    }
+                }
+                RowDivider()
+                SwitchRow(
+                    title = "On schedule",
+                    subtitle = if (state.isActive) "The alarm goes off on these days." else
+                        "Paused. You can still start it by hand.",
+                    checked = state.isActive,
+                    onCheckedChange = viewModel::updateActive,
+                )
+            }
+        }
+
+        // ── Steps ─────────────────────────────────────────────────────────────
+        FormSection(
+            title = "Steps",
+            hint = if (viewModel.tasks.isEmpty()) null else
+                "${viewModel.tasks.size} steps · ${TimeFormat.duration(totalMinutes)} · " +
+                    "ends at ${TimeFormat.clock(endMinutes)}",
         ) {
-            if (viewModel.isCurrentlyRunning) {
-                RunningRoutineBanner()
-            }
-
-            // ── Name + Icon row ───────────────────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                IconPickerButton(
-                    selectedKey = uiState.iconKey,
-                    size        = 56.dp,
-                    onSelect    = viewModel::updateIconKey,
-                )
-                OutlinedTextField(
-                    value         = uiState.name,
-                    onValueChange = viewModel::updateName,
-                    label         = { Text("Routine name *") },
-                    isError       = uiState.nameError,
-                    supportingText = if (uiState.nameError) ({ Text("Required") }) else null,
-                    singleLine    = true,
-                    modifier      = Modifier.weight(1f),
-                )
-            }
-
-            OutlinedTextField(
-                value         = uiState.description,
-                onValueChange = viewModel::updateDescription,
-                label         = { Text("Description (optional)") },
-                placeholder   = { Text("Shown on the alarm screen as a reminder") },
-                minLines      = 2,
-                maxLines      = 4,
-                modifier      = Modifier.fillMaxWidth(),
-            )
-
-            TimeSection(
-                hour   = uiState.startTimeHour,
-                minute = uiState.startTimeMinute,
-                onTimeSelected = viewModel::updateStartTime,
-            )
-
-            SectionTitle("Days *")
-            WeekdaySelectorRow(
-                selectedDays = uiState.activeDays,
-                hasError     = uiState.daysError,
-                onToggle     = viewModel::toggleDay,
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            SettingsToggleRow(
-                title    = "Invincible Mode",
-                subtitle = if (viewModel.isCurrentlyRunning) {
-                    "Locked while the routine is running. Complete or reschedule it first."
-                } else {
-                    "Once started, can only be completed or rescheduled — not cancelled."
-                },
-                checked  = uiState.invincibleMode,
-                onCheckedChange = viewModel::updateInvincibleMode,
-                enabled  = !viewModel.isCurrentlyRunning,
-            )
-
-            SettingsToggleRow(
-                title    = "App Blocker",
-                subtitle = "Block distracting apps during this routine",
-                checked  = uiState.appBlockerEnabled,
-                onCheckedChange = viewModel::updateAppBlocker,
-            )
-
-            SnoozeDropdown(
-                value    = uiState.maxSnoozeCount,
-                onChange = viewModel::updateMaxSnooze,
-                enabled  = !viewModel.isCurrentlyRunning,
-            )
-
-            Spacer(Modifier.height(0.dp))
-
-            RescheduleDropdown(
-                value    = uiState.maxRescheduleCount,
-                onChange = viewModel::updateMaxReschedule,
-                enabled  = !viewModel.isCurrentlyRunning,
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            SectionTitle("Tasks")
-            TasksSection(
-                tasks    = viewModel.tasks,
-                onAdd    = viewModel::addTask,
+            StepList(
+                tasks = viewModel.tasks,
+                templates = templates,
                 onUpdate = viewModel::updateTask,
                 onDelete = viewModel::deleteTask,
-                onSwap   = viewModel::swapTasks,
+                onSwap = viewModel::swapTasks,
+                onTemplate = viewModel::applyTemplate,
             )
-            if (uiState.tasksError) {
-                Text(
-                    text  = "Add at least one task before saving.",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp),
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlineButton(
+                    text = "Add a step",
+                    icon = Icons.Filled.Add,
+                    onClick = viewModel::addTask,
+                    modifier = Modifier.weight(1f),
                 )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Button(
-                onClick  = {
-                    viewModel.saveRoutine { savedId ->
-                        onRoutineSaved(savedId)
-                        onNavigateBack()
-                    }
-                },
-                enabled  = !uiState.isSaving,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color       = MaterialTheme.colorScheme.onPrimary,
+                if (others.isNotEmpty()) {
+                    OutlineButton(
+                        text = "Copy from…",
+                        onClick = { showCopyFrom = true },
+                        modifier = Modifier.weight(1f),
                     )
-                } else {
-                    Text("Save Routine", style = MaterialTheme.typography.labelLarge)
                 }
             }
-
-            Spacer(Modifier.height(16.dp))
+            if (state.tasksError) {
+                Text("Add at least one step", style = MaterialTheme.typography.bodySmall, color = colors.error)
+            }
         }
-    }
 
-    if (showDiscardDialog) {
-        DiscardChangesDialog(
-            onDiscard = { showDiscardDialog = false; onNavigateBack() },
-            onKeepEditing = { showDiscardDialog = false },
-        )
-    }
-}
-
-// ─── Section helpers ──────────────────────────────────────────────────────────
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text  = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-    )
-}
-
-@Composable
-private fun RunningRoutineBanner() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor   = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
-    ) {
-        Text(
-            text  = "This routine is currently running. Changes apply to future runs. " +
-                    "Invincible Mode and the snooze/reschedule limits are locked until " +
-                    "the current session ends.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        )
-    }
-}
-
-@Composable
-private fun SettingsToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Switch(
-            checked        = checked,
-            onCheckedChange = onCheckedChange,
-            enabled        = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-            ),
-        )
-    }
-}
-
-// ─── Weekday selector ─────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun WeekdaySelectorRow(
-    selectedDays: Set<String>,
-    hasError: Boolean,
-    onToggle: (String) -> Unit,
-) {
-    val days = listOf("MO", "DI", "MI", "DO", "FR", "SA", "SO")
-    Column {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            days.forEach { day ->
-                FilterChip(
-                    selected = day in selectedDays,
-                    onClick  = { onToggle(day) },
-                    label    = { Text(routineDayLabel(day)) },
-                    colors   = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor     = MaterialTheme.colorScheme.onPrimary,
-                    ),
+        // ── While it runs ─────────────────────────────────────────────────────
+        FormSection(title = "While it runs") {
+            FfCard {
+                SwitchRow(
+                    title = "Invincible mode",
+                    subtitle = if (running) "Locked while the routine runs." else
+                        "Once started, it can only be finished or moved, not cancelled.",
+                    checked = state.invincibleMode,
+                    onCheckedChange = viewModel::updateInvincibleMode,
+                    enabled = !running,
+                )
+                RowDivider()
+                SwitchRow(
+                    title = "Block distracting apps",
+                    subtitle = "Your blocker rules apply while it runs.",
+                    checked = state.appBlockerEnabled,
+                    onCheckedChange = viewModel::updateAppBlocker,
                 )
             }
         }
-        if (hasError) {
-            Text(
-                "Select at least one day",
-                style    = MaterialTheme.typography.bodySmall,
-                color    = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp, start = 4.dp),
-            )
+
+        // ── Speed bumps ───────────────────────────────────────────────────────
+        FormSection(
+            title = "Speed bumps",
+            hint = if (state.guardDefaults.enabled) null else "Speed bumps are switched off in Settings.",
+        ) {
+            FfCard {
+                listOf(GuardAction.SNOOZE, GuardAction.RESCHEDULE).forEachIndexed { index, action ->
+                    if (index > 0) RowDivider()
+                    GuardRow(
+                        title = if (action == GuardAction.SNOOZE) "Snoozing the alarm" else "Moving it",
+                        guard = state.guardFor(action),
+                        note = if (state.guardOverrides[action] == null) "default" else "just this routine",
+                        enabled = state.guardDefaults.enabled,
+                        onClick = { editGuard = action },
+                    )
+                }
+            }
+        }
+
+        // ── Snoozes and moves ─────────────────────────────────────────────────
+        FormSection(
+            title = "Snoozes and moves",
+            hint = if (running) "Locked while the routine runs." else
+                "How often the alarm can be put off, per run.",
+        ) {
+            FfCard {
+                StepperRow(
+                    title = "Snoozes allowed",
+                    value = state.maxSnoozeCount,
+                    range = 1..3,
+                    onChange = viewModel::updateMaxSnooze,
+                    enabled = !running,
+                )
+                RowDivider()
+                StepperRow(
+                    title = "Moves allowed",
+                    value = state.maxRescheduleCount,
+                    range = 0..3,
+                    onChange = viewModel::updateMaxReschedule,
+                    valueLabel = { if (it == 0) "None" else it.toString() },
+                    enabled = !running,
+                )
+            }
         }
     }
-}
 
-// ─── Time picker ──────────────────────────────────────────────────────────────
+    // ── Dialogs ───────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimeSection(hour: Int, minute: Int, onTimeSelected: (Int, Int) -> Unit) {
-    var showDialog by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column {
-            SectionTitle("Start Time")
-            Text(
-                text  = "%02d:%02d".format(hour, minute),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-        IconButton(onClick = { showDialog = true }) {
-            Icon(
-                Icons.Filled.AccessTime,
-                contentDescription = "Change time",
-                tint     = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp),
-            )
-        }
-    }
-
-    if (showDialog) {
-        val pickerState = rememberTimePickerState(
-            initialHour = hour, initialMinute = minute, is24Hour = true)
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            dismissButton    = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
-            confirmButton    = {
-                Button(onClick = {
-                    onTimeSelected(pickerState.hour, pickerState.minute)
-                    showDialog = false
-                }) { Text("OK") }
+    if (showTime) {
+        FfTimePickerDialog(
+            title = "Starts at",
+            hour = state.startTimeHour,
+            minute = state.startTimeMinute,
+            onConfirm = { h, m ->
+                viewModel.updateStartTime(h, m)
+                showTime = false
             },
-            text = { TimePicker(state = pickerState) },
+            onDismiss = { showTime = false },
+        )
+    }
+
+    if (showCopyFrom) {
+        AlertDialog(
+            onDismissRequest = { showCopyFrom = false },
+            containerColor = colors.surfaceVariant,
+            title = { Text("Copy steps from", style = MaterialTheme.typography.titleLarge, color = colors.text) },
+            text = {
+                Column {
+                    Text(
+                        "All steps of the routine you pick are added below the ones you have.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textMuted,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    others.forEach { (routine, count) ->
+                        ListRow(
+                            title = routine.name,
+                            subtitle = "$count steps",
+                            onClick = {
+                                viewModel.copyStepsFrom(routine.id)
+                                showCopyFrom = false
+                            },
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showCopyFrom = false }) {
+                    Text("Cancel", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+                }
+            },
+        )
+    }
+
+    editGuard?.let { action ->
+        GuardEditorDialog(
+            title = if (action == GuardAction.SNOOZE) "Snoozing the alarm" else "Moving it",
+            current = state.guardOverrides[action],
+            default = state.defaultGuard(action),
+            onSave = {
+                viewModel.updateGuard(action, it)
+                editGuard = null
+            },
+            onDismiss = { editGuard = null },
+        )
+    }
+
+    if (showDelete) {
+        DeleteDialog(
+            what = "this routine",
+            onConfirm = {
+                showDelete = false
+                viewModel.deleteRoutine(onNavigateBack)
+            },
+            onDismiss = { showDelete = false },
+        )
+    }
+
+    if (showDiscard) {
+        DiscardChangesDialog(
+            onDiscard = { showDiscard = false; onNavigateBack() },
+            onKeepEditing = { showDiscard = false },
         )
     }
 }
 
-// ─── Snooze / Reschedule dropdowns ───────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SnoozeDropdown(value: Int, onChange: (Int) -> Unit, enabled: Boolean = true) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (enabled) expanded = it },
-    ) {
-        OutlinedTextField(
-            value         = "${value}x  snooze allowed",
-            onValueChange = {},
-            readOnly      = true,
-            enabled       = enabled,
-            label         = { Text("Snooze limit") },
-            supportingText = { Text("How often the alarm can be delayed by a few minutes per run.") },
-            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            colors        = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            modifier      = Modifier.fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            listOf(1, 2, 3).forEach { count ->
-                DropdownMenuItem(
-                    text    = { Text("${count}x snooze") },
-                    onClick = { onChange(count); expanded = false },
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RescheduleDropdown(value: Int, onChange: (Int) -> Unit, enabled: Boolean = true) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (enabled) expanded = it },
-    ) {
-        OutlinedTextField(
-            value         = "${value}x reschedule allowed",
-            onValueChange = {},
-            readOnly      = true,
-            enabled       = enabled,
-            label         = { Text("Reschedule limit") },
-            supportingText = { Text("How often a run can be moved to another time (today or tomorrow).") },
-            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            colors        = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            modifier      = Modifier.fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            listOf(0, 1, 2, 3).forEach { count ->
-                DropdownMenuItem(
-                    text    = { Text(if (count == 0) "No reschedule" else "${count}x reschedule") },
-                    onClick = { onChange(count); expanded = false },
-                )
-            }
-        }
-    }
-}
-
-// ─── Task list with drag & drop ───────────────────────────────────────────────
+// ── Steps with drag and drop ──────────────────────────────────────────────────
 
 @Composable
-private fun TasksSection(
+private fun StepList(
     tasks: List<TaskUiItem>,
-    onAdd: () -> Unit,
+    templates: List<TaskTemplate>,
     onUpdate: (TaskUiItem) -> Unit,
     onDelete: (String) -> Unit,
     onSwap: (Int, Int) -> Unit,
+    onTemplate: (String, TaskTemplate) -> Unit,
 ) {
-    var draggingIndex  by remember { mutableStateOf(-1) }
-    var draggingOffsetY by remember { mutableStateOf(0f) }
-    val itemTopOffsets = remember { mutableStateMapOf<Int, Float>() }
-    val itemHeights    = remember { mutableStateMapOf<Int, Float>() }
+    var draggingIndex by remember { mutableIntStateOf(-1) }
+    var draggingOffsetY by remember { mutableFloatStateOf(0f) }
+    val tops = remember { mutableStateMapOf<Int, Float>() }
+    val heights = remember { mutableStateMapOf<Int, Float>() }
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         tasks.forEachIndexed { index, task ->
-            DraggableTaskItem(
-                task        = task,
-                isDragging  = index == draggingIndex,
+            StepCard(
+                index = index,
+                task = task,
+                templates = templates,
+                dragging = index == draggingIndex,
                 dragOffsetY = if (index == draggingIndex) draggingOffsetY else 0f,
                 onDragStart = { draggingIndex = index; draggingOffsetY = 0f },
-                onDrag      = { deltaY ->
+                onDrag = { deltaY ->
                     draggingOffsetY += deltaY
-                    val myTop    = (itemTopOffsets[index] ?: 0f) + draggingOffsetY
-                    val myCenter = myTop + (itemHeights[index] ?: 0f) / 2f
+                    val myTop = (tops[index] ?: 0f) + draggingOffsetY
+                    val myCenter = myTop + (heights[index] ?: 0f) / 2f
                     val target = tasks.indices.firstOrNull { i ->
                         i != index && run {
-                            val top    = itemTopOffsets[i] ?: return@firstOrNull false
-                            val height = itemHeights[i]   ?: return@firstOrNull false
+                            val top = tops[i] ?: return@firstOrNull false
+                            val height = heights[i] ?: return@firstOrNull false
                             myCenter in top..(top + height)
                         }
                     }
                     if (target != null) {
                         onSwap(index, target)
-                        draggingIndex  = target
+                        draggingIndex = target
                         draggingOffsetY = 0f
                     }
                 },
-                onDragEnd   = { draggingIndex = -1; draggingOffsetY = 0f },
+                onDragEnd = { draggingIndex = -1; draggingOffsetY = 0f },
                 onPositioned = { top, height ->
-                    itemTopOffsets[index] = top
-                    itemHeights[index]    = height
+                    tops[index] = top
+                    heights[index] = height
                 },
                 onUpdate = onUpdate,
                 onDelete = onDelete,
+                onTemplate = { onTemplate(task.tempId, it) },
             )
-        }
-
-        OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Add task")
         }
     }
 }
 
-// ─── Single task card ─────────────────────────────────────────────────────────
-
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DraggableTaskItem(
+private fun StepCard(
+    index: Int,
     task: TaskUiItem,
-    isDragging: Boolean,
+    templates: List<TaskTemplate>,
+    dragging: Boolean,
     dragOffsetY: Float,
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
@@ -560,204 +462,161 @@ private fun DraggableTaskItem(
     onPositioned: (top: Float, height: Float) -> Unit,
     onUpdate: (TaskUiItem) -> Unit,
     onDelete: (String) -> Unit,
+    onTemplate: (TaskTemplate) -> Unit,
 ) {
-    // Notes section is auto-expanded when the task already has content.
-    var showNotes      by rememberSaveable(task.tempId) { mutableStateOf(task.notes.isNotEmpty()) }
-    var showNotesInfo  by remember { mutableStateOf(false) }
-    var showIconPicker by remember { mutableStateOf(false) }
+    val colors = FfTheme.colors
+    var showNote by rememberSaveable(task.tempId) { mutableStateOf(task.notes.isNotEmpty()) }
+    var nameFocused by remember { mutableStateOf(false) }
 
-    Card(
+    // Steps from other routines that match what is being typed.
+    val query = task.name.trim()
+    val matches = if (!nameFocused || query.isEmpty()) emptyList() else templates
+        .filter { it.name.contains(query, ignoreCase = true) && !it.name.equals(query, ignoreCase = true) }
+        .take(4)
+
+    FfCard(
+        color = if (dragging) colors.surfaceVariant else colors.surface,
         modifier = Modifier
-            .fillMaxWidth()
             .onGloballyPositioned { coords ->
-                onPositioned(
-                    coords.positionInParent().y,
-                    coords.size.height.toFloat(),
-                )
+                onPositioned(coords.positionInParent().y, coords.size.height.toFloat())
             }
             .graphicsLayer {
-                translationY  = dragOffsetY
-                shadowElevation = if (isDragging) 12.dp.toPx() else 0f
-                scaleX        = if (isDragging) 1.02f else 1f
-                scaleY        = if (isDragging) 1.02f else 1f
+                translationY = dragOffsetY
+                scaleX = if (dragging) 1.02f else 1f
+                scaleY = if (dragging) 1.02f else 1f
             }
-            .zIndex(if (isDragging) 1f else 0f),
-        shape  = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant
-                             else MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            .zIndex(if (dragging) 1f else 0f),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
-
-            // ── Row 1: drag handle · icon · name · delete ─────────────────
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // Drag handle (long-press)
-                Icon(
-                    Icons.Filled.DragHandle,
-                    contentDescription = "Hold to reorder",
-                    tint     = MaterialTheme.colorScheme.onSurfaceVariant,
+        Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
                     modifier = Modifier
-                        .size(22.dp)
+                        .size(40.dp)
                         .pointerInput(task.tempId) {
                             detectDragGesturesAfterLongPress(
-                                onDragStart   = { onDragStart() },
-                                onDragEnd     = { onDragEnd() },
-                                onDragCancel  = { onDragEnd() },
-                                onDrag        = { change, dragAmount ->
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragEnd() },
+                                onDrag = { change, amount ->
                                     change.consume()
-                                    onDrag(dragAmount.y)
+                                    onDrag(amount.y)
                                 },
                             )
                         },
-                )
-
-                // Icon selector
-                IconPickerButton(
-                    selectedKey = task.iconKey,
-                    size        = 40.dp,
-                    onSelect    = { key -> onUpdate(task.copy(iconKey = key)) },
-                )
-
-                // Task name
-                OutlinedTextField(
-                    value         = task.name,
-                    onValueChange = { onUpdate(task.copy(name = it)) },
-                    label         = { Text("Task name") },
-                    singleLine    = true,
-                    modifier      = Modifier.weight(1f),
-                )
-
-                // Delete
-                IconButton(
-                    onClick  = { onDelete(task.tempId) },
-                    modifier = Modifier.size(36.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "Delete task",
-                        tint     = MaterialTheme.colorScheme.error,
+                        Icons.Filled.DragHandle,
+                        contentDescription = "Press and hold to reorder step ${index + 1}",
+                        tint = colors.textFaint,
                         modifier = Modifier.size(20.dp),
                     )
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // ── Row 2: duration stepper · notes toggle ────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                // Duration stepper
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    FilledTonalButton(
-                        onClick         = {
-                            if (task.durationMinutes > 1)
-                                onUpdate(task.copy(durationMinutes = task.durationMinutes - 1))
-                        },
-                        modifier        = Modifier.size(36.dp),
-                        contentPadding  = PaddingValues(0.dp),
-                        shape           = RoundedCornerShape(8.dp),
-                    ) {
-                        Text("\u2212", style = MaterialTheme.typography.titleMedium)
-                    }
-                    Text(
-                        text      = "${task.durationMinutes} min",
-                        style     = MaterialTheme.typography.bodyMedium,
-                        color     = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center,
-                        modifier  = Modifier.width(60.dp),
-                    )
-                    FilledTonalButton(
-                        onClick        = { onUpdate(task.copy(durationMinutes = task.durationMinutes + 1)) },
-                        modifier       = Modifier.size(36.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        shape          = RoundedCornerShape(8.dp),
-                    ) {
-                        Text("+", style = MaterialTheme.typography.titleMedium)
-                    }
-                }
-
-                // Notes toggle + info icon
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(
-                        onClick        = { showNotes = !showNotes },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    ) {
-                        Icon(
-                            Icons.Filled.EditNote,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            if (showNotes) "Hide note" else "Add note",
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                    IconButton(
-                        onClick  = { showNotesInfo = !showNotesInfo },
-                        modifier = Modifier.size(28.dp),
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.HelpOutline,
-                            contentDescription = "About notes",
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-            }
-
-            // Info text (toggled by "?")
-            AnimatedVisibility(visible = showNotesInfo) {
-                Text(
-                    text     = "Notes are shown on-screen while the task is running. " +
-                               "Use them for checklists, reminders, or step-by-step instructions.",
-                    style    = MaterialTheme.typography.bodySmall,
-                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                IconPickerButton(
+                    selectedKey = task.iconKey,
+                    size = 40.dp,
+                    onSelect = { onUpdate(task.copy(iconKey = it)) },
+                )
+                Spacer(Modifier.width(8.dp))
+                FfTextField(
+                    value = task.name,
+                    onValueChange = { onUpdate(task.copy(name = it)) },
+                    label = "Step ${index + 1}",
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                        .weight(1f)
+                        .onFocusChanged { nameFocused = it.hasFocus },
+                )
+                IconButton(onClick = { onDelete(task.tempId) }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Remove step ${index + 1}", tint = colors.textMuted)
+                }
+            }
+
+            if (matches.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier.padding(start = 92.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    matches.forEach { template ->
+                        FfChip(
+                            label = "${template.name} · ${template.durationMinutes} min",
+                            selected = false,
+                            onClick = { onTemplate(template) },
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 84.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MinuteStepper(
+                    value = task.durationMinutes,
+                    onChange = { onUpdate(task.copy(durationMinutes = it)) },
+                )
+                Spacer(Modifier.weight(1f))
+                TextAction(
+                    if (showNote) "Hide note" else "Add a note",
+                    onClick = { showNote = !showNote },
+                    color = colors.textSecondary,
                 )
             }
-
-            // Notes text field (expandable)
-            AnimatedVisibility(
-                visible = showNotes,
-                enter   = expandVertically(),
-                exit    = shrinkVertically(),
-            ) {
-                OutlinedTextField(
-                    value         = task.notes,
+            if (showNote) {
+                FfTextField(
+                    value = task.notes,
                     onValueChange = { onUpdate(task.copy(notes = it)) },
-                    label         = { Text("Note (optional)") },
-                    placeholder   = { Text("e.g. Remember to do X, checklist items...") },
-                    minLines      = 2,
-                    maxLines      = 5,
-                    modifier      = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
+                    label = "Shown while this step runs",
+                    singleLine = false,
+                    minLines = 2,
+                    maxLines = 5,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp),
                 )
             }
         }
     }
+}
 
-    // Notes info dialog (from "?" icon) — optional fuller explanation
-    if (showIconPicker) {
-        IconPickerDialog(
-            selectedKey = task.iconKey,
-            onSelect    = { key -> onUpdate(task.copy(iconKey = key)); showIconPicker = false },
-            onDismiss   = { showIconPicker = false },
+@Composable
+private fun MinuteStepper(value: Int, onChange: (Int) -> Unit) {
+    val colors = FfTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        StepButton(Icons.Filled.Remove, "Shorter", enabled = value > 1) { onChange((value - 1).coerceAtLeast(1)) }
+        Text(
+            "$value min",
+            style = FfType.rowTitle,
+            color = colors.accent,
+            modifier = Modifier.padding(horizontal = 10.dp),
         )
+        StepButton(Icons.Filled.Add, "Longer", enabled = value < 240) { onChange((value + 1).coerceAtMost(240)) }
+    }
+}
+
+@Composable
+private fun StepButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = FfTheme.colors
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(36.dp)) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(colors.surfaceHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = description,
+                tint = if (enabled) colors.text else colors.textFaint,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }

@@ -1,8 +1,6 @@
 package com.focusforceplus.app.ui.screens.routine
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.InfiniteTransition
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -10,98 +8,86 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ViewDay
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.ui.common.RoutineIcons
-import kotlinx.coroutines.delay
-import kotlin.math.cos
+import com.focusforceplus.app.ui.components.ConfirmDialog
+import com.focusforceplus.app.ui.components.FfChip
+import com.focusforceplus.app.ui.components.FfPaddedCard
+import com.focusforceplus.app.ui.components.FfTimePickerDialog
+import com.focusforceplus.app.ui.components.IconCircle
+import com.focusforceplus.app.ui.components.OutlineButton
+import com.focusforceplus.app.ui.components.PrimaryButton
+import com.focusforceplus.app.ui.components.TabItem
+import com.focusforceplus.app.ui.components.TextAction
+import com.focusforceplus.app.ui.components.TonalButton
+import com.focusforceplus.app.ui.components.UnderlineTabs
+import com.focusforceplus.app.ui.guards.GuardCopy
+import com.focusforceplus.app.ui.guards.GuardDialog
+import com.focusforceplus.app.ui.theme.FfTheme
+import com.focusforceplus.app.ui.theme.FfType
+import com.focusforceplus.app.util.TimeFormat
 import kotlin.math.sin
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveRoutineScreen(
     onBack: () -> Unit,
     viewModel: ActiveRoutineViewModel = hiltViewModel(),
 ) {
     val s by viewModel.uiState.collectAsState()
+    val colors = FfTheme.colors
 
-    // Block system Back while Invincible Mode is active and the routine is running.
-    // Without this, the toolbar Lock icon (V2 in `.claude/routine-invincible-review.md`)
-    // is bypassed by the Back gesture/button — the screen pops and the routine is
-    // effectively cancelled without the Reschedule path. BEFORE_START is excluded so the
-    // pre-run preview screen stays freely dismissable.
-    BackHandler(enabled = s.invincibleMode && s.timerState != TimerState.BEFORE_START) {
-        // Intentional no-op: there is no graceful action — the user must complete or
-        // reschedule, both of which have explicit affordances inside the screen.
-    }
+    // While an invincible routine runs, Back must not be a way out: the run can only
+    // be finished or moved, both of which have their own buttons here. Before it
+    // starts, the screen is a preview and Back works.
+    BackHandler(enabled = s.invincibleMode && s.timerState != TimerState.BEFORE_START) { }
 
-    // The session (timer, sound, notifications) lives in RoutineForegroundService —
-    // leaving this screen intentionally does NOT stop it.
+    // The session (timer, sound, notifications) lives in RoutineForegroundService;
+    // leaving this screen does not stop it.
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -110,163 +96,149 @@ fun ActiveRoutineScreen(
         }
     }
 
+    // Which deferral waits behind its speed bump, and which picker is open.
+    var snoozeGate by remember { mutableStateOf(false) }
+    var moveGate by remember { mutableStateOf(false) }
+    var movePicker by remember { mutableStateOf(false) }
+
     if (s.isLoading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Loading...", style = MaterialTheme.typography.bodyLarge)
-        }
+        Box(Modifier.fillMaxSize().background(colors.background))
         return
     }
-
     if (s.isCompleted) {
-        CompletionScreen(
-            stats = s.completionStats!!,
-            routineName = s.routineName,
-            onDone = onBack,
-        )
+        CompletionScreen(stats = s.completionStats!!, routineName = s.routineName, onDone = onBack)
         return
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(s.routineName, maxLines = 1) },
-                navigationIcon = {
-                    if (!s.invincibleMode) {
-                        IconButton(onClick = viewModel::onCancelFirstClick) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    } else {
-                        IconButton(onClick = {}) {
-                            Icon(
-                                Icons.Filled.Lock,
-                                contentDescription = "Invincible mode",
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
-        // Track whether notes are dismissed for the current task.
-        var notesDismissed by remember { mutableStateOf(false) }
-        LaunchedEffect(s.currentTaskIndex) { notesDismissed = false }
+    var notesDismissed by remember(s.currentTaskIndex) { mutableStateOf(false) }
 
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .safeDrawingPadding()
+            .padding(horizontal = 24.dp)
+            .padding(top = 8.dp, bottom = 16.dp),
+    ) {
+        // ── Top: name and the way out ─────────────────────────────────────────
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                s.routineName,
+                style = MaterialTheme.typography.titleLarge,
+                color = colors.text,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            if (s.invincibleMode) {
+                Icon(Icons.Filled.Lock, contentDescription = "Invincible mode", tint = colors.accent)
+            } else if (s.timerState == TimerState.BEFORE_START) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = colors.textSecondary)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        StepTimeline(tasks = s.tasks.map { it.durationMinutes }, current = s.currentTaskIndex)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Step ${s.currentTaskIndex + 1} of ${s.tasks.size}",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+        )
+
+        // ── The step ──────────────────────────────────────────────────────────
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+                .weight(1f)
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            // Overall progress
-            OverallProgressSection(
-                currentIndex = s.currentTaskIndex,
-                totalTasks   = s.tasks.size,
-                progress     = s.overallProgress,
+            IconCircle(
+                icon = RoutineIcons.find(s.currentTask?.iconKey)?.vector ?: Icons.Filled.ViewDay,
+                size = 48.dp,
             )
-
-            Spacer(Modifier.height(24.dp))
-
-            // Task icon (if set)
-            val taskIcon = RoutineIcons.find(s.currentTask?.iconKey)
-            if (taskIcon != null) {
-                Icon(
-                    imageVector     = taskIcon.vector,
-                    contentDescription = null,
-                    tint            = MaterialTheme.colorScheme.primary,
-                    modifier        = Modifier.size(36.dp),
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-
-            // Task name
+            Spacer(Modifier.height(12.dp))
             Text(
-                text       = s.currentTask?.name ?: "",
-                style      = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                textAlign  = TextAlign.Center,
-                color      = MaterialTheme.colorScheme.onBackground,
+                text = s.currentTask?.name.orEmpty(),
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.text,
+                textAlign = TextAlign.Center,
             )
-
-            // Task notes card (dismissable)
             val notes = s.currentTask?.description
             if (!notes.isNullOrBlank() && !notesDismissed) {
                 Spacer(Modifier.height(12.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(10.dp),
-                    colors   = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    ),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.Top,
-                    ) {
+                FfPaddedCard {
+                    Row(verticalAlignment = Alignment.Top) {
                         Text(
-                            text     = notes,
-                            style    = MaterialTheme.typography.bodySmall,
-                            color    = MaterialTheme.colorScheme.onSecondaryContainer,
+                            notes,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
                             modifier = Modifier.weight(1f),
                         )
-                        Icon(
-                            imageVector     = Icons.Filled.Close,
-                            contentDescription = "Dismiss note",
-                            tint            = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
-                            modifier        = Modifier
-                                .size(18.dp)
-                                .clickable { notesDismissed = true },
-                        )
+                        IconButton(onClick = { notesDismissed = true }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Filled.Close, contentDescription = "Hide note", tint = colors.textMuted)
+                        }
                     }
                 }
             }
-
             Spacer(Modifier.height(24.dp))
-
-            // Circular timer
             CircularTimer(
                 remainingSeconds = s.remainingSeconds,
                 totalSeconds = s.taskTotalSeconds,
                 overtimeSeconds = s.overtimeSeconds,
                 timerState = s.timerState,
             )
+            s.tasks.getOrNull(s.currentTaskIndex + 1)?.let { next ->
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    "Up next: ${next.name} · ${next.durationMinutes} min",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textMuted,
+                )
+            }
+        }
 
-            Spacer(Modifier.height(32.dp))
-
-            // Action buttons
-            when (s.timerState) {
-                TimerState.BEFORE_START -> {
-                    BeforeStartActions(
-                        canSnooze = s.canSnooze,
-                        remainingSnoozes = s.remainingSnoozes,
-                        onStart = viewModel::startRoutine,
-                        onSnooze = viewModel::showSnoozeDialog,
-                    )
-                }
-                TimerState.RUNNING, TimerState.OVERTIME -> {
-                    RunningActions(
-                        onDone = viewModel::completeCurrentTask,
-                        onAddTime = viewModel::showAddTimeDialog,
+        // ── Actions ───────────────────────────────────────────────────────────
+        when (s.timerState) {
+            TimerState.BEFORE_START -> {
+                PrimaryButton(
+                    text = "Start",
+                    onClick = viewModel::startRoutine,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                )
+                if (s.canSnooze) {
+                    Spacer(Modifier.height(10.dp))
+                    OutlineButton(
+                        text = "Snooze · ${s.remainingSnoozes} left",
+                        onClick = {
+                            if (s.snoozeGuard.isNone) viewModel.showSnoozeDialog() else snoozeGate = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
-
-            // Cancel button (hidden in invincible mode)
-            if (!s.invincibleMode && s.timerState != TimerState.BEFORE_START) {
-                Spacer(Modifier.height(16.dp))
-                TextButton(onClick = viewModel::onCancelFirstClick) {
-                    Text(
-                        "Cancel routine",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            TimerState.RUNNING, TimerState.OVERTIME -> {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PrimaryButton(
+                        text = "Done",
+                        icon = Icons.Filled.Check,
+                        onClick = viewModel::completeCurrentTask,
+                        modifier = Modifier.weight(1f).height(56.dp),
                     )
+                    TonalButton(
+                        text = "+ Time",
+                        onClick = viewModel::showAddTimeDialog,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                    )
+                }
+                if (!s.invincibleMode) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        TextAction("Stop the routine", onClick = viewModel::onCancelFirstClick, color = colors.textMuted)
+                    }
                 }
             }
         }
@@ -275,128 +247,150 @@ fun ActiveRoutineScreen(
     // ── Dialogs ───────────────────────────────────────────────────────────────
 
     if (s.showThreeMinWarning) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissThreeMinWarning,
-            title = { Text("Almost done!") },
-            text = {
-                val mins = s.currentTask?.reminderBeforeEndMinutes ?: 3
-                Text("$mins minutes remaining for \"${s.currentTask?.name}\".")
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel::dismissThreeMinWarning) { Text("OK") }
-            },
+        val mins = s.currentTask?.reminderBeforeEndMinutes ?: 3
+        ConfirmDialog(
+            title = "Almost there",
+            message = "$mins minutes left for \"${s.currentTask?.name}\".",
+            confirmLabel = "OK",
+            dismissLabel = "",
+            onConfirm = viewModel::dismissThreeMinWarning,
+            onDismiss = viewModel::dismissThreeMinWarning,
         )
     }
 
     if (s.showTimeUpDialog) {
         TaskCompleteOverlay(
-            taskName      = s.currentTask?.name ?: "",
+            taskName = s.currentTask?.name.orEmpty(),
             overtimeSeconds = s.overtimeSeconds,
-            onDone        = viewModel::completeCurrentTask,
-            onAddTime     = viewModel::addTime,
+            onDone = viewModel::completeCurrentTask,
+            onAddTime = viewModel::addTime,
         )
     }
 
     if (s.showOvertimeReminder) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissOvertimeReminder,
-            title = { Text("Still going...") },
-            text = { Text("You are ${s.overtimeReminderMinutes} minute(s) over time on \"${s.currentTask?.name}\".") },
-            confirmButton = {
-                TextButton(onClick = viewModel::dismissOvertimeReminder) { Text("OK") }
-            },
+        ConfirmDialog(
+            title = "Still on it?",
+            message = "You are ${s.overtimeReminderMinutes} min over on \"${s.currentTask?.name}\".",
+            confirmLabel = "OK",
+            dismissLabel = "",
+            onConfirm = viewModel::dismissOvertimeReminder,
+            onDismiss = viewModel::dismissOvertimeReminder,
         )
     }
 
     if (s.showAddTimeDialog) {
-        TimeOptionDialog(
-            title = "Add extra time",
+        MinutesDialog(
+            title = "Add time",
             options = listOf(1, 2, 5, 10, 15),
             onSelect = { viewModel.addTime(it) },
             onDismiss = viewModel::dismissAddTimeDialog,
         )
     }
 
-    if (s.showSnoozeDialog) {
-        TimeOptionDialog(
-            title = "Snooze routine",
-            subtitle = "${s.remainingSnoozes} snooze(s) remaining",
-            options = listOf(5, 10, 15, 30),
-            onSelect = { minutes ->
-                viewModel.snooze(minutes) { /* caller would schedule the alarm */ }
+    if (snoozeGate) {
+        GuardDialog(
+            guard = s.snoozeGuard,
+            copy = GuardCopy.SNOOZE,
+            subject = s.routineName,
+            onPassed = {
+                snoozeGate = false
+                viewModel.showSnoozeDialog()
             },
+            onDismiss = { snoozeGate = false },
+        )
+    }
+
+    if (s.showSnoozeDialog) {
+        MinutesDialog(
+            title = "Snooze for how long?",
+            subtitle = "${s.remainingSnoozes} left",
+            options = listOf(5, 10, 15, 30),
+            onSelect = { viewModel.snooze(it) },
             onDismiss = viewModel::dismissSnoozeDialog,
         )
     }
 
-    // Cancel confirm flow
+    // Stopping: first "are you sure", then, while moves are left, the offer to move
+    // the run instead of dropping it.
     when (s.cancelConfirmStep) {
-        1 -> {
-            AlertDialog(
-                onDismissRequest = viewModel::dismissCancel,
-                title = { Text("Cancel routine?") },
-                text = { Text("Your progress will be lost. Are you sure you want to stop?") },
-                confirmButton = {
-                    Button(
-                        onClick = viewModel::onCancelConfirmed,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                        ),
-                    ) { Text("Stop routine") }
-                },
-                dismissButton = {
-                    TextButton(onClick = viewModel::dismissCancel) { Text("Keep going") }
-                },
-            )
-        }
-        2 -> {
-            RescheduleDialog(
-                routineName = s.routineName,
-                onReschedule = { hour, minute, tomorrow ->
-                    viewModel.reschedule(hour, minute, tomorrow)
-                    onBack()
-                },
-                onSkip = {
-                    viewModel.cancelSession()
-                    onBack()
-                },
-                onDismiss = viewModel::dismissCancel,
-            )
-        }
+        1 -> ConfirmDialog(
+            title = "Stop the routine?",
+            message = "This run ends here. What you have done so far is not saved as a finished run.",
+            confirmLabel = "Stop",
+            dismissLabel = "Keep going",
+            destructive = true,
+            onConfirm = viewModel::onCancelConfirmed,
+            onDismiss = viewModel::dismissCancel,
+        )
+        2 -> ConfirmDialog(
+            title = "Move it instead?",
+            message = "You can move this run to later today or to tomorrow, so it is not lost.",
+            confirmLabel = "Move it",
+            dismissLabel = "Just stop",
+            onConfirm = {
+                viewModel.dismissCancel()
+                if (s.rescheduleGuard.isNone) movePicker = true else moveGate = true
+            },
+            onDismiss = {
+                viewModel.dismissCancel()
+                viewModel.cancelSession()
+                onBack()
+            },
+        )
+    }
+
+    if (moveGate) {
+        GuardDialog(
+            guard = s.rescheduleGuard,
+            copy = GuardCopy.RESCHEDULE,
+            subject = s.routineName,
+            onPassed = {
+                moveGate = false
+                movePicker = true
+            },
+            onDismiss = { moveGate = false },
+        )
+    }
+
+    if (movePicker) {
+        MoveDialog(
+            onMove = { hour, minute, tomorrow ->
+                movePicker = false
+                viewModel.reschedule(hour, minute, tomorrow)
+                onBack()
+            },
+            onDismiss = { movePicker = false },
+        )
     }
 }
 
-// ── Timer sections ────────────────────────────────────────────────────────────
+// ── Pieces ────────────────────────────────────────────────────────────────────
 
+/** The run as one bar: a segment per step, as long as the step. */
 @Composable
-private fun OverallProgressSection(
-    currentIndex: Int,
-    totalTasks: Int,
-    progress: Float,
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                "Task ${currentIndex + 1} of $totalTasks",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "${(progress * 100).toInt()}%",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun StepTimeline(tasks: List<Int>, current: Int) {
+    val colors = FfTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        tasks.forEachIndexed { index, minutes ->
+            Box(
+                Modifier
+                    .weight(minutes.coerceAtLeast(1).toFloat())
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        when {
+                            index < current -> colors.accent
+                            index == current -> colors.onContainer.copy(alpha = 0.55f)
+                            else -> colors.surfaceHigh
+                        }
+                    ),
             )
         }
-        Spacer(Modifier.height(6.dp))
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth().height(6.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-        )
     }
 }
 
@@ -407,166 +401,62 @@ private fun CircularTimer(
     overtimeSeconds: Int,
     timerState: TimerState,
 ) {
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
-    val arcColor = when (timerState) {
-        TimerState.OVERTIME -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    val fraction = if (totalSeconds <= 0) 0f
-    else when (timerState) {
+    val colors = FfTheme.colors
+    val track = colors.surfaceHigh
+    val arc = if (timerState == TimerState.OVERTIME) colors.error else colors.accent
+    val fraction = if (totalSeconds <= 0) 0f else when (timerState) {
         TimerState.BEFORE_START -> 1f
         TimerState.RUNNING -> remainingSeconds.toFloat() / totalSeconds.toFloat()
         TimerState.OVERTIME -> 0f
     }
 
-    Box(
-        modifier = Modifier.size(240.dp),
-        contentAlignment = Alignment.Center,
-    ) {
+    Box(modifier = Modifier.size(232.dp), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 16.dp.toPx()
-            val diameter = size.minDimension - strokeWidth
-            val topLeft = Offset(
-                (size.width - diameter) / 2f,
-                (size.height - diameter) / 2f,
-            )
+            val stroke = 10.dp.toPx()
+            val diameter = size.minDimension - stroke
+            val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             val arcSize = Size(diameter, diameter)
-
-            // Background track
-            drawArc(
-                color = trackColor,
-                startAngle = -90f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-            )
-
-            // Progress arc (or overtime fills full red circle)
+            drawArc(track, -90f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
             val sweep = if (timerState == TimerState.OVERTIME) {
-                val maxOvertimeDisplay = 10 * 60f
-                (overtimeSeconds.toFloat() / maxOvertimeDisplay).coerceIn(0f, 1f) * 360f
+                (overtimeSeconds / (10 * 60f)).coerceIn(0f, 1f) * 360f
             } else {
                 fraction * 360f
             }
             if (sweep > 0f) {
-                drawArc(
-                    color = arcColor,
-                    startAngle = -90f,
-                    sweepAngle = sweep,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                )
+                drawArc(arc, -90f, sweep, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
             }
         }
-
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             when (timerState) {
-                TimerState.BEFORE_START -> {
-                    Text(
-                        "Ready",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                TimerState.BEFORE_START -> Text(
+                    TimeFormat.duration(totalSeconds / 60),
+                    style = FfType.number.copy(fontSize = MaterialTheme.typography.headlineMedium.fontSize),
+                    color = colors.textSecondary,
+                )
                 TimerState.RUNNING -> {
                     Text(
                         formatSeconds(remainingSeconds),
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        style = FfType.number.copy(fontSize = MaterialTheme.typography.displayMedium.fontSize),
+                        color = colors.text,
                     )
-                    Text(
-                        "remaining",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text("left", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                 }
                 TimerState.OVERTIME -> {
                     Text(
                         "+${formatSeconds(overtimeSeconds)}",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error,
+                        style = FfType.number.copy(fontSize = MaterialTheme.typography.displayMedium.fontSize),
+                        color = colors.error,
                     )
-                    Text(
-                        "overtime",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    Text("over", style = MaterialTheme.typography.bodySmall, color = colors.error)
                 }
             }
         }
     }
 }
 
-private fun formatSeconds(total: Int): String {
-    val m = total / 60
-    val s = total % 60
-    return "%d:%02d".format(m, s)
-}
+private fun formatSeconds(total: Int): String = "%d:%02d".format(total / 60, total % 60)
 
-// ── Action buttons ────────────────────────────────────────────────────────────
-
-@Composable
-private fun BeforeStartActions(
-    canSnooze: Boolean,
-    remainingSnoozes: Int,
-    onStart: () -> Unit,
-    onSnooze: () -> Unit,
-) {
-    Button(
-        onClick = onStart,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-    ) {
-        Text("Start", style = MaterialTheme.typography.titleMedium)
-    }
-
-    AnimatedVisibility(visible = canSnooze) {
-        Column {
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = onSnooze,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-            ) {
-                Text("Snooze ($remainingSnoozes left)")
-            }
-        }
-    }
-}
-
-@Composable
-private fun RunningActions(
-    onDone: () -> Unit,
-    onAddTime: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Button(
-            onClick = onDone,
-            modifier = Modifier.weight(1f).height(56.dp),
-        ) {
-            Icon(Icons.Filled.Check, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Done")
-        }
-        FilledTonalButton(
-            onClick = onAddTime,
-            modifier = Modifier.weight(1f).height(56.dp),
-        ) {
-            Text("+ Time")
-        }
-    }
-}
-
-// ── Task-complete full-screen overlay ─────────────────────────────────────────
-
+/** Time is up for a step: done, or a few more minutes. Sound comes from the service. */
 @Composable
 private fun TaskCompleteOverlay(
     taskName: String,
@@ -574,192 +464,123 @@ private fun TaskCompleteOverlay(
     onDone: () -> Unit,
     onAddTime: (Int) -> Unit,
 ) {
-    // Sound and vibration for the task-end alarm are played by
-    // RoutineForegroundService, so they also fire when this UI is not open.
-    var showAddTimeOptions by remember { mutableStateOf(false) }
-
+    val colors = FfTheme.colors
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF050508), Color(0xFF0f2847)))),
-        contentAlignment = Alignment.Center,
+            .background(colors.background)
+            .safeDrawingPadding(),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
-            Text(
-                text      = "Time's up!",
-                style     = MaterialTheme.typography.titleMedium,
-                color     = Color.White.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center,
-            )
-
-            Text(
-                text       = taskName,
-                style      = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color      = Color.White,
-                textAlign  = TextAlign.Center,
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text       = "+${formatSeconds(overtimeSeconds)}",
-                fontSize   = 56.sp,
-                fontWeight = FontWeight.Bold,
-                color      = Color(0xFFef4444),
-            )
-            Text(
-                text  = "overtime",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFef4444).copy(alpha = 0.7f),
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Button(
-                onClick  = onDone,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                shape  = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                ),
+            Text("Time is up", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.Center,
             ) {
+                Text(taskName, style = MaterialTheme.typography.headlineMedium, color = colors.text)
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    "Done",
-                    style      = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    "+${formatSeconds(overtimeSeconds)} over",
+                    style = FfType.number.copy(fontSize = MaterialTheme.typography.headlineSmall.fontSize),
+                    color = colors.error,
                 )
             }
-
-            if (!showAddTimeOptions) {
-                OutlinedButton(
-                    onClick  = { showAddTimeOptions = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Text("+ Add Time", color = Color.White)
-                }
-            } else {
-                Text(
-                    "Add extra time:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.7f),
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    listOf(1, 2, 5, 10, 15).forEach { min ->
-                        FilledTonalButton(
-                            onClick        = { onAddTime(min) },
-                            modifier       = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp),
-                        ) {
-                            Text("${min}m", fontSize = 12.sp)
-                        }
-                    }
+            PrimaryButton(text = "Done", onClick = onDone, modifier = Modifier.fillMaxWidth().height(56.dp))
+            Spacer(Modifier.height(14.dp))
+            Text("A few more minutes", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(1, 2, 5, 10, 15).forEach { minutes ->
+                    FfChip(label = "$minutes min", selected = false, onClick = { onAddTime(minutes) })
                 }
             }
         }
     }
 }
 
-// ── Dialogs ───────────────────────────────────────────────────────────────────
-
 @Composable
-private fun TimeOptionDialog(
+private fun MinutesDialog(
     title: String,
-    subtitle: String? = null,
     options: List<Int>,
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit,
+    subtitle: String? = null,
 ) {
+    val colors = FfTheme.colors
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        containerColor = colors.surfaceVariant,
+        title = { Text(title, style = MaterialTheme.typography.titleLarge, color = colors.text) },
         text = {
             Column {
                 subtitle?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(12.dp))
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                    Spacer(Modifier.height(10.dp))
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    options.forEach { min ->
-                        FilledTonalButton(
-                            onClick        = { onSelect(min) },
-                            modifier       = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp),
-                        ) {
-                            Text("${min}m", fontSize = 13.sp)
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    options.forEach { minutes ->
+                        FfChip(label = "$minutes min", selected = false, onClick = { onSelect(minutes) })
                     }
                 }
             }
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            }
         },
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RescheduleDialog(
-    routineName: String,
-    onReschedule: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
-    onSkip: () -> Unit,
+private fun MoveDialog(
+    onMove: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val timeState = rememberTimePickerState(is24Hour = true)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Reschedule \"$routineName\"?") },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                PrimaryTabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick  = { selectedTab = 0 },
-                        text     = { Text("Today") },
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick  = { selectedTab = 1 },
-                        text     = { Text("Tomorrow") },
-                    )
+    var day by remember { mutableStateOf(0) }
+    var pickTime by remember { mutableStateOf(false) }
+    val colors = FfTheme.colors
+    if (!pickTime) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            containerColor = colors.surfaceVariant,
+            title = { Text("Move to when?", style = MaterialTheme.typography.titleLarge, color = colors.text) },
+            text = {
+                UnderlineTabs(
+                    tabs = listOf(TabItem("Later today"), TabItem("Tomorrow")),
+                    selectedIndex = day,
+                    onSelect = { day = it },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { pickTime = true }) {
+                    Text("Pick a time", style = MaterialTheme.typography.labelLarge, color = colors.accent)
                 }
-                Spacer(Modifier.height(16.dp))
-                TimePicker(state = timeState)
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onReschedule(timeState.hour, timeState.minute, selectedTab == 1) }) {
-                Text("Reschedule")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onSkip) { Text("Skip") }
-        },
-    )
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+                }
+            },
+        )
+    } else {
+        FfTimePickerDialog(
+            title = if (day == 1) "Tomorrow at" else "Today at",
+            hour = 18,
+            minute = 0,
+            confirmLabel = "Move",
+            onConfirm = { h, m -> onMove(h, m, day == 1) },
+            onDismiss = onDismiss,
+        )
+    }
 }
 
-// ── Completion screen ─────────────────────────────────────────────────────────
+// ── Done ──────────────────────────────────────────────────────────────────────
 
 @Composable
 fun CompletionScreen(
@@ -767,162 +588,87 @@ fun CompletionScreen(
     routineName: String,
     onDone: () -> Unit,
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "confetti")
-
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        ConfettiAnimation(infiniteTransition)
-
+    val colors = FfTheme.colors
+    val transition = rememberInfiniteTransition(label = "confetti")
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.background),
+    ) {
+        Confetti(transition, listOf(colors.accent, colors.success, colors.warning, colors.onContainer))
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+                .safeDrawingPadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
-            Text(
-                text = "Routine complete!",
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = routineName,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center,
-            )
-
-            Spacer(Modifier.height(40.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.Center,
             ) {
-                CompletionStatCard(
-                    label = "Tasks done",
-                    value = "${stats.tasksCompleted}",
-                    modifier = Modifier.weight(1f),
-                )
-                CompletionStatCard(
-                    label = "Scheduled",
-                    value = "${stats.totalScheduledMinutes}m",
-                    modifier = Modifier.weight(1f),
-                )
-                CompletionStatCard(
-                    label = "Overtime",
-                    value = if (stats.totalOvertimeMinutes > 0) "+${stats.totalOvertimeMinutes}m" else "0",
-                    valueColor = if (stats.totalOvertimeMinutes > 0) MaterialTheme.colorScheme.error
-                                 else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
+                Text("Routine done", style = MaterialTheme.typography.bodyLarge, color = colors.textMuted)
+                Spacer(Modifier.height(4.dp))
+                Text(routineName, style = MaterialTheme.typography.headlineMedium, color = colors.text)
+                Spacer(Modifier.height(28.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatTile("Steps", "${stats.tasksCompleted}", Modifier.weight(1f))
+                    StatTile("Planned", TimeFormat.duration(stats.totalScheduledMinutes), Modifier.weight(1f))
+                    StatTile(
+                        "Over",
+                        if (stats.totalOvertimeMinutes > 0) "+${stats.totalOvertimeMinutes} min" else "None",
+                        Modifier.weight(1f),
+                        valueColor = if (stats.totalOvertimeMinutes > 0) colors.warning else colors.text,
+                    )
+                }
             }
-
-            Spacer(Modifier.height(48.dp))
-
-            Button(
-                onClick = onDone,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-            ) {
-                Text("Done", style = MaterialTheme.typography.titleMedium)
-            }
+            PrimaryButton(text = "Done", onClick = onDone, modifier = Modifier.fillMaxWidth().height(56.dp))
         }
     }
 }
 
 @Composable
-private fun CompletionStatCard(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    valueColor: Color = MaterialTheme.colorScheme.onBackground,
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = valueColor,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
+private fun StatTile(label: String, value: String, modifier: Modifier, valueColor: Color = FfTheme.colors.text) {
+    val colors = FfTheme.colors
+    FfPaddedCard(modifier = modifier, spacing = 2.dp) {
+        Text(value, style = FfType.number.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize), color = valueColor)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
     }
 }
 
 @Composable
-private fun ConfettiAnimation(transition: InfiniteTransition) {
-    val particleCount = 60
-    val colors = listOf(
-        Color(0xFF1d4ed8), Color(0xFF7c3aed), Color(0xFFec4899),
-        Color(0xFFf59e0b), Color(0xFF10b981), Color(0xFFef4444),
-    )
-
-    // One animated phase per particle
-    val phases = (0 until particleCount).map { i ->
+private fun Confetti(transition: InfiniteTransition, palette: List<Color>) {
+    val count = 48
+    val phases = (0 until count).map { i ->
         transition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 2000 + (i * 47) % 1500,
-                    easing = LinearEasing,
-                ),
+                animation = tween(durationMillis = 2200 + (i * 47) % 1500, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart,
             ),
             label = "particle_$i",
         )
     }
-
-    // Stable random seeds per particle
     val seeds = remember {
-        (0 until particleCount).map {
-            Triple(
-                (it * 137 % 100) / 100f,   // x start (0..1)
-                (it * 73 % 80 + 10) / 100f, // horizontal spread weight
-                (it * 31 % 6),              // color index
-            )
-        }
+        (0 until count).map { Triple((it * 137 % 100) / 100f, (it * 73 % 80 + 10) / 100f, it % 4) }
     }
-
     Canvas(modifier = Modifier.fillMaxSize()) {
         phases.forEachIndexed { i, phase ->
             val progress = phase.value
-            val (xSeed, xSpread, colorIdx) = seeds[i]
-
-            val x = (xSeed + xSpread * sin(progress * Math.PI.toFloat() * 2f)) * size.width
+            val (xSeed, spread, colorIndex) = seeds[i]
+            val x = (xSeed + spread * 0.25f * sin(progress * Math.PI.toFloat() * 2f)) * size.width
             val y = progress * (size.height + 40.dp.toPx()) - 20.dp.toPx()
             val alpha = when {
                 progress < 0.1f -> progress / 0.1f
                 progress > 0.85f -> (1f - progress) / 0.15f
                 else -> 1f
-            }
-            val rotation = progress * 720f
-            val particleSize = (4 + (i % 6)).dp.toPx()
-
+            } * 0.8f
+            val side = (3 + (i % 4)).dp.toPx()
             drawRect(
-                color = colors[colorIdx.toInt()].copy(alpha = alpha),
-                topLeft = Offset(x - particleSize / 2f, y - particleSize / 2f),
-                size = Size(particleSize, particleSize),
+                color = palette[colorIndex % palette.size].copy(alpha = alpha),
+                topLeft = Offset(x - side / 2f, y - side / 2f),
+                size = Size(side, side),
             )
         }
     }
 }
-

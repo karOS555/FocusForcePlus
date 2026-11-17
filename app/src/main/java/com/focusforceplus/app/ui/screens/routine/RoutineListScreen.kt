@@ -1,70 +1,50 @@
 package com.focusforceplus.app.ui.screens.routine
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.ViewDay
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.data.db.entity.RoutineEntity
-import com.focusforceplus.app.ui.common.routineDayLabel
-import kotlinx.coroutines.launch
-import java.util.Calendar
+import com.focusforceplus.app.ui.common.RoutineIcons
+import com.focusforceplus.app.ui.common.routineDaysSummary
+import com.focusforceplus.app.ui.components.ConfirmDialog
+import com.focusforceplus.app.ui.components.DeleteDialog
+import com.focusforceplus.app.ui.components.EmptyState
+import com.focusforceplus.app.ui.components.FfCard
+import com.focusforceplus.app.ui.components.GroupLabel
+import com.focusforceplus.app.ui.components.IconCircle
+import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.theme.FfTheme
+import com.focusforceplus.app.util.TimeFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,346 +54,201 @@ fun RoutineListScreen(
     onStartRoutine: (Long) -> Unit = {},
     viewModel: RoutineListViewModel = hiltViewModel(),
 ) {
-    val routinesWithReschedule by viewModel.routinesWithReschedule.collectAsState()
-    val activeRoutineId by viewModel.activeRoutineId.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var pausePromptRoutine by remember { mutableStateOf<RoutineEntity?>(null) }
+    val state by viewModel.uiState.collectAsState()
+    val message by viewModel.message.collectAsState()
+    val colors = FfTheme.colors
+    val snackbar = remember { SnackbarHostState() }
+
+    var menuFor by remember { mutableStateOf<RoutineRow?>(null) }
+    var deleteTarget by remember { mutableStateOf<RoutineEntity?>(null) }
+    var pausePrompt by remember { mutableStateOf<RoutineEntity?>(null) }
+
+    LaunchedEffect(message) {
+        message?.let {
+            snackbar.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
+
+    fun togglePause(routine: RoutineEntity) {
+        // Pausing a running, invincible routine only pauses future runs; say so.
+        if (routine.isActive && routine.invincibleMode && viewModel.isRunning(routine.id)) {
+            pausePrompt = routine
+        } else {
+            viewModel.toggleActive(routine)
+        }
+    }
 
     Scaffold(
+        containerColor = colors.background,
+        snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onCreateRoutine,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "New routine")
-            }
+                containerColor = colors.primary,
+                contentColor = colors.onPrimary,
+                shape = MaterialTheme.shapes.large,
+            ) { Icon(Icons.Filled.Add, contentDescription = "New routine") }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        Column(
+        if (state.isEmpty) {
+            EmptyState(
+                icon = Icons.Filled.ViewDay,
+                title = "No routines yet",
+                text = "A routine is a few steps with a timer each, started by an alarm. " +
+                    "Mornings and evenings are a good place to begin.",
+                actionLabel = "Create a routine",
+                onAction = onCreateRoutine,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            )
+            return@Scaffold
+        }
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Title + guide live in the app bar (FocusForceTopBar).
-            if (routinesWithReschedule.isEmpty()) {
-                EmptyRoutinesHint(modifier = Modifier.weight(1f))
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
-                ) {
-                items(routinesWithReschedule, key = { it.routine.id }) { item ->
-                    SwipeToDeleteRoutineItem(
-                        item           = item,
-                        onEdit         = { onEditRoutine(item.routine.id) },
-                        onStart        = { onStartRoutine(item.routine.id) },
-                        onDelete       = {
-                            val deleted = viewModel.deleteRoutine(item.routine)
-                            if (!deleted) {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        "Cannot delete a running routine. Complete or reschedule it first.",
-                                    )
-                                }
-                            }
-                        },
-                        onToggleActive = {
-                            val r = item.routine
-                            // Pausing a running, invincible routine: we keep the live
-                            // session running (V4 / G2 option b — toggle pauses future
-                            // runs only) but prompt so the user understands the split.
-                            val isPausing = r.isActive
-                            val isRunning = activeRoutineId == r.id
-                            if (isPausing && isRunning && r.invincibleMode) {
-                                pausePromptRoutine = r
-                            } else {
-                                viewModel.toggleActive(r)
-                            }
-                        },
-                        onCancelReschedule = { viewModel.cancelPendingReschedule(item.routine.id) },
-                        modifier       = Modifier.animateItem(),
-                    )
-                }
+            listOf(
+                "Today" to state.today,
+                "Other days" to state.otherDays,
+                "Paused" to state.paused,
+            ).forEach { (label, rows) ->
+                if (rows.isEmpty()) return@forEach
+                item(key = "label-$label") { GroupLabel(label) }
+                item(key = "card-$label") {
+                    FfCard {
+                        rows.forEachIndexed { index, row ->
+                            if (index > 0) RowDivider()
+                            RoutineListRow(
+                                row = row,
+                                onOpen = { onEditRoutine(row.routine.id) },
+                                onMenu = { menuFor = row },
+                                onStart = { onStartRoutine(row.routine.id) },
+                            )
+                        }
+                    }
                 }
             }
-        }
-    }
-
-    pausePromptRoutine?.let { routine ->
-        AlertDialog(
-            onDismissRequest = { pausePromptRoutine = null },
-            title = { Text("Pause future runs?") },
-            text = {
+            item(key = "hint") {
                 Text(
-                    "Future scheduled runs of \"${routine.name}\" will be paused. " +
-                            "The current session continues until you complete or reschedule it.",
+                    "Press and hold a routine to start it now, copy it or pause it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textFaint,
+                    modifier = Modifier.padding(top = 10.dp, start = 2.dp),
                 )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.toggleActive(routine)
-                        pausePromptRoutine = null
-                    },
-                ) { Text("Pause future runs") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pausePromptRoutine = null }) { Text("Cancel") }
-            },
-        )
-    }
-}
-
-// ─── Swipe-to-delete wrapper ──────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SwipeToDeleteRoutineItem(
-    item: RoutineWithReschedule,
-    onEdit: () -> Unit,
-    onStart: () -> Unit,
-    onDelete: () -> Unit,
-    onToggleActive: () -> Unit,
-    onCancelReschedule: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var showConfirmDialog by remember { mutableStateOf(false) }
-
-    val dismissState = rememberSwipeToDismissBoxState()
-
-    LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
-            showConfirmDialog = true
-            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+            }
         }
     }
 
-    SwipeToDismissBox(
-        state = dismissState,
-        modifier = modifier,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = { DeleteBackground() },
-    ) {
-        RoutineCard(
-            item               = item,
-            onEdit             = onEdit,
-            onStart            = onStart,
-            onToggleActive     = onToggleActive,
-            onCancelReschedule = onCancelReschedule,
+    menuFor?.let { row ->
+        val routine = row.routine
+        ModalBottomSheet(
+            onDismissRequest = { menuFor = null },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = colors.surfaceVariant,
+        ) {
+            Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
+                Text(
+                    routine.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.text,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    maxLines = 2,
+                )
+                ListRow(title = "Start now", onClick = { menuFor = null; onStartRoutine(routine.id) })
+                ListRow(title = "Edit", onClick = { menuFor = null; onEditRoutine(routine.id) })
+                ListRow(title = "Duplicate", onClick = { menuFor = null; viewModel.duplicate(routine) })
+                ListRow(
+                    title = if (routine.isActive) "Pause the schedule" else "Resume the schedule",
+                    onClick = { menuFor = null; togglePause(routine) },
+                )
+                if (row.pendingRescheduleMillis != null) {
+                    ListRow(
+                        title = "Undo the move to ${TimeFormat.clock(row.pendingRescheduleMillis)}",
+                        onClick = { menuFor = null; viewModel.cancelPendingReschedule(routine.id) },
+                    )
+                }
+                ListRow(
+                    title = "Delete",
+                    titleColor = colors.error,
+                    onClick = { menuFor = null; deleteTarget = routine },
+                )
+            }
+        }
+    }
+
+    deleteTarget?.let { routine ->
+        DeleteDialog(
+            what = "\"${routine.name}\"",
+            onConfirm = {
+                viewModel.deleteRoutine(routine)
+                deleteTarget = null
+            },
+            onDismiss = { deleteTarget = null },
         )
     }
 
-    if (showConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Delete routine?") },
-            text = {
-                Text("\"${item.routine.name}\" will be permanently deleted, including all subtasks.")
+    pausePrompt?.let { routine ->
+        ConfirmDialog(
+            title = "Pause future runs?",
+            message = "Future runs of \"${routine.name}\" are paused. The run that is going on " +
+                "now continues until you finish or move it.",
+            confirmLabel = "Pause future runs",
+            onConfirm = {
+                viewModel.toggleActive(routine)
+                pausePrompt = null
             },
-            confirmButton = {
-                Button(
-                    onClick = { showConfirmDialog = false; onDelete() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
-                    ),
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) { Text("Cancel") }
-            },
+            onDismiss = { pausePrompt = null },
         )
     }
 }
 
 @Composable
-private fun DeleteBackground() {
-    val color by animateColorAsState(
-        targetValue = MaterialTheme.colorScheme.errorContainer,
-        label = "swipe_bg",
+private fun RoutineListRow(
+    row: RoutineRow,
+    onOpen: () -> Unit,
+    onMenu: () -> Unit,
+    onStart: () -> Unit,
+) {
+    val colors = FfTheme.colors
+    val routine = row.routine
+    val time = TimeFormat.clock(routine.startTimeHour * 60 + routine.startTimeMinute)
+    val detail = when {
+        row.running -> "Running now"
+        row.pendingRescheduleMillis != null -> "Moved to ${TimeFormat.dayAndClock(row.pendingRescheduleMillis)}"
+        else -> buildList {
+            add(time)
+            add(routineDaysSummary(routine.activeDays))
+            if (row.totalMinutes > 0) add(TimeFormat.duration(row.totalMinutes))
+            if (routine.invincibleMode) add("invincible")
+        }.joinToString(" · ")
+    }
+    ListRow(
+        title = routine.name,
+        subtitle = detail,
+        subtitleColor = if (row.running || row.pendingRescheduleMillis != null) colors.accent else colors.textMuted,
+        titleColor = if (routine.isActive) colors.text else colors.textSecondary,
+        onClick = onOpen,
+        onLongClick = onMenu,
+        leading = {
+            IconCircle(
+                icon = RoutineIcons.find(routine.iconKey)?.vector ?: Icons.Filled.ViewDay,
+                container = if (routine.isActive) colors.container else colors.surfaceHigh,
+                tint = if (routine.isActive) colors.onContainer else colors.textMuted,
+            )
+        },
+        trailing = {
+            IconButton(onClick = onStart) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = "Start ${routine.name} now",
+                    tint = colors.accent,
+                )
+            }
+        },
     )
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(12.dp))
-            .background(color)
-            .padding(end = 20.dp),
-        contentAlignment = Alignment.CenterEnd,
-    ) {
-        Icon(
-            Icons.Filled.Delete,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.size(24.dp),
-        )
-    }
-}
-
-// ─── Routine card ─────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun RoutineCard(
-    item: RoutineWithReschedule,
-    onEdit: () -> Unit,
-    onStart: () -> Unit,
-    onToggleActive: () -> Unit,
-    onCancelReschedule: () -> Unit,
-) {
-    val routine = item.routine
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            text = routine.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        if (routine.invincibleMode) {
-                            Icon(
-                                Icons.Filled.Lock,
-                                contentDescription = "Invincible mode active",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-
-                    Text(
-                        text = "%02d:%02d".format(routine.startTimeHour, routine.startTimeMinute),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    val days = routine.activeDays.split(",").filter(String::isNotBlank)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        days.forEach { day -> DayBadge(day = day, active = routine.isActive) }
-                    }
-                }
-
-                Spacer(Modifier.width(4.dp))
-
-                IconButton(onClick = onStart) {
-                    Icon(
-                        Icons.Filled.PlayArrow,
-                        contentDescription = "Start routine",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp),
-                    )
-                }
-
-                Switch(
-                    checked = routine.isActive,
-                    onCheckedChange = { onToggleActive() },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                )
-            }
-
-            // ── Pending reschedule banner ──────────────────────────────────
-            val rescheduleMillis = item.pendingRescheduleMillis
-            if (rescheduleMillis != null) {
-                Spacer(Modifier.height(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "Rescheduled to ${formatMillis(rescheduleMillis)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(
-                            onClick = onCancelReschedule,
-                            modifier = Modifier.size(28.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = "Cancel reschedule",
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun formatMillis(millis: Long): String {
-    val cal = Calendar.getInstance().apply { timeInMillis = millis }
-    return "%02d:%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
-}
-
-@Composable
-private fun DayBadge(day: String, active: Boolean) {
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = if (active) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-    ) {
-        Text(
-            text = routineDayLabel(day),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (active) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-        )
-    }
-}
-
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-@Composable
-private fun EmptyRoutinesHint(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                "No routines yet",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Tap + to create your first routine",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
 }

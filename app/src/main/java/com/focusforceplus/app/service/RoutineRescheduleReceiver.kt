@@ -3,7 +3,9 @@ package com.focusforceplus.app.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.focusforceplus.app.compliance.GuardAction
 import com.focusforceplus.app.data.repository.RoutineRepository
+import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.util.AlarmHelper
 import com.focusforceplus.app.util.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,6 +22,7 @@ class RoutineRescheduleReceiver : BroadcastReceiver() {
     @Inject lateinit var alarmHelper: AlarmHelper
     @Inject lateinit var repository: RoutineRepository
     @Inject lateinit var notificationHelper: NotificationHelper
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     override fun onReceive(context: Context, intent: Intent) {
         val routineId     = intent.getLongExtra("routineId", 0L)
@@ -54,6 +57,8 @@ class RoutineRescheduleReceiver : BroadcastReceiver() {
                         snoozeCount    = newSnoozeCount,
                         maxSnoozeCount = routine.maxSnoozeCount,
                         invincibleMode = routine.invincibleMode,
+                        snoozeDirect   = settingsRepository.guardSettings.first()
+                            .forRoutine(routine, GuardAction.SNOOZE).isNone,
                     ),
                 )
             } finally {

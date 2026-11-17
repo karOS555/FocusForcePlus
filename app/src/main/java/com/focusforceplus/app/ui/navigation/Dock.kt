@@ -60,6 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.focusforceplus.app.ui.theme.FfTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.NonCancellable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.launch
 
 /** How many entries are fully visible when the bar has more than it can hold. */
@@ -118,21 +122,36 @@ fun Dock(
             if (!fullyVisible) state.animateScrollToItem((selectedIndex - 2).coerceAtLeast(0))
         }
 
-        // Demonstrate the scrolling: slide over and back.
+        // Demonstrate the scrolling: slide over and back. Whatever interrupts it
+        // (navigation, another scroll), the bar always returns to where it was,
+        // unless the user has taken over with a finger.
         val hint by rememberUpdatedState(playHint)
+        var userDragged by remember { mutableStateOf(false) }
         LaunchedEffect(scrolls) {
             if (!scrolls) return@LaunchedEffect
             delay(900)
-            if (hint && state.canScrollForward && !state.isScrollInProgress) {
-                state.animateScrollBy(itemWidthPx * 1.1f, tween(520))
-                delay(260)
-                state.animateScrollBy(-itemWidthPx * 1.1f, tween(520))
+            if (hint && state.canScrollForward && !state.isScrollInProgress && !userDragged) {
+                val startIndex = state.firstVisibleItemIndex
+                val startOffset = state.firstVisibleItemScrollOffset
+                try {
+                    state.animateScrollBy(itemWidthPx * 1.1f, tween(520))
+                    delay(260)
+                } finally {
+                    withContext(NonCancellable) {
+                        if (!userDragged) {
+                            runCatching { state.animateScrollToItem(startIndex, startOffset) }
+                        }
+                    }
+                }
                 onHintPlayed()
             }
         }
         LaunchedEffect(state) {
             state.interactionSource.interactions.collect { interaction ->
-                if (interaction is DragInteraction.Start) onUserScrolled()
+                if (interaction is DragInteraction.Start) {
+                    userDragged = true
+                    onUserScrolled()
+                }
             }
         }
 

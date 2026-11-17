@@ -5,7 +5,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardAction
 import com.focusforceplus.app.data.repository.RoutineRepository
+import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.service.ActiveRoutineRegistry
 import com.focusforceplus.app.service.RoutineForegroundService
 import com.focusforceplus.app.service.RoutineSessionPhase
@@ -57,7 +60,10 @@ data class ActiveRoutineUiState(
     val showSnoozeDialog: Boolean = false,
     val showOvertimeReminder: Boolean = false,
     val overtimeReminderMinutes: Int = 0,
-    val cancelConfirmStep: Int = 0, // 0=hidden 1=first-confirm 2=reschedule-picker
+    val cancelConfirmStep: Int = 0, // 0=hidden 1=first-confirm 2=offer to move instead
+    // Speed bumps
+    val snoozeGuard: Guard = Guard.NONE,
+    val rescheduleGuard: Guard = Guard.NONE,
     // Completion
     val isCompleted: Boolean = false,
     val completionStats: CompletionStats? = null,
@@ -92,6 +98,7 @@ class ActiveRoutineViewModel @Inject constructor(
     private val notificationHelper: NotificationHelper,
     private val rescheduleTracker: PendingRescheduleTracker,
     private val registry: ActiveRoutineRegistry,
+    private val settingsRepository: SettingsRepository,
     @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -124,6 +131,7 @@ class ActiveRoutineViewModel @Inject constructor(
             val routine = repository.getRoutineById(routineId).first() ?: return@launch
             val tasks = repository.getTasksForRoutine(routineId).first()
             val totalSec = (tasks.firstOrNull()?.durationMinutes ?: 0) * 60
+            val guards = settingsRepository.guardSettings.first()
             _uiState.update {
                 it.copy(
                     routineName = routine.name,
@@ -135,6 +143,8 @@ class ActiveRoutineViewModel @Inject constructor(
                     remainingSeconds = totalSec,
                     taskTotalSeconds = totalSec,
                     isLoading = false,
+                    snoozeGuard = guards.forRoutine(routine, GuardAction.SNOOZE),
+                    rescheduleGuard = guards.forRoutine(routine, GuardAction.RESCHEDULE),
                 )
             }
         }
@@ -215,10 +225,36 @@ class ActiveRoutineViewModel @Inject constructor(
         _uiState.update { it.copy(showAddTimeDialog = false, showTimeUpDialog = false) }
     }
 
-    fun snooze(minutes: Int, onSnoozed: (Int) -> Unit) {
-        if (!_uiState.value.canSnooze) return
-        _uiState.update { it.copy(snoozeCount = it.snoozeCount + 1, showSnoozeDialog = false) }
-        onSnoozed(minutes)
+    /**
+     * Snoozes a run that has not started yet: the alarm comes back in [minutes], and
+     * the screen closes. (Before, this only counted the snooze and set no alarm.)
+     */
+    fun snooze(minutes: Int) {
+        val s = _uiState.value
+        if (!s.canSnooze) return
+        val newCount = s.snoozeCount + 1
+        _uiState.update { it.copy(snoozeCount = newCount, showSnoozeDialog = false) }
+        viewModelScope.launch {
+            val routine = repository.getRoutineById(routineId).first() ?: return@launch
+            val triggerMillis = System.currentTimeMillis() + minutes * 60_000L
+            alarmHelper.cancelRoutineAlarms(routineId)
+            alarmHelper.scheduleRoutineAlarms(routine)
+            alarmHelper.scheduleSnoozeAlarm(routineId, routine.name, minutes)
+            notificationHelper.cancelNotification(NotificationHelper.alarmNotificationId(routineId))
+            notificationHelper.showNotification(
+                NotificationHelper.alarmNotificationId(routineId),
+                notificationHelper.buildSnoozedNotification(
+                    routineId = routineId,
+                    routineName = routine.name,
+                    triggerMillis = triggerMillis,
+                    snoozeCount = newCount,
+                    maxSnoozeCount = routine.maxSnoozeCount,
+                    invincibleMode = routine.invincibleMode,
+                    snoozeDirect = s.snoozeGuard.isNone,
+                ),
+            )
+            _events.tryEmit(RoutineEvent.NavigateBack)
+        }
     }
 
     /** Tears down the running session (no-op while still in BEFORE_START). */
@@ -273,6 +309,7 @@ class ActiveRoutineViewModel @Inject constructor(
                         snoozeCount    = 0,
                         maxSnoozeCount = routine.maxSnoozeCount,
                         invincibleMode = routine.invincibleMode,
+                        snoozeDirect   = s.snoozeGuard.isNone,
                     ),
                 )
             } catch (_: Exception) {}

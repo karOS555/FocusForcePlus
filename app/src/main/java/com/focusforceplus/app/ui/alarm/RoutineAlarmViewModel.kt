@@ -3,7 +3,10 @@ package com.focusforceplus.app.ui.alarm
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardAction
 import com.focusforceplus.app.data.repository.RoutineRepository
+import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.util.AlarmHelper
 import com.focusforceplus.app.util.NotificationHelper
 import com.focusforceplus.app.util.PendingRescheduleTracker
@@ -27,6 +30,12 @@ data class AlarmUiState(
     val snoozeCount: Int = 0,
     val rescheduleCount: Int = 0,
     val isLoading: Boolean = true,
+    /** The routine is gone (deleted or in the trash): nothing left to ring for. */
+    val notFound: Boolean = false,
+    val stepCount: Int = 0,
+    val totalMinutes: Int = 0,
+    val snoozeGuard: Guard = Guard.NONE,
+    val rescheduleGuard: Guard = Guard.NONE,
 ) {
     val canSnooze: Boolean get() = snoozeCount < maxSnoozeCount
     val canReschedule: Boolean get() = rescheduleCount < maxRescheduleCount
@@ -40,6 +49,7 @@ class RoutineAlarmViewModel @Inject constructor(
     private val alarmHelper: AlarmHelper,
     private val notificationHelper: NotificationHelper,
     private val rescheduleTracker: PendingRescheduleTracker,
+    private val settingsRepository: SettingsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -53,7 +63,13 @@ class RoutineAlarmViewModel @Inject constructor(
 
     private fun loadRoutine() {
         viewModelScope.launch {
-            val routine = repository.getRoutineById(routineId).first() ?: return@launch
+            val routine = repository.getRoutineById(routineId).first()
+            if (routine == null) {
+                _uiState.update { it.copy(isLoading = false, notFound = true) }
+                return@launch
+            }
+            val steps = repository.getTasksForRoutine(routineId).first()
+            val guards = settingsRepository.guardSettings.first()
             _uiState.update {
                 it.copy(
                     routineName        = routine.name,
@@ -64,6 +80,10 @@ class RoutineAlarmViewModel @Inject constructor(
                     maxRescheduleCount = routine.maxRescheduleCount,
                     snoozeCount        = initialSnoozeCount,
                     isLoading          = false,
+                    stepCount          = steps.size,
+                    totalMinutes       = steps.sumOf { it.durationMinutes },
+                    snoozeGuard        = guards.forRoutine(routine, GuardAction.SNOOZE),
+                    rescheduleGuard    = guards.forRoutine(routine, GuardAction.RESCHEDULE),
                 )
             }
         }
@@ -93,6 +113,7 @@ class RoutineAlarmViewModel @Inject constructor(
                     snoozeCount    = newSnoozeCount,
                     maxSnoozeCount = routine.maxSnoozeCount,
                     invincibleMode = routine.invincibleMode,
+                    snoozeDirect   = _uiState.value.snoozeGuard.isNone,
                 ),
             )
         }
@@ -122,6 +143,7 @@ class RoutineAlarmViewModel @Inject constructor(
                     snoozeCount    = s.snoozeCount,
                     maxSnoozeCount = routine.maxSnoozeCount,
                     invincibleMode = routine.invincibleMode,
+                    snoozeDirect   = _uiState.value.snoozeGuard.isNone,
                 ),
             )
         }

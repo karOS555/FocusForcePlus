@@ -230,3 +230,55 @@ fun <T> ChoiceDialog(
         },
     )
 }
+
+/** A time of day in a dialog, in the app's colours. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun FfTimePickerDialog(
+    title: String,
+    hour: Int,
+    minute: Int,
+    onConfirm: (hour: Int, minute: Int) -> Unit,
+    onDismiss: () -> Unit,
+    confirmLabel: String = "Set",
+) {
+    val colors = FfTheme.colors
+    val state = androidx.compose.material3.rememberTimePickerState(
+        initialHour = hour,
+        initialMinute = minute,
+        is24Hour = true,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surfaceVariant,
+        title = { Text(title, style = MaterialTheme.typography.titleLarge, color = colors.text) },
+        text = {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                androidx.compose.material3.TimePicker(
+                    state = state,
+                    colors = androidx.compose.material3.TimePickerDefaults.colors(
+                        clockDialColor = colors.surface,
+                        selectorColor = colors.primary,
+                        timeSelectorSelectedContainerColor = colors.container,
+                        timeSelectorSelectedContentColor = colors.onContainer,
+                        timeSelectorUnselectedContainerColor = colors.surface,
+                        timeSelectorUnselectedContentColor = colors.text,
+                        clockDialSelectedContentColor = colors.onPrimary,
+                        clockDialUnselectedContentColor = colors.textSecondary,
+                        containerColor = Color.Transparent,
+                    ),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(state.hour, state.minute) }) {
+                Text(confirmLabel, style = MaterialTheme.typography.labelLarge, color = colors.accent)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            }
+        },
+    )
+}

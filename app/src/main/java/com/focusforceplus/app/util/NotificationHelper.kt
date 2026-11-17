@@ -170,6 +170,8 @@ class NotificationHelper @Inject constructor(
         snoozeCount: Int,
         maxSnoozeCount: Int,
         invincibleMode: Boolean,
+        /** False when snoozing asks for a speed bump: then only the app can snooze. */
+        snoozeDirect: Boolean = true,
     ): Notification {
         val timeStr   = formatMillis(triggerMillis)
         val remaining = maxSnoozeCount - snoozeCount
@@ -190,8 +192,9 @@ class NotificationHelper @Inject constructor(
             .setAutoCancel(false)
             .addAction(0, "Start now", startNow)
 
-        // Allow snoozing again from the notification as long as snoozes remain.
-        if (remaining > 0) {
+        // Allow snoozing again from the notification as long as snoozes remain and
+        // no speed bump stands in front of it (a button here would skip it).
+        if (remaining > 0 && snoozeDirect) {
             builder.addAction(
                 0, "Snooze 30m",
                 snoozeIntent(routineId, 30, snoozeCount, (RC_SNOOZE_30_NOTIF + routineId).toInt()),
