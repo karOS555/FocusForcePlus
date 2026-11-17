@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The opt-in service for Reels and Shorts (ShortFormBlockerService). Unlike the main
+  blocker it has to see screen content, so it is held as narrow as it can be:
+  - packageNames: only Instagram and YouTube; no other app's content reaches it
+  - flagReportViewIds: it identifies the Reels and Shorts players by their screen
+    ids and reads no text
+  - no isAccessibilityTool flag (Golden Rule #4)
+  It is off until the user turns it on after its own disclosure screen.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/short_form_service_description"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:notificationTimeout="300"
+    android:canRetrieveWindowContent="true"
+    android:packageNames="com.instagram.android,com.google.android.youtube"
+    android:accessibilityFlags="flagReportViewIds" />

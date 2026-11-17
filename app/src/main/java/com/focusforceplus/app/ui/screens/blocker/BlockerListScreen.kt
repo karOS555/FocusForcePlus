@@ -66,6 +66,7 @@ fun BlockerListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val guards by viewModel.guards.collectAsState()
+    val shorts by viewModel.shortVideos.collectAsState()
     val colors = FfTheme.colors
     val snackbar = remember { SnackbarHostState() }
     var editingApp by remember { mutableStateOf<BlockerAppRow?>(null) }
@@ -89,6 +90,19 @@ fun BlockerListScreen(
     }
 
     val pauseGuard: Guard = guards[GuardSlot.BLOCKER_PAUSE]
+
+    // Switching short videos off again counts as pausing a block. Switching them on
+    // without the service first leads to its disclosure.
+    fun shortsToggle(on: Boolean, apply: (Boolean) -> Unit) {
+        when {
+            on && !shorts.serviceOn -> {
+                apply(true)
+                onOpenDisclosure("shorts")
+            }
+            on -> apply(true)
+            else -> if (pauseGuard.isNone) apply(false) else pausing = { apply(false) }
+        }
+    }
     fun pause(action: () -> Unit) {
         if (pauseGuard.isNone) action() else pausing = action
     }
@@ -228,6 +242,47 @@ fun BlockerListScreen(
                             onToggle = {
                                 val row = BlockerAppRow(block.rule.packageName, block.rule.appName, block.rule)
                                 if (block.rule.isBlocked) pause { viewModel.toggleBlock(row) } else viewModel.toggleBlock(row)
+                            },
+                        )
+                    }
+                }
+            }
+
+            // ── Short videos ──────────────────────────────────────────────────
+            item(key = "shorts") {
+                Column {
+                    SectionHeader("Short videos")
+                    FfCard {
+                        if (!shorts.serviceOn) {
+                            ListRow(
+                                title = "Keep the app, skip the scrolling",
+                                subtitle = "Leaves Reels and Shorts when you open them; the rest of " +
+                                    "Instagram and YouTube keeps working. Needs its own service.",
+                                subtitleMaxLines = 3,
+                                onClick = { onOpenDisclosure("shorts") },
+                                trailing = { TextAction("Set up", onClick = { onOpenDisclosure("shorts") }) },
+                            )
+                            RowDivider()
+                        }
+                        ListRow(
+                            title = "Instagram Reels",
+                            subtitle = if (shorts.instagram) "Off" else "Allowed",
+                            onClick = { shortsToggle(!shorts.instagram) { viewModel.setShortsBlock(instagram = it) } },
+                            trailing = {
+                                FfSwitch(checked = shorts.instagram, onCheckedChange = { on ->
+                                    shortsToggle(on) { viewModel.setShortsBlock(instagram = it) }
+                                })
+                            },
+                        )
+                        RowDivider()
+                        ListRow(
+                            title = "YouTube Shorts",
+                            subtitle = if (shorts.youtube) "Off" else "Allowed",
+                            onClick = { shortsToggle(!shorts.youtube) { viewModel.setShortsBlock(youtube = it) } },
+                            trailing = {
+                                FfSwitch(checked = shorts.youtube, onCheckedChange = { on ->
+                                    shortsToggle(on) { viewModel.setShortsBlock(youtube = it) }
+                                })
                             },
                         )
                     }

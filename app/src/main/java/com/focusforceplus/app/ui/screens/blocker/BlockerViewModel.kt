@@ -115,6 +115,22 @@ class BlockerViewModel @Inject constructor(
     private val _isLoadingApps = MutableStateFlow(true)
     private val _message = MutableStateFlow<String?>(null)
 
+    /** Reels and Shorts switches, and whether their service is on. */
+    data class ShortVideos(val instagram: Boolean = false, val youtube: Boolean = false, val serviceOn: Boolean = false)
+
+    private val _shortsServiceOn = MutableStateFlow(false)
+
+    val shortVideos: StateFlow<ShortVideos> = combine(
+        settingsRepository.shortsBlockInstagram,
+        settingsRepository.shortsBlockYouTube,
+        _shortsServiceOn,
+    ) { ig, yt, on -> ShortVideos(ig, yt, on) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ShortVideos())
+
+    fun setShortsBlock(instagram: Boolean? = null, youtube: Boolean? = null) {
+        viewModelScope.launch { settingsRepository.saveShortsBlock(instagram, youtube) }
+    }
+
     /** Speed bump defaults, for pausing the blocker or a block. */
     val guards: StateFlow<com.focusforceplus.app.compliance.GuardSettings> = settingsRepository.guardSettings
         .stateIn(viewModelScope, SharingStarted.Eagerly, com.focusforceplus.app.compliance.GuardSettings())
@@ -202,6 +218,7 @@ class BlockerViewModel @Inject constructor(
 
     /** Called from the screen's ON_RESUME observer — system settings may have changed. */
     fun refreshPermissions() {
+        _shortsServiceOn.value = PermissionHelper.isShortFormServiceEnabled(context)
         _permissions.value =
             PermissionHelper.isAccessibilityServiceEnabled(context) to
                 PermissionHelper.hasUsageStatsPermission(context)

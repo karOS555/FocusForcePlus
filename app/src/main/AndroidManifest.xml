@@ -236,6 +236,23 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <!-- Opt-in and separate from the blocker above: leaves Reels in Instagram and
+             Shorts in YouTube. Limited to those two apps; see
+             res/xml/short_form_service_config.xml. Off until the user turns it on
+             after its own disclosure screen. -->
+        <service
+            android:name=".service.ShortFormBlockerService"
+            android:exported="false"
+            android:label="@string/short_form_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/short_form_service_config" />
+        </service>
+
         <!-- Full-screen cover for blocked apps. Isolated task, never in recents,
              disappears once left — the user can always reach Home. -->
         <activity

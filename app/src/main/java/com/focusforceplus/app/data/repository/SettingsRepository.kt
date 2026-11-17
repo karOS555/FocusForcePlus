@@ -33,6 +33,8 @@ class SettingsRepository @Inject constructor(
         const val DEFAULT_UNDATED_ALARM_GAP_MINUTES = 5
 
         private val BLOCKER_ENABLED_KEY            = booleanPreferencesKey("blocker_enabled")
+        private val SHORTS_INSTAGRAM_KEY           = booleanPreferencesKey("shorts_block_instagram")
+        private val SHORTS_YOUTUBE_KEY             = booleanPreferencesKey("shorts_block_youtube")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
         private val BLOCK_DURING_FOCUS_KEY         = booleanPreferencesKey("blocker_during_focus")
         private val ALARM_SOUND_ENABLED_KEY        = booleanPreferencesKey("alarm_sound_enabled")
@@ -134,6 +136,23 @@ class SettingsRepository @Inject constructor(
     val blockerEnabled: Flow<Boolean> = dataStore.data
         .catch { emit(emptyPreferences()) }
         .map { prefs -> prefs[BLOCKER_ENABLED_KEY] ?: false }
+
+    /** Leave Instagram's Reels (needs the separate short-video service). */
+    val shortsBlockInstagram: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[SHORTS_INSTAGRAM_KEY] ?: false }
+
+    /** Leave YouTube's Shorts (needs the separate short-video service). */
+    val shortsBlockYouTube: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[SHORTS_YOUTUBE_KEY] ?: false }
+
+    suspend fun saveShortsBlock(instagram: Boolean? = null, youtube: Boolean? = null) {
+        dataStore.edit { prefs ->
+            instagram?.let { prefs[SHORTS_INSTAGRAM_KEY] = it }
+            youtube?.let { prefs[SHORTS_YOUTUBE_KEY] = it }
+        }
+    }
 
     suspend fun saveBlockerEnabled(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[BLOCKER_ENABLED_KEY] = enabled }

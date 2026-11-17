@@ -7,4 +7,10 @@
         screen content (window content access is disabled), collects no data, and nothing
         ever leaves your device. You can turn this service off here at any time — your
         blocking rules stay saved and blocking simply pauses.</string>
+    <string name="short_form_service_label">FocusForce+ Short videos</string>
+    <string name="short_form_service_description">If you switch Reels or Shorts off in
+        FocusForce+, this service leaves them when you open them: inside Instagram and
+        YouTube only, it watches for the Reels and Shorts player and presses Back once, so
+        you land on the rest of the app. It sees no other app, reads no text, stores nothing
+        and sends nothing; FocusForce+ has no internet access. Turn it off here at any time.</string>
 </resources>

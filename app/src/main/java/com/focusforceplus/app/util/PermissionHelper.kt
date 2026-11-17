@@ -156,11 +156,15 @@ object PermissionHelper {
     // ── App blocker permissions ───────────────────────────────────────────────
 
     /** True if the app-blocker AccessibilityService is enabled in system settings. */
-    fun isAccessibilityServiceEnabled(context: Context): Boolean {
-        val expected = ComponentName(
-            context,
-            "com.focusforceplus.app.service.AppBlockerAccessibilityService",
-        ).flattenToString()
+    /** The separate, opt-in service for Reels and Shorts. */
+    fun isShortFormServiceEnabled(context: Context): Boolean =
+        isServiceEnabled(context, "com.focusforceplus.app.service.ShortFormBlockerService")
+
+    fun isAccessibilityServiceEnabled(context: Context): Boolean =
+        isServiceEnabled(context, "com.focusforceplus.app.service.AppBlockerAccessibilityService")
+
+    private fun isServiceEnabled(context: Context, className: String): Boolean {
+        val expected = ComponentName(context, className).flattenToString()
         val enabled = Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,

@@ -565,6 +565,8 @@ class BackupManager @Inject constructor(
         put("nagMedium", nagJson(settingsRepository.nagPolicy(1).first()))
         put("todoRingSeconds", settingsRepository.todoRingSeconds.first())
         put("trashRetentionDays", settingsRepository.trashRetentionDays.first())
+        put("shortsBlockInstagram", settingsRepository.shortsBlockInstagram.first())
+        put("shortsBlockYouTube", settingsRepository.shortsBlockYouTube.first())
 
         val nav = navRepository.current()
         put("nav", JSONObject().apply {
@@ -632,6 +634,12 @@ class BackupManager @Inject constructor(
         o.optJSONObject("nagMedium")?.let { settingsRepository.saveNagPolicy(1, nagFromJson(it)) }
         if (o.has("todoRingSeconds")) settingsRepository.saveTodoRingSeconds(o.getInt("todoRingSeconds"))
         if (o.has("trashRetentionDays")) settingsRepository.saveTrashRetentionDays(o.getInt("trashRetentionDays"))
+        if (o.has("shortsBlockInstagram") || o.has("shortsBlockYouTube")) {
+            settingsRepository.saveShortsBlock(
+                instagram = o.optBoolean("shortsBlockInstagram", false),
+                youtube = o.optBoolean("shortsBlockYouTube", false),
+            )
+        }
         o.optJSONObject("nav")?.let { nav ->
             val order = nav.optJSONArray("order")?.modules().orEmpty()
             navRepository.restore(
