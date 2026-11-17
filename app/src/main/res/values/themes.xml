@@ -13,4 +13,19 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+
+    <!-- The share sheet draws its own dimmed backdrop over whatever was shared from. -->
+    <style name="Theme.FocusForce.Sheet" parent="Theme.FocusForce">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <!-- Start links run and close without showing a screen of their own. -->
+    <style name="Theme.FocusForce.Invisible" parent="Theme.FocusForce">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

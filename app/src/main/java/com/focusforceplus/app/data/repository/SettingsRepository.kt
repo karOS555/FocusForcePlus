@@ -34,6 +34,7 @@ class SettingsRepository @Inject constructor(
 
         private val BLOCKER_ENABLED_KEY            = booleanPreferencesKey("blocker_enabled")
         private val SHORTS_INSTAGRAM_KEY           = booleanPreferencesKey("shorts_block_instagram")
+        private val EXTERNAL_STARTS_KEY            = booleanPreferencesKey("external_starts")
         private val SHORTS_YOUTUBE_KEY             = booleanPreferencesKey("shorts_block_youtube")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
         private val BLOCK_DURING_FOCUS_KEY         = booleanPreferencesKey("blocker_during_focus")
@@ -136,6 +137,15 @@ class SettingsRepository @Inject constructor(
     val blockerEnabled: Flow<Boolean> = dataStore.data
         .catch { emit(emptyPreferences()) }
         .map { prefs -> prefs[BLOCKER_ENABLED_KEY] ?: false }
+
+    /** Whether start links from other apps, automation and NFC tags may run. Off by default. */
+    val externalStartsAllowed: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[EXTERNAL_STARTS_KEY] ?: false }
+
+    suspend fun saveExternalStartsAllowed(allowed: Boolean) {
+        dataStore.edit { it[EXTERNAL_STARTS_KEY] = allowed }
+    }
 
     /** Leave Instagram's Reels (needs the separate short-video service). */
     val shortsBlockInstagram: Flow<Boolean> = dataStore.data

@@ -126,6 +126,44 @@
             </intent-filter>
         </activity>
 
+        <!-- Text shared from another app becomes a todo or list items. No permission
+             involved: the user picks the target on the sheet. -->
+        <activity
+            android:name=".ui.share.ShareActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/share_label"
+            android:theme="@style/Theme.FocusForce.Sheet">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- focusforceplus:// start links from automation apps, shortcuts and NFC tags.
+             They do nothing until the user switches them on in Settings, and they can
+             only start and add, never stop or cancel (see util/ExternalStarts.kt).
+             Deliberately not BROWSABLE, so a web page cannot fire them. -->
+        <activity
+            android:name=".ui.share.LinkActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.FocusForce.Invisible">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="focusforceplus" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="focusforceplus" />
+            </intent-filter>
+        </activity>
+
         <!-- Short-lived service that starts RoutineAlarmActivity from background -->
         <service
             android:name=".service.AlarmLaunchService"

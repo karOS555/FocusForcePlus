@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
     /** Only routes of known modules are accepted; anything else is ignored. */
     private fun Intent.openRoute(): String? =
         getStringExtra(EXTRA_OPEN_ROUTE)?.takeIf { route ->
-            AppModule.fromRoute(route) != null || ACTIVE_FOCUS_ROUTE.matches(route)
+            AppModule.fromRoute(route) != null || isDirectRoute(route)
         }
 
     companion object {
@@ -193,7 +193,11 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_ROUTE = "openRoute"
 
         /** The running focus session, opened from its notification. */
-        val ACTIVE_FOCUS_ROUTE = Regex("focus/active/[0-9]+")
+        private val ACTIVE_FOCUS_ROUTE = Regex("focus/active/[0-9]+")
+
+        /** Screens below the modules that other parts of the app may open directly. */
+        fun isDirectRoute(route: String): Boolean =
+            ACTIVE_FOCUS_ROUTE.matches(route) || route == SettingsRoutes.INTEGRATIONS
     }
 
     private fun Intent.routineId(): Long =
@@ -276,7 +280,7 @@ private fun AppContent(
         val module = AppModule.fromRoute(route)
         when {
             module != null -> openModule(module)
-            route != null && MainActivity.ACTIVE_FOCUS_ROUTE.matches(route) ->
+            route != null && MainActivity.isDirectRoute(route) ->
                 if (currentRoute != FocusRoutes.ACTIVE) navController.navigate(route) { launchSingleTop = true }
         }
     }

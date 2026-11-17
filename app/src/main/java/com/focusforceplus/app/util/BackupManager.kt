@@ -565,6 +565,7 @@ class BackupManager @Inject constructor(
         put("nagMedium", nagJson(settingsRepository.nagPolicy(1).first()))
         put("todoRingSeconds", settingsRepository.todoRingSeconds.first())
         put("trashRetentionDays", settingsRepository.trashRetentionDays.first())
+        put("externalStarts", settingsRepository.externalStartsAllowed.first())
         put("shortsBlockInstagram", settingsRepository.shortsBlockInstagram.first())
         put("shortsBlockYouTube", settingsRepository.shortsBlockYouTube.first())
 
@@ -634,6 +635,7 @@ class BackupManager @Inject constructor(
         o.optJSONObject("nagMedium")?.let { settingsRepository.saveNagPolicy(1, nagFromJson(it)) }
         if (o.has("todoRingSeconds")) settingsRepository.saveTodoRingSeconds(o.getInt("todoRingSeconds"))
         if (o.has("trashRetentionDays")) settingsRepository.saveTrashRetentionDays(o.getInt("trashRetentionDays"))
+        if (o.has("externalStarts")) settingsRepository.saveExternalStartsAllowed(o.optBoolean("externalStarts", false))
         if (o.has("shortsBlockInstagram") || o.has("shortsBlockYouTube")) {
             settingsRepository.saveShortsBlock(
                 instagram = o.optBoolean("shortsBlockInstagram", false),

@@ -13,4 +13,5 @@
         YouTube only, it watches for the Reels and Shorts player and presses Back once, so
         you land on the rest of the app. It sees no other app, reads no text, stores nothing
         and sends nothing; FocusForce+ has no internet access. Turn it off here at any time.</string>
+    <string name="share_label">Add to FocusForce+</string>
 </resources>

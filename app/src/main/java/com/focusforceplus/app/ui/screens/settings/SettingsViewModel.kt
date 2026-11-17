@@ -65,6 +65,7 @@ data class SettingsUiState(
     val nagMedium: NagPolicy = NagPolicy.MEDIUM_DEFAULT,
     val todoRingSeconds: Int = 60,
     val trashRetentionDays: Int = SettingsRepository.DEFAULT_TRASH_RETENTION_DAYS,
+    val externalStartsAllowed: Boolean = false,
 )
 
 @HiltViewModel
@@ -145,6 +146,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.trashRetentionDays.collect { d -> _uiState.update { it.copy(trashRetentionDays = d) } }
         }
+        viewModelScope.launch {
+            settingsRepository.externalStartsAllowed.collect { a -> _uiState.update { it.copy(externalStartsAllowed = a) } }
+        }
         refreshPermissions()
     }
 
@@ -184,6 +188,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setTodoRingSeconds(seconds: Int) {
         viewModelScope.launch { settingsRepository.saveTodoRingSeconds(seconds) }
+    }
+
+    fun setExternalStartsAllowed(allowed: Boolean) {
+        viewModelScope.launch { settingsRepository.saveExternalStartsAllowed(allowed) }
     }
 
     fun setTrashRetentionDays(days: Int) {

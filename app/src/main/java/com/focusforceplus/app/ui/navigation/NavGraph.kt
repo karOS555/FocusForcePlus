@@ -275,6 +275,13 @@ fun NavGraph(
                 onOpenSleepMode = { navController.navigate(SleepRoutes.SLEEP) },
                 onOpenSpeedBumps = { navController.navigate(SettingsRoutes.SPEED_BUMPS) },
                 onOpenTrash = { navController.navigate(TrashRoutes.TRASH) },
+                onOpenIntegrations = { navController.navigate(SettingsRoutes.INTEGRATIONS) },
+            )
+        }
+
+        composable(SettingsRoutes.INTEGRATIONS) {
+            com.focusforceplus.app.ui.screens.settings.IntegrationsScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 

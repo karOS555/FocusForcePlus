@@ -92,6 +92,7 @@ fun SettingsScreen(
     onOpenSleepMode: () -> Unit = {},
     onOpenSpeedBumps: () -> Unit = {},
     onOpenTrash: () -> Unit = {},
+    onOpenIntegrations: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     navViewModel: NavViewModel = hiltViewModel(),
 ) {
@@ -420,6 +421,12 @@ fun SettingsScreen(
                             title = "Import a backup",
                             subtitle = "Replaces everything that is in the app now",
                             onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Other apps",
+                            subtitle = if (state.externalStartsAllowed) "Sharing, start links are on" else "Sharing, start links are off",
+                            onClick = onOpenIntegrations,
                         )
                         RowDivider()
                         LinkRow(
