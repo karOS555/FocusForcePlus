@@ -3,89 +3,32 @@ package com.focusforceplus.app.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.focusforceplus.app.data.db.entity.TodoEntity
-import com.focusforceplus.app.data.repository.SettingsRepository
-import com.focusforceplus.app.data.repository.TodoRepository
-import com.focusforceplus.app.util.TodoAlarmHelper
-import com.focusforceplus.app.util.TodoNotificationHelper
+import com.focusforceplus.app.util.TodoAlarmScheduler
+import com.focusforceplus.app.util.TodoReminderEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** One of the daily reminder times came up. */
 @AndroidEntryPoint
 class TodoDigestReceiver : BroadcastReceiver() {
 
-    @Inject lateinit var repository: TodoRepository
-    @Inject lateinit var alarmHelper: TodoAlarmHelper
-    @Inject lateinit var notifHelper: TodoNotificationHelper
-    @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var engine: TodoReminderEngine
 
     override fun onReceive(context: Context, intent: Intent) {
-        val slot   = intent.getIntExtra("digestSlot", 0)
-        val hour   = intent.getIntExtra("digestHour", 8)
-        val minute = intent.getIntExtra("digestMinute", 0)
+        val slot = intent.getIntExtra(TodoAlarmScheduler.EXTRA_DIGEST_SLOT, 0)
+        val hour = intent.getIntExtra(TodoAlarmScheduler.EXTRA_DIGEST_HOUR, 8)
+        val minute = intent.getIntExtra(TodoAlarmScheduler.EXTRA_DIGEST_MINUTE, 0)
 
-        val pendingResult = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        val pending = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             try {
-                val now   = System.currentTimeMillis()
-                val todos = repository.getAllTodos().first()
-                val open  = todos.filter { !it.isCompleted }
-
-                val overdue = open.filter { it.dueDateTime != null && it.dueDateTime < now }
-                val undated = open.filter { it.dueDateTime == null }
-
-                // Undated medium/high todos get a real full-screen alarm each,
-                // staggered so they never all ring at the same moment. Low priority
-                // and overdue todos keep plain notifications.
-                val undatedAlarm = undated.filter { it.priority > 0 }
-                    .sortedWith(compareByDescending<TodoEntity> { it.priority }.thenBy { it.createdAt })
-                val undatedLow = undated.filter { it.priority == 0 }
-
-                if (undatedAlarm.isNotEmpty()) {
-                    val gap = settingsRepository.undatedAlarmGapMinutes.first()
-                    alarmHelper.scheduleUndatedAlarmCascade(undatedAlarm, gap)
-                }
-
-                // Post one notification per todo
-                for (todo in overdue) {
-                    notifHelper.showNotification(
-                        TodoNotificationHelper.todoDigestNotificationId(todo.id),
-                        notifHelper.buildPerTodoReminderNotification(todo.id, todo.title, todo.priority, isOverdue = true),
-                    )
-                }
-                for (todo in undatedLow) {
-                    notifHelper.showNotification(
-                        TodoNotificationHelper.todoDigestNotificationId(todo.id),
-                        notifHelper.buildPerTodoReminderNotification(todo.id, todo.title, todo.priority, isOverdue = false),
-                    )
-                }
-
-                // Anchor FGS: keeps Medium/High group notifications stable.
-                // Undated medium/high todos are excluded — their alarm flow pins
-                // its own notification via TodoAlarmForegroundService.
-                val pinnedCount = overdue.count { it.priority > 0 }
-                if (pinnedCount > 0) {
-                    runCatching {
-                        context.startForegroundService(
-                            TodoReminderForegroundService.startIntent(context, pinnedCount)
-                        )
-                    }
-                } else {
-                    notifHelper.cancelNotification(TodoNotificationHelper.NOTIFICATION_ID_OVERDUE)
-                    runCatching {
-                        context.startService(TodoReminderForegroundService.stopIntent(context))
-                    }
-                }
-
-                // Re-schedule this digest slot for the same time tomorrow.
-                alarmHelper.scheduleNextDigestSlotAlarm(slot, hour, minute)
+                engine.onDailyReminder(slot, hour, minute)
             } finally {
-                pendingResult.finish()
+                pending.finish()
             }
         }
     }

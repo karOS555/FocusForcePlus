@@ -3,16 +3,28 @@ package com.focusforceplus.app.worker
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.focusforceplus.app.data.repository.FocusRepository
+import com.focusforceplus.app.data.repository.ListRepository
+import com.focusforceplus.app.data.repository.RoutineRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
-import com.focusforceplus.app.data.repository.TodoRepository
-import com.focusforceplus.app.service.TodoReminderForegroundService
-import com.focusforceplus.app.util.TodoNotificationHelper
+import com.focusforceplus.app.util.TodoReminderEngine
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 
+/**
+ * Periodic housekeeping, a few times a day.
+ *
+ * It empties whatever has outstayed its time in the trash, moves old finished
+ * todos there if the user asked for that, and lets the todo engine put every
+ * reminder back in line. The last part is a safety net: reminders are driven by
+ * alarms, and this catches the rare alarm a battery manager dropped.
+ *
+ * The class keeps its old name because WorkManager stores the name of the worker
+ * it has scheduled; renaming it would orphan the work on existing installs.
+ */
 class TodoOverdueWorker(
     appContext: Context,
     params: WorkerParameters,
@@ -21,60 +33,26 @@ class TodoOverdueWorker(
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface WorkerEntryPoint {
-        fun todoRepository(): TodoRepository
-        fun todoNotificationHelper(): TodoNotificationHelper
+        fun todoReminderEngine(): TodoReminderEngine
+        fun routineRepository(): RoutineRepository
+        fun focusRepository(): FocusRepository
+        fun listRepository(): ListRepository
         fun settingsRepository(): SettingsRepository
     }
 
     override suspend fun doWork(): Result {
-        val ep = EntryPointAccessors.fromApplication(
-            applicationContext,
-            WorkerEntryPoint::class.java,
-        )
-        val repository       = ep.todoRepository()
-        val notifHelper      = ep.todoNotificationHelper()
-        val settingsRepo     = ep.settingsRepository()
+        val ep = EntryPointAccessors.fromApplication(applicationContext, WorkerEntryPoint::class.java)
+        val engine = ep.todoReminderEngine()
 
-        val now   = System.currentTimeMillis()
-
-        // Auto-delete completed todos older than the configured threshold
-        val autoDeleteDays = settingsRepo.autoDeleteDays.first()
-        if (autoDeleteDays > 0) {
-            val cutoff = now - autoDeleteDays * 24 * 60 * 60 * 1000L
-            repository.deleteCompletedBefore(cutoff)
+        runCatching { engine.cleanUp() }
+        runCatching {
+            val days = ep.settingsRepository().trashRetentionDays.first()
+            val before = System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L
+            ep.routineRepository().purgeTrashedBefore(before)
+            ep.focusRepository().purgeTrashedBefore(before)
+            ep.listRepository().purgeTrashedBefore(before)
         }
-        val todos = repository.getAllTodos().first()
-        val open  = todos.filter { !it.isCompleted }
-
-        val overdue = open.filter { it.dueDateTime != null && it.dueDateTime < now }
-        val undated = open.filter { it.dueDateTime == null }
-
-        for (todo in overdue) {
-            notifHelper.showNotification(
-                TodoNotificationHelper.todoDigestNotificationId(todo.id),
-                notifHelper.buildPerTodoReminderNotification(todo.id, todo.title, todo.priority, isOverdue = true),
-            )
-        }
-        for (todo in undated) {
-            notifHelper.showNotification(
-                TodoNotificationHelper.todoDigestNotificationId(todo.id),
-                notifHelper.buildPerTodoReminderNotification(todo.id, todo.title, todo.priority, isOverdue = false),
-            )
-        }
-
-        val pinnedCount = (overdue + undated).count { it.priority > 0 }
-        if (pinnedCount > 0) {
-            runCatching {
-                applicationContext.startForegroundService(
-                    TodoReminderForegroundService.startIntent(applicationContext, pinnedCount)
-                )
-            }
-        } else {
-            notifHelper.cancelNotification(TodoNotificationHelper.NOTIFICATION_ID_OVERDUE)
-            runCatching {
-                applicationContext.startService(TodoReminderForegroundService.stopIntent(applicationContext))
-            }
-        }
+        runCatching { engine.syncAll() }
 
         return Result.success()
     }

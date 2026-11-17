@@ -61,7 +61,7 @@ class BackupManager @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val sleepRepository: SleepRepository,
     private val alarmHelper: AlarmHelper,
-    private val todoAlarmHelper: TodoAlarmHelper,
+    private val todoReminders: TodoReminderEngine,
     private val focusAlarmHelper: FocusAlarmHelper,
     private val sleepAlarmHelper: SleepAlarmHelper,
 ) {
@@ -142,10 +142,7 @@ class BackupManager @Inject constructor(
 
         // Cancel alarms of the data that is about to be replaced.
         routineDao.getAllOnce().forEach { alarmHelper.cancelRoutineAlarms(it.id) }
-        todoDao.getAllOnce().forEach {
-            todoAlarmHelper.cancelTodoAlarm(it.id)
-            todoAlarmHelper.cancelTodoSnoozeAlarm(it.id)
-        }
+        todoReminders.pauseAll()
         focusSessionDao.getAllOnce().forEach { focusAlarmHelper.cancelSessionAlarms(it.id) }
 
         // Replace atomically — a failing insert rolls everything back.
@@ -177,7 +174,7 @@ class BackupManager @Inject constructor(
         // Re-arm alarms for the imported data — including the restored reminder
         // times and sleep schedule, not the ones that happened to be set before.
         alarmHelper.rescheduleAll(routines)
-        todoAlarmHelper.rescheduleAll(todos, settingsRepository.digestTimes.first())
+        todoReminders.syncAll()
         focusAlarmHelper.rescheduleAll(focusSessions)
         sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
 

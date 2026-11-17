@@ -16,12 +16,13 @@ class RoutineRepository @Inject constructor(
     private val routineTaskDao: RoutineTaskDao,
     private val routineCompletionDao: RoutineCompletionDao,
 ) {
-
     // --- Routines ---
 
+    /** Every routine that is not in the trash. */
     fun getAllRoutines(): Flow<List<RoutineEntity>> =
         routineDao.getAll()
 
+    /** Emits null for a routine that does not exist or sits in the trash. */
     fun getRoutineById(id: Long): Flow<RoutineEntity?> =
         routineDao.getById(id)
 
@@ -34,13 +35,31 @@ class RoutineRepository @Inject constructor(
     suspend fun updateRoutine(routine: RoutineEntity) =
         routineDao.update(routine)
 
-    suspend fun deleteRoutine(routine: RoutineEntity) =
-        routineDao.delete(routine)
+    // --- Trash ---
+
+    fun getTrashedRoutines(): Flow<List<RoutineEntity>> = routineDao.getTrashed()
+
+    suspend fun getRoutineIncludingTrashed(id: Long): RoutineEntity? =
+        routineDao.getByIdIncludingTrashed(id)
+
+    suspend fun moveToTrash(id: Long) = routineDao.moveToTrash(id, System.currentTimeMillis())
+
+    suspend fun restoreFromTrash(id: Long) = routineDao.restoreFromTrash(id)
+
+    suspend fun deleteForever(id: Long) = routineDao.deleteForever(id)
+
+    suspend fun emptyTrash() = routineDao.emptyTrash()
+
+    suspend fun purgeTrashedBefore(before: Long) = routineDao.purgeTrashedBefore(before)
 
     // --- Routine Tasks ---
 
     fun getTasksForRoutine(routineId: Long): Flow<List<RoutineTaskEntity>> =
         routineTaskDao.getTasksForRoutine(routineId)
+
+    /** Every step of every routine: the pool the task suggestions draw from. */
+    fun getAllTasks(): Flow<List<RoutineTaskEntity>> =
+        routineTaskDao.getAll()
 
     suspend fun insertTask(task: RoutineTaskEntity): Long =
         routineTaskDao.insert(task)
@@ -57,7 +76,7 @@ class RoutineRepository @Inject constructor(
     suspend fun deleteTasksForRoutine(routineId: Long) =
         routineTaskDao.deleteTasksForRoutine(routineId)
 
-    /** Ersetzt alle Tasks einer Routine atomisch. */
+    /** Replaces all tasks of a routine. */
     suspend fun replaceTasksForRoutine(routineId: Long, tasks: List<RoutineTaskEntity>) {
         routineTaskDao.deleteTasksForRoutine(routineId)
         routineTaskDao.insertAll(tasks)

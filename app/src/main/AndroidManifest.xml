@@ -194,58 +194,30 @@
             </intent-filter>
         </receiver>
 
-        <!-- Fires when a scheduled todo reaches its due time -->
+        <!-- A todo's single wake-up: due time, end of a snooze, or the next repeat -->
         <receiver
             android:name=".service.TodoAlarmReceiver"
             android:exported="false" />
 
-        <!-- Handles "Snooze" actions from todo alarm notifications -->
+        <!-- Buttons on todo notifications, and the swipe that brings one back -->
         <receiver
-            android:name=".service.TodoSnoozeReceiver"
+            android:name=".service.TodoActionReceiver"
             android:exported="false" />
 
-        <!-- Handles "Done" and "Dismiss" actions from todo alarm notifications -->
-        <receiver
-            android:name=".service.TodoDismissReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.focusforceplus.app.TODO_DONE" />
-                <action android:name="com.focusforceplus.app.TODO_DISMISS" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Fires 3x daily (8:00, 14:00, 20:00) to show todo digest notifications -->
+        <!-- The daily reminder times for open todos -->
         <receiver
             android:name=".service.TodoDigestReceiver"
             android:exported="false" />
 
-        <!-- Re-posts persistent todo notifications after the user swipes them away -->
-        <receiver
-            android:name=".service.TodoNotificationRepostReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.focusforceplus.app.TODO_NOTIF_SWIPED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Foreground service that keeps the alarm notification non-dismissable (High + Medium) -->
+        <!-- Rings a due todo. Runs only while something is ringing and stops by
+             itself after a short, fixed time. -->
         <service
-            android:name=".service.TodoAlarmForegroundService"
+            android:name=".service.TodoAlarmService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Pins the alarm notification of a due todo the user scheduled, until the user acts on it." />
-        </service>
-
-        <!-- Foreground service that keeps the overdue-todos notification non-dismissable -->
-        <service
-            android:name=".service.TodoReminderForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Pins the overdue-todo summary notification the user opted into, until the todos are handled." />
+                android:value="Sounds the alarm of a due todo the user scheduled; stops by itself after a short fixed time or as soon as the user answers it." />
         </service>
 
         <!-- App blocker: detects which app is in the foreground (window state changes

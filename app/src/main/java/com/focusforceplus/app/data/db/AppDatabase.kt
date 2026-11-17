@@ -9,6 +9,7 @@ import com.focusforceplus.app.data.db.dao.BlockedAppDao
 import com.focusforceplus.app.data.db.dao.BlockerGroupDao
 import com.focusforceplus.app.data.db.dao.FocusCompletionDao
 import com.focusforceplus.app.data.db.dao.FocusSessionDao
+import com.focusforceplus.app.data.db.dao.ListDao
 import com.focusforceplus.app.data.db.dao.RoutineCompletionDao
 import com.focusforceplus.app.data.db.dao.RoutineDao
 import com.focusforceplus.app.data.db.dao.RoutineTaskDao
@@ -17,6 +18,9 @@ import com.focusforceplus.app.data.db.entity.BlockedAppEntity
 import com.focusforceplus.app.data.db.entity.BlockerGroupEntity
 import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.db.entity.FocusSessionEntity
+import com.focusforceplus.app.data.db.entity.ListEntity
+import com.focusforceplus.app.data.db.entity.ListItemEntity
+import com.focusforceplus.app.data.db.entity.ListSuggestionEntity
 import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineEntity
 import com.focusforceplus.app.data.db.entity.RoutineTaskEntity
@@ -32,8 +36,11 @@ import com.focusforceplus.app.data.db.entity.TodoEntity
         FocusSessionEntity::class,
         RoutineCompletionEntity::class,
         FocusCompletionEntity::class,
+        ListEntity::class,
+        ListItemEntity::class,
+        ListSuggestionEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(AppTypeConverters::class)
@@ -46,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun focusSessionDao(): FocusSessionDao
     abstract fun routineCompletionDao(): RoutineCompletionDao
     abstract fun focusCompletionDao(): FocusCompletionDao
+    abstract fun listDao(): ListDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -156,6 +164,68 @@ abstract class AppDatabase : RoomDatabase() {
                 // Nullable on purpose: null keeps each member app's own setting.
                 db.execSQL("ALTER TABLE blocker_groups ADD COLUMN blockDuringRoutines INTEGER")
                 db.execSQL("ALTER TABLE blocker_groups ADD COLUMN blockDuringFocus INTEGER")
+            }
+        }
+
+        /**
+         * 10 -> 11: icons for todos, focus sessions and blocker groups, the trash
+         * (soft delete), the confirmation guards, the todo reminder state, and the
+         * Lists module. Only adds columns and tables, so nothing existing is touched.
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE todos ADD COLUMN iconKey TEXT")
+                db.execSQL("ALTER TABLE todos ADD COLUMN deletedAt INTEGER")
+                db.execSQL("ALTER TABLE todos ADD COLUMN guards TEXT")
+                db.execSQL("ALTER TABLE todos ADD COLUMN snoozedUntil INTEGER")
+                db.execSQL("ALTER TABLE todos ADD COLUMN nagCount INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE todos ADD COLUMN lastAlarmAt INTEGER")
+                db.execSQL("ALTER TABLE todos ADD COLUMN listId INTEGER")
+
+                db.execSQL("ALTER TABLE routines ADD COLUMN deletedAt INTEGER")
+                db.execSQL("ALTER TABLE routines ADD COLUMN guards TEXT")
+
+                db.execSQL("ALTER TABLE focus_sessions ADD COLUMN iconKey TEXT")
+                db.execSQL("ALTER TABLE focus_sessions ADD COLUMN deletedAt INTEGER")
+
+                db.execSQL("ALTER TABLE blocker_groups ADD COLUMN iconKey TEXT")
+                db.execSQL("ALTER TABLE blocker_groups ADD COLUMN alwaysBlock INTEGER NOT NULL DEFAULT 0")
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS lists (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "name TEXT NOT NULL, " +
+                        "iconKey TEXT, " +
+                        "sortOrder INTEGER NOT NULL, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "deletedAt INTEGER)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS list_items (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "listId INTEGER NOT NULL, " +
+                        "text TEXT NOT NULL, " +
+                        "note TEXT, " +
+                        "isChecked INTEGER NOT NULL, " +
+                        "checkedAt INTEGER, " +
+                        "sortOrder INTEGER NOT NULL, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "FOREIGN KEY(listId) REFERENCES lists(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_list_items_listId ON list_items (listId)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS list_suggestions (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "listId INTEGER NOT NULL, " +
+                        "`key` TEXT NOT NULL, " +
+                        "text TEXT NOT NULL, " +
+                        "useCount INTEGER NOT NULL, " +
+                        "lastUsedAt INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_list_suggestions_listId_key " +
+                        "ON list_suggestions (listId, `key`)"
+                )
             }
         }
     }

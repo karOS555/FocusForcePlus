@@ -3,57 +3,31 @@ package com.focusforceplus.app.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.focusforceplus.app.ui.alarm.TodoAlarmActivity
-import com.focusforceplus.app.util.TodoNotificationHelper
+import com.focusforceplus.app.util.TodoAlarmScheduler
+import com.focusforceplus.app.util.TodoReminderEngine
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** A todo's wake-up fired. What that means is decided by the engine, not here. */
 @AndroidEntryPoint
 class TodoAlarmReceiver : BroadcastReceiver() {
 
-    @Inject lateinit var notifHelper: TodoNotificationHelper
+    @Inject lateinit var engine: TodoReminderEngine
 
     override fun onReceive(context: Context, intent: Intent) {
-        val todoId           = intent.getLongExtra("todoId", 0L).takeIf { it > 0L } ?: return
-        val title            = intent.getStringExtra("todoTitle") ?: ""
-        val snoozeCount      = intent.getIntExtra("snoozeCount", 0)
-        val maxSnooze        = intent.getIntExtra("maxSnoozeCount", 2)
-        val priority         = intent.getIntExtra("priority", 1)
+        val todoId = intent.getLongExtra(TodoAlarmScheduler.EXTRA_TODO_ID, 0L).takeIf { it > 0L } ?: return
+        val activation = intent.getBooleanExtra(TodoAlarmScheduler.EXTRA_ACTIVATION, false)
 
-        when (priority) {
-            0 -> {
-                // Low: simple dismissable notification only, no alarm screen
-                notifHelper.showNotification(
-                    TodoNotificationHelper.todoAlarmNotificationId(todoId),
-                    notifHelper.buildLowPriorityNotification(todoId, title),
-                )
-            }
-            else -> {
-                // Medium (1) or High (2): launch full-screen alarm activity
-                // setAlarmClock() grants a BAL (background activity launch) exemption on all API levels.
-                runCatching {
-                    context.startActivity(
-                        Intent(context, TodoAlarmActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                            putExtra("todoId", todoId)
-                            putExtra("todoTitle", title)
-                            putExtra("snoozeCount", snoozeCount)
-                            putExtra("priority", priority)
-                        }
-                    )
-                }
-                // Both High (2) and Medium (1) use a foreground service that pins the
-                // alarm notification (non-dismissable up to Android 13; on 14+ the system
-                // lets users swipe FGS notifications, so the full-screen alarm above is the
-                // real attention-grabber). Wrapped so an OEM refusing the background FGS
-                // start never crashes the alarm.
-                runCatching {
-                    context.startForegroundService(
-                        TodoAlarmForegroundService.startIntent(
-                            context, todoId, title, snoozeCount, maxSnooze, priority,
-                        )
-                    )
-                }
+        val pending = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).launch {
+            try {
+                engine.onWake(todoId, activation)
+            } finally {
+                pending.finish()
             }
         }
     }

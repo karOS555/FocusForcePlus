@@ -1,208 +1,188 @@
 package com.focusforceplus.app.ui.screens.todo
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardAction
+import com.focusforceplus.app.compliance.GuardSettings
 import com.focusforceplus.app.data.db.entity.TodoEntity
+import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.TodoRepository
-import com.focusforceplus.app.service.TodoAlarmForegroundService
-import com.focusforceplus.app.util.TodoAlarmHelper
-import com.focusforceplus.app.util.TodoNotificationHelper
-import com.focusforceplus.app.util.nextOccurrenceMillis
+import com.focusforceplus.app.util.TodoReminderEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 enum class SortOrder(val label: String) {
-    DEFAULT("Smart (overdue first)"),
+    DEFAULT("By due date, grouped"),
     PRIORITY("Priority"),
-    DUE_DATE("Due date"),
-    CREATED_AT("Date created"),
-    TITLE("Title A–Z"),
+    CREATED_AT("Newest first"),
+    TITLE("Title A to Z"),
 }
 
+enum class TodoTab { OPEN, DONE, TRASH }
+
+/** A labelled block of the open list: Overdue, Today, Later, No date. */
+data class TodoGroup(
+    val label: String?,
+    val overdue: Boolean,
+    val todos: List<TodoEntity>,
+)
+
 data class TodoListUiState(
-    val openTodos: List<TodoEntity> = emptyList(),
-    val completedTodos: List<TodoEntity> = emptyList(),
+    val loading: Boolean = true,
+    val openGroups: List<TodoGroup> = emptyList(),
+    val openCount: Int = 0,
+    val done: List<TodoEntity> = emptyList(),
+    val doneCount: Int = 0,
+    val trashed: List<TodoEntity> = emptyList(),
     val searchQuery: String = "",
     val filterPriority: Int? = null,
     val sortOrder: SortOrder = SortOrder.DEFAULT,
-    val deletedTodo: TodoEntity? = null,
+    val retentionDays: Int = SettingsRepository.DEFAULT_TRASH_RETENTION_DAYS,
+    val guards: GuardSettings = GuardSettings(),
+    /** The todo that was just moved to the trash, for the undo bar. */
+    val justTrashed: TodoEntity? = null,
+) {
+    val hasFilters: Boolean get() = searchQuery.isNotBlank() || filterPriority != null
+}
+
+private data class Filters(
+    val query: String = "",
+    val priority: Int? = null,
+    val sort: SortOrder = SortOrder.DEFAULT,
 )
 
 @HiltViewModel
 class TodoListViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-    private val repository: TodoRepository,
-    private val alarmHelper: TodoAlarmHelper,
-    private val notifHelper: TodoNotificationHelper,
+    repository: TodoRepository,
+    settings: SettingsRepository,
+    private val engine: TodoReminderEngine,
 ) : ViewModel() {
 
-    /** Releases the alarm notification if it is currently pinned by the alarm
-     *  foreground service — a plain cancelNotification cannot remove an FGS
-     *  notification, which would leave a zombie alarm for a gone todo. */
-    private fun releasePinnedAlarm(todoId: Long) {
-        runCatching {
-            context.startService(TodoAlarmForegroundService.stopIntent(context))
-        }
-        notifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todoId))
-    }
-
-    private val _searchQuery    = MutableStateFlow("")
-    private val _filterPriority = MutableStateFlow<Int?>(null)
-    private val _sortOrder      = MutableStateFlow(SortOrder.DEFAULT)
-    private val _deletedTodo    = MutableStateFlow<TodoEntity?>(null)
+    private val filters = MutableStateFlow(Filters())
+    private val justTrashed = MutableStateFlow<TodoEntity?>(null)
 
     val uiState: StateFlow<TodoListUiState> = combine(
         repository.getAllTodos(),
-        _searchQuery,
-        _filterPriority,
-        _sortOrder,
-        _deletedTodo,
-    ) { todos, query, priority, sort, deleted ->
-        val now = System.currentTimeMillis()
-
-        fun List<TodoEntity>.applyFilters(): List<TodoEntity> {
-            var list = this
-            if (query.isNotBlank()) {
-                list = list.filter {
-                    it.title.contains(query, ignoreCase = true) ||
-                    it.description?.contains(query, ignoreCase = true) == true
-                }
-            }
-            if (priority != null) list = list.filter { it.priority == priority }
-            return list
+        repository.getTrashedTodos(),
+        filters,
+        combine(settings.trashRetentionDays, settings.guardSettings, ::Pair),
+        justTrashed,
+    ) { todos, trashed, f, (retention, guards), undo ->
+        fun List<TodoEntity>.filtered(): List<TodoEntity> = filter { todo ->
+            (f.priority == null || todo.priority == f.priority) &&
+                (f.query.isBlank() ||
+                    todo.title.contains(f.query, ignoreCase = true) ||
+                    todo.description?.contains(f.query, ignoreCase = true) == true)
         }
 
-        val open = todos
-            .filter { !it.isCompleted }
-            .applyFilters()
-            .let { list ->
-                when (sort) {
-                    SortOrder.DEFAULT -> list.sortedWith(compareBy(
-                        { when {
-                            it.dueDateTime != null && it.dueDateTime < now -> 0
-                            it.dueDateTime != null -> 1
-                            else -> 2
-                        }},
-                        { it.dueDateTime ?: Long.MAX_VALUE },
-                        { -it.priority },
-                    ))
-                    SortOrder.PRIORITY  -> list.sortedByDescending { it.priority }
-                    SortOrder.DUE_DATE  -> list.sortedWith(compareBy(
-                        { it.dueDateTime == null },
-                        { it.dueDateTime ?: Long.MAX_VALUE },
-                    ))
-                    SortOrder.CREATED_AT -> list.sortedByDescending { it.createdAt }
-                    SortOrder.TITLE      -> list.sortedBy { it.title.lowercase() }
-                }
-            }
-
-        val completed = todos
-            .filter { it.isCompleted }
-            .applyFilters()
-            .sortedByDescending { it.completedAt }
+        val open = todos.filter { !it.isCompleted }.filtered()
+        val done = todos.filter { it.isCompleted }.filtered().sortedByDescending { it.completedAt }
 
         TodoListUiState(
-            openTodos      = open,
-            completedTodos = completed,
-            searchQuery    = query,
-            filterPriority = priority,
-            sortOrder      = sort,
-            deletedTodo    = deleted,
+            loading = false,
+            openGroups = group(open, f.sort),
+            openCount = open.size,
+            done = done,
+            doneCount = done.size,
+            trashed = trashed.filtered(),
+            searchQuery = f.query,
+            filterPriority = f.priority,
+            sortOrder = f.sort,
+            retentionDays = retention,
+            guards = guards,
+            justTrashed = undo,
         )
-    }.stateIn(
-        scope        = viewModelScope,
-        started      = SharingStarted.WhileSubscribed(5_000),
-        initialValue = TodoListUiState(),
-    )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodoListUiState())
 
-    fun setSearchQuery(query: String)       = _searchQuery.update { query }
-    fun setFilterPriority(priority: Int?)   = _filterPriority.update { priority }
-    fun setSortOrder(order: SortOrder)      = _sortOrder.update { order }
-    fun clearDeletedTodo()                  = _deletedTodo.update { null }
-
-    fun toggleComplete(todo: TodoEntity) {
-        viewModelScope.launch {
-            if (todo.isCompleted) {
-                val reopened = todo.copy(
-                    isCompleted     = false,
-                    completedAt     = null,
-                    snoozeCount     = 0,
-                    rescheduleCount = 0,
+    private fun group(open: List<TodoEntity>, sort: SortOrder): List<TodoGroup> {
+        if (open.isEmpty()) return emptyList()
+        if (sort != SortOrder.DEFAULT) {
+            val sorted = when (sort) {
+                SortOrder.PRIORITY -> open.sortedWith(
+                    compareByDescending<TodoEntity> { it.priority }.thenBy { it.dueDateTime ?: Long.MAX_VALUE }
                 )
-                repository.updateTodo(reopened)
-                val due = todo.dueDateTime
-                val now = System.currentTimeMillis()
-                when {
-                    due != null && due > now -> alarmHelper.scheduleTodoAlarm(reopened)
-                    due != null && due <= now -> {
-                        // Overdue — repost digest notification so it reappears immediately (D fix)
-                        notifHelper.showNotification(
-                            TodoNotificationHelper.todoDigestNotificationId(todo.id),
-                            notifHelper.buildPerTodoReminderNotification(
-                                todo.id, todo.title, todo.priority, isOverdue = true,
-                            ),
-                        )
-                    }
-                }
-            } else {
-                repository.markCompleted(todo.id, System.currentTimeMillis())
-                alarmHelper.cancelTodoAlarm(todo.id)
-                alarmHelper.cancelTodoSnoozeAlarm(todo.id)
-                releasePinnedAlarm(todo.id)
-                notifHelper.cancelNotification(TodoNotificationHelper.todoDigestNotificationId(todo.id))
-                scheduleNextOccurrenceIfRecurring(todo)
+                SortOrder.CREATED_AT -> open.sortedByDescending { it.createdAt }
+                else -> open.sortedBy { it.title.lowercase() }
             }
+            return listOf(TodoGroup(label = null, overdue = false, todos = sorted))
         }
-    }
+        val now = System.currentTimeMillis()
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        fun dayOf(millis: Long) = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+        val byUrgency = compareBy<TodoEntity> { it.dueDateTime ?: Long.MAX_VALUE }.thenByDescending { it.priority }
 
-    fun deleteTodo(todo: TodoEntity) {
-        viewModelScope.launch {
-            alarmHelper.cancelTodoAlarm(todo.id)
-            alarmHelper.cancelTodoSnoozeAlarm(todo.id)
-            releasePinnedAlarm(todo.id)
-            notifHelper.cancelNotification(TodoNotificationHelper.todoDigestNotificationId(todo.id))
-            repository.deleteTodo(todo)
-            _deletedTodo.value = todo
-        }
-    }
+        val overdue = open.filter { it.dueDateTime != null && it.dueDateTime < now }.sortedWith(byUrgency)
+        val dueToday = open.filter {
+            it.dueDateTime != null && it.dueDateTime >= now && dayOf(it.dueDateTime) == today
+        }.sortedWith(byUrgency)
+        val later = open.filter {
+            it.dueDateTime != null && it.dueDateTime >= now && dayOf(it.dueDateTime) != today
+        }.sortedWith(byUrgency)
+        val undated = open.filter { it.dueDateTime == null }
+            .sortedWith(compareByDescending<TodoEntity> { it.priority }.thenByDescending { it.createdAt })
 
-    fun undoDelete(todo: TodoEntity) {
-        viewModelScope.launch {
-            val newId    = repository.insertTodo(todo.copy(id = 0L))
-            val restored = todo.copy(id = newId)
-            if (!restored.isCompleted &&
-                restored.dueDateTime != null &&
-                restored.dueDateTime > System.currentTimeMillis()
-            ) {
-                alarmHelper.scheduleTodoAlarm(restored)
-            }
-            _deletedTodo.value = null
-        }
-    }
-
-    private suspend fun scheduleNextOccurrenceIfRecurring(todo: TodoEntity) {
-        if (!todo.isRecurring || todo.recurringPattern == null || todo.dueDateTime == null) return
-        val nextDue = nextOccurrenceMillis(todo.dueDateTime, todo.recurringPattern)
-        val next = todo.copy(
-            id              = 0L,
-            dueDateTime     = nextDue,
-            isCompleted     = false,
-            completedAt     = null,
-            snoozeCount     = 0,
-            rescheduleCount = 0,
-            postponedTo     = null,
+        return listOfNotNull(
+            overdue.takeIf { it.isNotEmpty() }?.let { TodoGroup("Overdue", true, it) },
+            dueToday.takeIf { it.isNotEmpty() }?.let { TodoGroup("Today", false, it) },
+            later.takeIf { it.isNotEmpty() }?.let { TodoGroup("Later", false, it) },
+            undated.takeIf { it.isNotEmpty() }?.let { TodoGroup("No date", false, it) },
         )
-        val newId = repository.insertTodo(next)
-        alarmHelper.scheduleTodoAlarm(next.copy(id = newId))
+    }
+
+    fun setSearchQuery(query: String) = filters.update { it.copy(query = query) }
+    fun setFilterPriority(priority: Int?) = filters.update { it.copy(priority = priority) }
+    fun setSortOrder(order: SortOrder) = filters.update { it.copy(sort = order) }
+
+    /** The speed bump a tap on this todo's ring has to pass; none means it completes at once. */
+    fun doneGuardFor(todo: TodoEntity): Guard = uiState.value.guards.forTodo(todo, GuardAction.DONE)
+
+    fun complete(todo: TodoEntity) {
+        viewModelScope.launch { engine.complete(todo.id) }
+    }
+
+    fun reopen(todo: TodoEntity) {
+        viewModelScope.launch { engine.reopen(todo.id) }
+    }
+
+    fun moveToTrash(todo: TodoEntity) {
+        viewModelScope.launch {
+            engine.moveToTrash(todo.id)
+            justTrashed.value = todo
+        }
+    }
+
+    fun undoTrash() {
+        val todo = justTrashed.value ?: return
+        justTrashed.value = null
+        viewModelScope.launch { engine.restoreFromTrash(todo.id) }
+    }
+
+    fun clearUndo() {
+        justTrashed.value = null
+    }
+
+    fun restore(todo: TodoEntity) {
+        viewModelScope.launch { engine.restoreFromTrash(todo.id) }
+    }
+
+    fun deleteForever(todo: TodoEntity) {
+        viewModelScope.launch { engine.deleteForever(todo.id) }
+    }
+
+    fun emptyTrash() {
+        val all = uiState.value.trashed
+        viewModelScope.launch { all.forEach { engine.deleteForever(it.id) } }
     }
 }

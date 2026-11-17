@@ -30,6 +30,10 @@ interface RoutineTaskDao {
     @Query("DELETE FROM routine_tasks WHERE routineId = :routineId")
     suspend fun deleteTasksForRoutine(routineId: Long)
 
+    /** Every step of every routine, newest first: source of the task suggestions. */
+    @Query("SELECT * FROM routine_tasks ORDER BY id DESC")
+    fun getAll(): Flow<List<RoutineTaskEntity>>
+
     // Backup / restore
     @Query("SELECT * FROM routine_tasks")
     suspend fun getAllOnce(): List<RoutineTaskEntity>

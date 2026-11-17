@@ -7,6 +7,7 @@ import com.focusforceplus.app.data.db.dao.BlockedAppDao
 import com.focusforceplus.app.data.db.dao.BlockerGroupDao
 import com.focusforceplus.app.data.db.dao.FocusCompletionDao
 import com.focusforceplus.app.data.db.dao.FocusSessionDao
+import com.focusforceplus.app.data.db.dao.ListDao
 import com.focusforceplus.app.data.db.dao.RoutineCompletionDao
 import com.focusforceplus.app.data.db.dao.RoutineDao
 import com.focusforceplus.app.data.db.dao.RoutineTaskDao
@@ -40,6 +41,7 @@ object DatabaseModule {
             AppDatabase.MIGRATION_7_8,
             AppDatabase.MIGRATION_8_9,
             AppDatabase.MIGRATION_9_10,
+            AppDatabase.MIGRATION_10_11,
         )
         .build()
 
@@ -66,4 +68,7 @@ object DatabaseModule {
 
     @Provides
     fun provideFocusCompletionDao(db: AppDatabase): FocusCompletionDao = db.focusCompletionDao()
+
+    @Provides
+    fun provideListDao(db: AppDatabase): ListDao = db.listDao()
 }

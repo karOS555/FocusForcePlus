@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Debug builds only: fills the app with sample data over adb, for testing
+             and for taking the store screenshots. This source set is not part of
+             release builds, so the receiver does not exist in anything that ships.
+             DUMP is held by the adb shell and by no ordinary app, so nothing else on
+             the phone can trigger it. -->
+        <receiver
+            android:name=".debug.DebugSeedReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="com.focusforceplus.app.DEBUG_SEED" />
+                <action android:name="com.focusforceplus.app.DEBUG_DUE" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

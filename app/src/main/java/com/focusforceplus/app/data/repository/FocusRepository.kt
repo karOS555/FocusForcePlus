@@ -13,7 +13,7 @@ class FocusRepository @Inject constructor(
     private val focusSessionDao: FocusSessionDao,
     private val focusCompletionDao: FocusCompletionDao,
 ) {
-
+    /** Every saved session that is not in the trash. */
     fun getAllSessions(): Flow<List<FocusSessionEntity>> =
         focusSessionDao.getAll()
 
@@ -29,8 +29,19 @@ class FocusRepository @Inject constructor(
     suspend fun updateSession(session: FocusSessionEntity) =
         focusSessionDao.update(session)
 
-    suspend fun deleteSession(session: FocusSessionEntity) =
-        focusSessionDao.delete(session)
+    // --- Trash ---
+
+    fun getTrashedSessions(): Flow<List<FocusSessionEntity>> = focusSessionDao.getTrashed()
+
+    suspend fun moveToTrash(id: Long) = focusSessionDao.moveToTrash(id, System.currentTimeMillis())
+
+    suspend fun restoreFromTrash(id: Long) = focusSessionDao.restoreFromTrash(id)
+
+    suspend fun deleteForever(id: Long) = focusSessionDao.deleteForever(id)
+
+    suspend fun emptyTrash() = focusSessionDao.emptyTrash()
+
+    suspend fun purgeTrashedBefore(before: Long) = focusSessionDao.purgeTrashedBefore(before)
 
     // --- Completion history ---
 

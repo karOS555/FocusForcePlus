@@ -119,4 +119,35 @@ object ComplianceLimits {
      * lock to bound. High priority never uses this sentinel.
      */
     const val TODO_UNLIMITED_RESCHEDULES: Int = Int.MAX_VALUE
+
+    // ── Guards and repeated reminders ─────────────────────────────────────────
+
+    /**
+     * Longest a "wait first" guard may make the user wait before an action goes
+     * through. A minute is long enough to interrupt an impulse and short enough
+     * that nobody is kept from an action they have decided on.
+     */
+    const val MAX_GUARD_WAIT_SECONDS: Int = 60
+
+    /**
+     * How often one unanswered todo may ring again before it falls back to a plain
+     * notification. Bounded on purpose: a reminder that repeats without end is the
+     * "nag forever" pattern, and the user must always be able to simply not answer.
+     */
+    const val MAX_TODO_NAG_REPEATS: Int = 12
+
+    /** Shortest allowed gap between two rings of the same todo. */
+    const val MIN_TODO_NAG_INTERVAL_MINUTES: Int = 2
+
+    /** Longest configurable gap between two rings of the same todo. */
+    const val MAX_TODO_NAG_INTERVAL_MINUTES: Int = 120
+
+    /** Longest a single ring keeps sounding when nobody reacts. */
+    const val MAX_TODO_RING_SECONDS: Int = 180
+
+    /** Shortest a single ring sounds. */
+    const val MIN_TODO_RING_SECONDS: Int = 15
+
+    /** How long deleted items stay in the trash at most before they are removed. */
+    const val MAX_TRASH_RETENTION_DAYS: Int = 365
 }

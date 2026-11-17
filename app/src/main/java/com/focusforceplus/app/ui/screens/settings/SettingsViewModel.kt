@@ -11,7 +11,7 @@ import com.focusforceplus.app.data.repository.BlockerRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.util.BackupManager
 import com.focusforceplus.app.util.PermissionHelper
-import com.focusforceplus.app.util.TodoAlarmHelper
+import com.focusforceplus.app.util.TodoAlarmScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,7 +61,7 @@ class SettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val blockerRepository: BlockerRepository,
-    private val todoAlarmHelper: TodoAlarmHelper,
+    private val todoAlarmScheduler: TodoAlarmScheduler,
     private val backupManager: BackupManager,
     private val tamperGuard: TamperProtectionGuard,
 ) : ViewModel() {
@@ -167,7 +167,7 @@ class SettingsViewModel @Inject constructor(
 
     fun addDigestTime(hour: Int, minute: Int) {
         val current = _uiState.value.digestTimes
-        if (current.size >= TodoAlarmHelper.MAX_DIGEST_SLOTS) return
+        if (current.size >= TodoAlarmScheduler.MAX_DIGEST_SLOTS) return
         persistTimes((current + (hour to minute)).sortedBy { it.first * 60 + it.second })
     }
 
@@ -188,7 +188,7 @@ class SettingsViewModel @Inject constructor(
     private fun persistTimes(times: List<Pair<Int, Int>>) {
         viewModelScope.launch {
             settingsRepository.saveDigestTimes(times)
-            todoAlarmHelper.scheduleDigestAlarms(times)
+            todoAlarmScheduler.scheduleDigestAlarms(times)
         }
     }
 

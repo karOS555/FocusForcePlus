@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
         }
 
         routineNavRequest.value = intent.routineId() to 0
+        openRouteRequest.value = intent.openRoute() to 0
         setContent {
             FocusForceTheme {
                 // Direct .value read is tracked by composition; the local val allows smart-cast.
@@ -132,6 +133,7 @@ class MainActivity : ComponentActivity() {
                     AppContent(
                         onboardingCompleted       = completed,
                         routineNavRequest         = routineNavRequest.value,
+                        openRouteRequest          = openRouteRequest.value,
                         canDrawOverlays           = PermissionHelper.canDrawOverlays(this),
                         canScheduleExactAlarms    = PermissionHelper.canScheduleExactAlarms(this),
                         askForFullScreen          = askForFullScreenIntent.value,
@@ -161,6 +163,12 @@ class MainActivity : ComponentActivity() {
      */
     private val askForFullScreenIntent = androidx.compose.runtime.mutableStateOf(false)
 
+    /**
+     * A top-level route to open, asked for by a notification or a shortcut. The
+     * nonce makes a repeated request for the same route navigate again.
+     */
+    private val openRouteRequest = androidx.compose.runtime.mutableStateOf<Pair<String?, Int>>(null to 0)
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -168,6 +176,18 @@ class MainActivity : ComponentActivity() {
         if (id > 0L) {
             routineNavRequest.value = id to routineNavRequest.value.second + 1
         }
+        intent.openRoute()?.let { route ->
+            openRouteRequest.value = route to openRouteRequest.value.second + 1
+        }
+    }
+
+    /** Only routes of known modules are accepted; anything else is ignored. */
+    private fun Intent.openRoute(): String? =
+        getStringExtra(EXTRA_OPEN_ROUTE)?.takeIf { route -> AppModule.fromRoute(route) != null }
+
+    companion object {
+        /** Intent extra: route of the module to show, e.g. "todos". */
+        const val EXTRA_OPEN_ROUTE = "openRoute"
     }
 
     private fun Intent.routineId(): Long =
@@ -178,6 +198,7 @@ class MainActivity : ComponentActivity() {
 private fun AppContent(
     onboardingCompleted: Boolean,
     routineNavRequest: Pair<Long, Int> = 0L to 0,
+    openRouteRequest: Pair<String?, Int> = null to 0,
     canDrawOverlays: Boolean = true,
     canScheduleExactAlarms: Boolean = true,
     askForFullScreen: Boolean = false,
@@ -241,6 +262,11 @@ private fun AppContent(
         if (routineNavRequest.first > 0L) {
             navController.navigate(RoutineRoutes.active(routineNavRequest.first))
         }
+    }
+
+    LaunchedEffect(openRouteRequest) {
+        val module = AppModule.fromRoute(openRouteRequest.first)
+        if (module != null) openModule(module)
     }
 
     Scaffold(

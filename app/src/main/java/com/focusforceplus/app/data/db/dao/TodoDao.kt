@@ -1,7 +1,6 @@
 package com.focusforceplus.app.data.db.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -9,6 +8,12 @@ import androidx.room.Update
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Todos are never removed by the user directly: deleting sets [TodoEntity.deletedAt]
+ * and the row moves to the trash. Every query below that feeds a list, a reminder
+ * or a count therefore filters on `deletedAt IS NULL`; only the trash queries and
+ * the backup see deleted rows.
+ */
 @Dao
 interface TodoDao {
 
@@ -18,54 +23,65 @@ interface TodoDao {
     @Update
     suspend fun update(todo: TodoEntity)
 
-    @Delete
-    suspend fun delete(todo: TodoEntity)
-
-    @Query("SELECT * FROM todos ORDER BY priority DESC, dueDateTime ASC")
+    @Query("SELECT * FROM todos WHERE deletedAt IS NULL ORDER BY priority DESC, dueDateTime ASC")
     fun getAll(): Flow<List<TodoEntity>>
 
-    @Query("SELECT * FROM todos WHERE isCompleted = 0 ORDER BY priority DESC, dueDateTime ASC")
+    @Query("SELECT * FROM todos WHERE deletedAt IS NULL")
+    suspend fun getAllActiveOnce(): List<TodoEntity>
+
+    @Query(
+        "SELECT * FROM todos WHERE isCompleted = 0 AND deletedAt IS NULL " +
+            "ORDER BY priority DESC, dueDateTime ASC"
+    )
     fun getUncompleted(): Flow<List<TodoEntity>>
 
-    @Query("""
-        SELECT * FROM todos
-        WHERE isCompleted = 0
-        AND dueDateTime IS NOT NULL
-        AND dueDateTime < :currentTime
-        ORDER BY dueDateTime ASC
-    """)
-    fun getOverdue(currentTime: Long): Flow<List<TodoEntity>>
+    @Query("SELECT * FROM todos WHERE isCompleted = 0 AND deletedAt IS NULL")
+    suspend fun getOpenOnce(): List<TodoEntity>
 
-    @Query("""
-        SELECT * FROM todos
-        WHERE dueDateTime IS NOT NULL
-        AND dueDateTime BETWEEN :start AND :end
-        ORDER BY dueDateTime ASC
-    """)
-    fun getScheduledForTimeRange(start: Long, end: Long): Flow<List<TodoEntity>>
-
-    @Query("UPDATE todos SET isCompleted = 1, completedAt = :completedAt WHERE id = :id")
-    suspend fun markCompleted(id: Long, completedAt: Long)
-
-    @Query("UPDATE todos SET snoozeCount = :count WHERE id = :id")
-    suspend fun updateSnoozeCount(id: Long, count: Int)
-
-    @Query("UPDATE todos SET rescheduleCount = :count WHERE id = :id")
-    suspend fun updateRescheduleCount(id: Long, count: Int)
-
-    @Query("UPDATE todos SET checklistJson = :json WHERE id = :id")
-    suspend fun updateChecklistJson(id: Long, json: String?)
-
-    @Query("SELECT * FROM todos WHERE isCompleted = 1 ORDER BY completedAt DESC")
+    @Query(
+        "SELECT * FROM todos WHERE isCompleted = 1 AND deletedAt IS NULL ORDER BY completedAt DESC"
+    )
     fun getCompleted(): Flow<List<TodoEntity>>
 
     @Query("SELECT * FROM todos WHERE id = :id")
     suspend fun getById(id: Long): TodoEntity?
 
-    @Query("DELETE FROM todos WHERE isCompleted = 1 AND completedAt < :beforeTimestamp")
-    suspend fun deleteCompletedBefore(beforeTimestamp: Long)
+    @Query("SELECT * FROM todos WHERE id = :id")
+    fun observeById(id: Long): Flow<TodoEntity?>
 
-    // Backup / restore
+    @Query("UPDATE todos SET checklistJson = :json WHERE id = :id")
+    suspend fun updateChecklistJson(id: Long, json: String?)
+
+    // ── Trash ─────────────────────────────────────────────────────────────────
+
+    @Query("SELECT * FROM todos WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
+    fun getTrashed(): Flow<List<TodoEntity>>
+
+    @Query("UPDATE todos SET deletedAt = :at WHERE id = :id")
+    suspend fun moveToTrash(id: Long, at: Long)
+
+    @Query("UPDATE todos SET deletedAt = NULL WHERE id = :id")
+    suspend fun restoreFromTrash(id: Long)
+
+    @Query("DELETE FROM todos WHERE id = :id")
+    suspend fun deleteForever(id: Long)
+
+    @Query("DELETE FROM todos WHERE deletedAt IS NOT NULL")
+    suspend fun emptyTrash()
+
+    @Query("DELETE FROM todos WHERE deletedAt IS NOT NULL AND deletedAt < :before")
+    suspend fun purgeTrashedBefore(before: Long)
+
+    /** Auto-clean of the Done list: old completed todos go to the trash, not away. */
+    @Query(
+        "UPDATE todos SET deletedAt = :now " +
+            "WHERE isCompleted = 1 AND deletedAt IS NULL AND completedAt < :before"
+    )
+    suspend fun trashCompletedBefore(before: Long, now: Long)
+
+    // ── Backup / restore ──────────────────────────────────────────────────────
+
+    /** Everything, including the trash. */
     @Query("SELECT * FROM todos")
     suspend fun getAllOnce(): List<TodoEntity>
 

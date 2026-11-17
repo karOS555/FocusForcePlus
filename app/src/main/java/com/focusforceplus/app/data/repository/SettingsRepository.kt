@@ -7,7 +7,13 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.focusforceplus.app.compliance.ComplianceLimits
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardSettings
+import com.focusforceplus.app.compliance.GuardSlot
+import com.focusforceplus.app.compliance.NagPolicy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -40,6 +46,18 @@ class SettingsRepository @Inject constructor(
         private val TP_WINDOW_DURATION_KEY         = intPreferencesKey("tp_window_duration_minutes")
         private val TP_ANCHOR_WALL_KEY             = longPreferencesKey("tp_anchor_wall_millis")
         private val TP_ANCHOR_ELAPSED_KEY          = longPreferencesKey("tp_anchor_elapsed_millis")
+
+        private val GUARDS_ENABLED_KEY     = booleanPreferencesKey("guards_enabled")
+
+        private val NAG_HIGH_INTERVAL_KEY  = intPreferencesKey("todo_nag_high_interval")
+        private val NAG_HIGH_REPEATS_KEY   = intPreferencesKey("todo_nag_high_repeats")
+        private val NAG_MED_INTERVAL_KEY   = intPreferencesKey("todo_nag_medium_interval")
+        private val NAG_MED_REPEATS_KEY    = intPreferencesKey("todo_nag_medium_repeats")
+        private val RING_SECONDS_KEY       = intPreferencesKey("todo_ring_seconds")
+        private val TRASH_RETENTION_KEY    = intPreferencesKey("trash_retention_days")
+
+        const val DEFAULT_RING_SECONDS = 60
+        const val DEFAULT_TRASH_RETENTION_DAYS = 30
 
         val DEFAULT_DIGEST_TIMES: List<Pair<Int, Int>> = listOf(6 to 0, 18 to 0)
 
@@ -229,6 +247,120 @@ class SettingsRepository @Inject constructor(
     suspend fun markHelpHintSeen(key: String) {
         dataStore.edit { prefs ->
             prefs[HELP_HINTS_SEEN_KEY] = (prefs[HELP_HINTS_SEEN_KEY] ?: emptySet()) + key
+        }
+    }
+
+    // ── Guards ────────────────────────────────────────────────────────────────
+
+    /** App-wide defaults for the speed bumps; items may override them. */
+    val guardSettings: Flow<GuardSettings> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            GuardSettings(
+                enabled = prefs[GUARDS_ENABLED_KEY] ?: true,
+                slots = GuardSlot.entries.mapNotNull { slot ->
+                    Guard.decode(prefs[guardKey(slot)])?.let { slot to it }
+                }.toMap(),
+            )
+        }
+
+    suspend fun saveGuardsEnabled(enabled: Boolean) {
+        dataStore.edit { it[GUARDS_ENABLED_KEY] = enabled }
+    }
+
+    suspend fun saveGuard(slot: GuardSlot, guard: Guard) {
+        dataStore.edit { it[guardKey(slot)] = guard.clamped().encode() }
+    }
+
+    /** Every slot back to its built-in default. */
+    suspend fun resetGuards() {
+        dataStore.edit { prefs -> GuardSlot.entries.forEach { prefs.remove(guardKey(it)) } }
+    }
+
+    /** Writes the whole set at once, for restoring a backup. */
+    suspend fun saveGuardSettings(settings: GuardSettings) {
+        dataStore.edit { prefs ->
+            prefs[GUARDS_ENABLED_KEY] = settings.enabled
+            GuardSlot.entries.forEach { slot ->
+                val guard = settings.slots[slot]
+                if (guard == null) prefs.remove(guardKey(slot)) else prefs[guardKey(slot)] = guard.clamped().encode()
+            }
+        }
+    }
+
+    private fun guardKey(slot: GuardSlot) = stringPreferencesKey("guard_${slot.key}")
+
+    // ── Repeated todo reminders ───────────────────────────────────────────────
+
+    /** How an unanswered todo of [priority] keeps coming back. */
+    fun nagPolicy(priority: Int): Flow<NagPolicy> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            when (priority) {
+                2 -> NagPolicy.clamp(
+                    NagPolicy(
+                        prefs[NAG_HIGH_INTERVAL_KEY] ?: NagPolicy.HIGH_DEFAULT.intervalMinutes,
+                        prefs[NAG_HIGH_REPEATS_KEY] ?: NagPolicy.HIGH_DEFAULT.maxRepeats,
+                    )
+                )
+                1 -> NagPolicy.clamp(
+                    NagPolicy(
+                        prefs[NAG_MED_INTERVAL_KEY] ?: NagPolicy.MEDIUM_DEFAULT.intervalMinutes,
+                        prefs[NAG_MED_REPEATS_KEY] ?: NagPolicy.MEDIUM_DEFAULT.maxRepeats,
+                    )
+                )
+                else -> NagPolicy.NONE
+            }
+        }
+
+    suspend fun saveNagPolicy(priority: Int, policy: NagPolicy) {
+        val clamped = NagPolicy.clamp(policy)
+        dataStore.edit { prefs ->
+            when (priority) {
+                2 -> {
+                    prefs[NAG_HIGH_INTERVAL_KEY] = clamped.intervalMinutes
+                    prefs[NAG_HIGH_REPEATS_KEY] = clamped.maxRepeats
+                }
+                1 -> {
+                    prefs[NAG_MED_INTERVAL_KEY] = clamped.intervalMinutes
+                    prefs[NAG_MED_REPEATS_KEY] = clamped.maxRepeats
+                }
+            }
+        }
+    }
+
+    /** How long a high-priority alarm keeps sounding when nobody reacts. */
+    val todoRingSeconds: Flow<Int> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            (prefs[RING_SECONDS_KEY] ?: DEFAULT_RING_SECONDS).coerceIn(
+                ComplianceLimits.MIN_TODO_RING_SECONDS,
+                ComplianceLimits.MAX_TODO_RING_SECONDS,
+            )
+        }
+
+    suspend fun saveTodoRingSeconds(seconds: Int) {
+        dataStore.edit { prefs ->
+            prefs[RING_SECONDS_KEY] = seconds.coerceIn(
+                ComplianceLimits.MIN_TODO_RING_SECONDS,
+                ComplianceLimits.MAX_TODO_RING_SECONDS,
+            )
+        }
+    }
+
+    // ── Trash ─────────────────────────────────────────────────────────────────
+
+    /** Days a deleted item stays in the trash before it is removed for good. */
+    val trashRetentionDays: Flow<Int> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            (prefs[TRASH_RETENTION_KEY] ?: DEFAULT_TRASH_RETENTION_DAYS)
+                .coerceIn(1, ComplianceLimits.MAX_TRASH_RETENTION_DAYS)
+        }
+
+    suspend fun saveTrashRetentionDays(days: Int) {
+        dataStore.edit { prefs ->
+            prefs[TRASH_RETENTION_KEY] = days.coerceIn(1, ComplianceLimits.MAX_TRASH_RETENTION_DAYS)
         }
     }
 }

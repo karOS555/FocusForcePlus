@@ -3,9 +3,7 @@ package com.focusforceplus.app.util
 import com.focusforceplus.app.data.repository.FocusRepository
 import com.focusforceplus.app.data.repository.NavRepository
 import com.focusforceplus.app.data.repository.RoutineRepository
-import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.SleepRepository
-import com.focusforceplus.app.data.repository.TodoRepository
 import com.focusforceplus.app.ui.navigation.AppModule
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -24,13 +22,11 @@ import javax.inject.Singleton
 @Singleton
 class AlarmRearmer @Inject constructor(
     private val routineRepository: RoutineRepository,
-    private val todoRepository: TodoRepository,
     private val focusRepository: FocusRepository,
-    private val settingsRepository: SettingsRepository,
     private val sleepRepository: SleepRepository,
     private val navRepository: NavRepository,
     private val alarmHelper: AlarmHelper,
-    private val todoAlarmHelper: TodoAlarmHelper,
+    private val todoReminders: TodoReminderEngine,
     private val focusAlarmHelper: FocusAlarmHelper,
     private val sleepAlarmHelper: SleepAlarmHelper,
     private val sleepStateReconciler: SleepStateReconciler,
@@ -44,10 +40,8 @@ class AlarmRearmer @Inject constructor(
         if (on(AppModule.ROUTINES)) runCatching {
             alarmHelper.rescheduleAll(routineRepository.getAllRoutines().first())
         }
-        if (on(AppModule.TODOS)) runCatching {
-            val digestTimes = settingsRepository.digestTimes.first()
-            todoAlarmHelper.rescheduleAll(todoRepository.getAllTodos().first(), digestTimes)
-        }
+        // The engine checks the module switch itself and clears everything if it is off.
+        runCatching { todoReminders.syncAll() }
         if (on(AppModule.FOCUS)) runCatching {
             focusAlarmHelper.rescheduleAll(focusRepository.getAllSessions().first())
         }

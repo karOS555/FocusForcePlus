@@ -50,4 +50,12 @@ data class BlockerGroupEntity(
     val blockDuringRoutines: Boolean? = null,
     /** Same as [blockDuringRoutines] for focus sessions. */
     val blockDuringFocus: Boolean? = null,
+    /** Icon from the shared icon catalogue; null = app icons of the members. */
+    val iconKey: String? = null,
+    /**
+     * Blocks every member whenever the group is on, with no limit and no schedule.
+     * It has no natural end, so like any manual block it can never be locked by
+     * Invincible Mode.
+     */
+    val alwaysBlock: Boolean = false,
 )

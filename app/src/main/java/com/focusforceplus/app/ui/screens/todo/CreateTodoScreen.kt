@@ -1,16 +1,8 @@
 package com.focusforceplus.app.ui.screens.todo
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -19,43 +11,27 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -67,25 +43,37 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.compliance.ComplianceLimits
+import com.focusforceplus.app.compliance.GuardAction
 import com.focusforceplus.app.data.model.ChecklistItem
 import com.focusforceplus.app.ui.common.DiscardChangesDialog
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.focusforceplus.app.ui.theme.Error
-import com.focusforceplus.app.ui.theme.Warning
+import com.focusforceplus.app.ui.common.IconPickerButton
+import com.focusforceplus.app.ui.components.CompletionRing
+import com.focusforceplus.app.ui.components.DeleteDialog
+import com.focusforceplus.app.ui.components.FfCard
+import com.focusforceplus.app.ui.guards.GuardEditorDialog
+import com.focusforceplus.app.ui.guards.GuardRow
+import com.focusforceplus.app.ui.components.FfChip
+import com.focusforceplus.app.ui.components.FfTextField
+import com.focusforceplus.app.ui.components.FormScaffold
+import com.focusforceplus.app.ui.components.FormSection
+import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.ReorderableColumn
+import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.components.StepperRow
+import com.focusforceplus.app.ui.components.SwitchRow
+import com.focusforceplus.app.ui.components.ValueRow
+import com.focusforceplus.app.ui.theme.FfTheme
+import com.focusforceplus.app.ui.theme.FfType
+import com.focusforceplus.app.util.TimeFormat
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-
-private val LowColor    = Color(0xFF94a3b8)
-private val MediumColor = Warning
-private val HighColor   = Error
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -93,489 +81,353 @@ fun CreateTodoScreen(
     onNavigateBack: () -> Unit,
     viewModel: TodoViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsState()
+    val colors = FfTheme.colors
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
-    var showDiscardDialog by remember { mutableStateOf(false) }
-    val attemptClose = {
-        if (viewModel.hasUnsavedChanges) showDiscardDialog = true else onNavigateBack()
-    }
+    var showDiscard by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
+    var editGuard by remember { mutableStateOf<GuardAction?>(null) }
+    var pendingDateMillis by remember { mutableStateOf<Long?>(null) }
+
+    val attemptClose = { if (viewModel.hasUnsavedChanges) showDiscard = true else onNavigateBack() }
     BackHandler { attemptClose() }
-    // Holds the date chosen in DatePickerDialog before the TimePicker is shown.
-    // Pre-seeded with the existing dueDateTime so it's never null for edit mode.
-    var pendingDateMillis by remember { mutableStateOf<Long?>(uiState.dueDateTime) }
 
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = uiState.dueDateTime,
-    )
-    // Sync datePickerState when the todo loads asynchronously (edit mode: dueDateTime
-    // starts null and arrives after the first recomposition).
-    LaunchedEffect(uiState.dueDateTime) {
-        val due = uiState.dueDateTime
-        if (due != null) {
-            datePickerState.selectedDateMillis = due
-            if (pendingDateMillis == null) pendingDateMillis = due
-        }
-    }
-
-    val initialHour = uiState.dueDateTime?.let {
-        LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()).hour
-    } ?: 9
-    val initialMinute = uiState.dueDateTime?.let {
-        LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()).minute
-    } ?: 0
-    val timePickerState = rememberTimePickerState(
-        initialHour = initialHour,
-        initialMinute = initialMinute,
-    )
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (viewModel.isEditMode) "Edit Todo" else "New Todo") },
-                navigationIcon = {
-                    IconButton(onClick = attemptClose) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
+    FormScaffold(
+        title = if (viewModel.isEditMode) "Edit todo" else "New todo",
+        onClose = attemptClose,
+        primaryLabel = if (viewModel.isEditMode) "Save changes" else "Save todo",
+        onPrimary = { viewModel.saveTodo(onNavigateBack) },
+        primaryLoading = state.isSaving,
+        actions = {
+            if (viewModel.isEditMode) {
+                IconButton(onClick = { showDelete = true }) {
+                    Icon(Icons.Filled.DeleteOutline, contentDescription = "Delete todo")
+                }
+            }
         },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-
-            // ── Title ──────────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = uiState.title,
+    ) {
+        // ── What ──────────────────────────────────────────────────────────────
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconPickerButton(
+                selectedKey = state.iconKey,
+                size = 56.dp,
+                onSelect = viewModel::updateIcon,
+            )
+            FfTextField(
+                value = state.title,
                 onValueChange = viewModel::updateTitle,
-                label = { Text("Title") },
-                isError = uiState.titleError,
-                supportingText = if (uiState.titleError) {
-                    { Text("Title is required") }
-                } else null,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                label = "What needs doing?",
+                isError = state.titleError,
+                supportingText = if (state.titleError) "Give it a title" else null,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next,
+                ),
+                modifier = Modifier.weight(1f),
             )
+        }
+        FfTextField(
+            value = state.description,
+            onValueChange = viewModel::updateDescription,
+            label = "Notes",
+            singleLine = false,
+            minLines = 2,
+            maxLines = 5,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        )
 
-            // ── Description ────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = uiState.description,
-                onValueChange = viewModel::updateDescription,
-                label = { Text("Description (optional)") },
-                minLines = 2,
-                maxLines = 4,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            // ── Checklist ──────────────────────────────────────────────────────
-            SectionLabel("Checklist")
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    "Enable checklist",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Switch(
-                    checked = uiState.checklistEnabled,
-                    onCheckedChange = viewModel::toggleChecklist,
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                )
-            }
-            if (uiState.checklistEnabled) {
-                ChecklistEditor(
-                    items    = uiState.checklistItems,
-                    onToggle = viewModel::toggleChecklistItem,
-                    onRemove = viewModel::removeChecklistItem,
-                    onAdd    = viewModel::addChecklistItem,
-                    onMove   = viewModel::moveChecklistItem,
-                )
-            }
-
-            // ── Due date ───────────────────────────────────────────────────────
-            SectionLabel("Due date")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                FilledTonalButton(
+        // ── When ──────────────────────────────────────────────────────────────
+        FormSection(title = "When") {
+            FfCard {
+                ListRow(
+                    title = "Due",
                     onClick = { showDatePicker = true },
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.CalendarToday,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = uiState.dueDateTime?.let { formatDateTime(it) } ?: "Set due date",
-                    )
-                }
-                if (uiState.dueDateTime != null) {
-                    IconButton(onClick = { viewModel.updateDueDateTime(null) }) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = "Clear due date",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            // ── Priority ───────────────────────────────────────────────────────
-            SectionLabel("Priority")
-            PrioritySelector(
-                selected = uiState.priority,
-                onSelect = viewModel::updatePriority,
-            )
-
-            // ── High priority settings ─────────────────────────────────────────
-            if (uiState.priority == 2) {
-                HighPrioritySettings(
-                    maxSnoozeCount = uiState.maxSnoozeCount,
-                    maxRescheduleCount = uiState.maxRescheduleCount,
-                    onSnoozeChange = viewModel::updateMaxSnoozeCount,
-                    onRescheduleChange = viewModel::updateMaxRescheduleCount,
-                )
-            }
-
-            // ── Recurring ──────────────────────────────────────────────────────
-            SectionLabel("Recurring")
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    "Repeat this todo",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Switch(
-                    checked = uiState.isRecurring,
-                    onCheckedChange = viewModel::updateRecurring,
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                )
-            }
-
-            if (uiState.isRecurring) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "DAILY" to "Daily",
-                        "WEEKLY" to "Weekly",
-                        "MONTHLY" to "Monthly",
-                    ).forEach { (type, label) ->
-                        FilterChip(
-                            selected = uiState.recurringType == type,
-                            onClick = { viewModel.updateRecurringType(type) },
-                            label = { Text(label) },
-                        )
-                    }
-                }
-
-                if (uiState.recurringType == "WEEKLY") {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("MO", "TU", "WE", "TH", "FR", "SA", "SU").forEach { day ->
-                            FilterChip(
-                                selected = day in uiState.recurringDays,
-                                onClick = { viewModel.toggleRecurringDay(day) },
-                                label = { Text(day) },
+                    trailing = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = state.dueDateTime?.let { TimeFormat.dayAndClock(it) } ?: "No date",
+                                style = FfType.rowTitle,
+                                color = colors.accent,
                             )
+                            if (state.dueDateTime != null) {
+                                IconButton(onClick = { viewModel.updateDueDateTime(null) }) {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = "Remove due date",
+                                        tint = colors.textMuted,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+                RowDivider()
+                SwitchRow(
+                    title = "Repeat",
+                    subtitle = when {
+                        !state.isRecurring -> null
+                        state.dueDateTime == null -> "Needs a due date to know when to come back"
+                        else -> "A new one appears when this one is done"
+                    },
+                    checked = state.isRecurring,
+                    onCheckedChange = viewModel::updateRecurring,
+                )
+                if (state.isRecurring) {
+                    FlowRow(
+                        modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf("DAILY" to "Daily", "WEEKLY" to "Weekly", "MONTHLY" to "Monthly").forEach { (type, label) ->
+                            FfChip(
+                                label = label,
+                                selected = state.recurringType == type,
+                                onClick = { viewModel.updateRecurringType(type) },
+                            )
+                        }
+                    }
+                    if (state.recurringType == "WEEKLY") {
+                        FlowRow(
+                            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            listOf("MO", "TU", "WE", "TH", "FR", "SA", "SU").forEach { day ->
+                                FfChip(
+                                    label = day.lowercase().replaceFirstChar { it.uppercase() },
+                                    selected = day in state.recurringDays,
+                                    onClick = { viewModel.toggleRecurringDay(day) },
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
 
-            // ── Error ──────────────────────────────────────────────────────────
-            uiState.error?.let { err ->
-                Text(
-                    text = err,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+        // ── Priority ──────────────────────────────────────────────────────────
+        FormSection(
+            title = "Priority",
+            hint = "The priority decides how hard this todo is to ignore.",
+        ) {
+            FfCard {
+                PriorityRow(
+                    priority = 0, selected = state.priority == 0, onSelect = viewModel::updatePriority,
+                    title = "Low",
+                    detail = "One notification when it is due. Swipe it away whenever you like.",
+                )
+                RowDivider()
+                PriorityRow(
+                    priority = 1, selected = state.priority == 1, onSelect = viewModel::updatePriority,
+                    title = "Medium",
+                    detail = "Comes up on screen without sound, then stays in your notifications until it is done.",
+                )
+                RowDivider()
+                PriorityRow(
+                    priority = 2, selected = state.priority == 2, onSelect = viewModel::updatePriority,
+                    title = "High",
+                    detail = "Rings like an alarm and comes back every few minutes. No dismiss; snoozes and moves are limited.",
                 )
             }
+        }
 
-            // ── Save ───────────────────────────────────────────────────────────
-            Button(
-                onClick = { viewModel.saveTodo(onNavigateBack) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                enabled = !uiState.isSaving,
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Text(
-                        text = if (viewModel.isEditMode) "Save changes" else "Save",
-                        fontWeight = FontWeight.SemiBold,
+        // ── Speed bumps ───────────────────────────────────────────────────────
+        FormSection(
+            title = "Speed bumps",
+            hint = if (state.guardDefaults.enabled) {
+                "Small steps in front of the quick taps, so they stay a decision. " +
+                    "The defaults for each priority are in Settings."
+            } else {
+                "Speed bumps are switched off in Settings."
+            },
+        ) {
+            FfCard {
+                GuardAction.entries.forEachIndexed { index, action ->
+                    if (index > 0) RowDivider()
+                    GuardRow(
+                        title = guardTitle(action),
+                        guard = state.guardFor(action),
+                        note = if (state.guardOverrides[action] == null) "default" else "just this todo",
+                        enabled = state.guardDefaults.enabled,
+                        onClick = { editGuard = action },
                     )
                 }
             }
+        }
 
-            Spacer(Modifier.height(16.dp))
+        // ── Snoozes and moves ─────────────────────────────────────────────────
+        if (state.priority == 2) {
+            FormSection(
+                title = "Snoozes and moves",
+                hint = "Once they are used up, the alarm only stops when the todo is done. " +
+                    "You can still edit or delete it here at any time.",
+            ) {
+                FfCard {
+                    StepperRow(
+                        title = "Snoozes allowed",
+                        value = state.maxSnoozeCount,
+                        range = 1..ComplianceLimits.MAX_TODO_SNOOZE_LIMIT,
+                        onChange = viewModel::updateMaxSnoozeCount,
+                    )
+                    RowDivider()
+                    StepperRow(
+                        title = "Moves allowed",
+                        value = state.maxRescheduleCount.coerceIn(1, ComplianceLimits.MAX_TODO_RESCHEDULE_LIMIT),
+                        range = 1..ComplianceLimits.MAX_TODO_RESCHEDULE_LIMIT,
+                        onChange = viewModel::updateMaxRescheduleCount,
+                    )
+                }
+            }
+        }
+
+        // ── Checklist ─────────────────────────────────────────────────────────
+        FormSection(title = "Checklist") {
+            ChecklistEditor(
+                items = state.checklistItems,
+                onToggle = viewModel::toggleChecklistItem,
+                onRemove = viewModel::removeChecklistItem,
+                onAdd = viewModel::addChecklistItem,
+                onMove = viewModel::moveChecklistItem,
+            )
+        }
+
+        state.error?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.error)
         }
     }
 
-    // ── Date picker dialog ─────────────────────────────────────────────────────
+    // ── Date, then time ───────────────────────────────────────────────────────
     if (showDatePicker) {
+        val zone = ZoneId.systemDefault()
+        // The date picker thinks in UTC midnights; feed it the local date as such.
+        val initialUtc = state.dueDateTime?.let {
+            LocalDateTime.ofInstant(Instant.ofEpochMilli(it), zone).toLocalDate()
+                .atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+        }
+        val dateState = rememberDatePickerState(initialSelectedDateMillis = initialUtc)
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(
+                    enabled = dateState.selectedDateMillis != null,
                     onClick = {
-                        // Use the picker's selection; fall back to already-pending date
-                        val picked = datePickerState.selectedDateMillis ?: pendingDateMillis
-                        if (picked != null) {
-                            pendingDateMillis = picked
-                            showDatePicker = false
-                            showTimePicker = true
-                        }
+                        pendingDateMillis = dateState.selectedDateMillis
+                        showDatePicker = false
+                        showTimePicker = true
                     },
-                    enabled = datePickerState.selectedDateMillis != null || pendingDateMillis != null,
-                ) { Text("Next") }
+                ) { Text("Next", color = colors.accent) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = colors.textSecondary) }
             },
-        ) {
-            DatePicker(state = datePickerState)
-        }
+        ) { DatePicker(state = dateState) }
     }
 
-    // ── Time picker dialog ─────────────────────────────────────────────────────
     if (showTimePicker) {
+        val zone = ZoneId.systemDefault()
+        val current = state.dueDateTime?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it), zone) }
+        val timeState = rememberTimePickerState(
+            initialHour = current?.hour ?: 9,
+            initialMinute = current?.minute ?: 0,
+            is24Hour = true,
+        )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
-            title = { Text("Set time") },
+            containerColor = colors.surfaceVariant,
+            title = { Text("At what time?", style = MaterialTheme.typography.titleLarge, color = colors.text) },
             text = {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    TimePicker(state = timePickerState)
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    TimePicker(state = timeState)
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val dateMs = pendingDateMillis ?: return@TextButton
-                    viewModel.updateDueDateTime(combineDateAndTime(dateMs, timePickerState.hour, timePickerState.minute))
+                    val dateUtc = pendingDateMillis
+                    if (dateUtc != null) {
+                        val date = Instant.ofEpochMilli(dateUtc).atZone(ZoneOffset.UTC).toLocalDate()
+                        val due = date.atTime(timeState.hour, timeState.minute)
+                            .atZone(zone).toInstant().toEpochMilli()
+                        viewModel.updateDueDateTime(due)
+                    }
                     showTimePicker = false
-                }) { Text("OK") }
+                }) { Text("Set", color = colors.accent) }
             },
             dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel", color = colors.textSecondary) }
             },
         )
     }
 
-    if (showDiscardDialog) {
+    editGuard?.let { action ->
+        GuardEditorDialog(
+            title = guardTitle(action),
+            current = state.guardOverrides[action],
+            default = state.defaultGuard(action),
+            onSave = {
+                viewModel.updateGuard(action, it)
+                editGuard = null
+            },
+            onDismiss = { editGuard = null },
+        )
+    }
+
+    if (showDelete) {
+        DeleteDialog(
+            what = "this todo",
+            onConfirm = {
+                showDelete = false
+                viewModel.deleteTodo(onNavigateBack)
+            },
+            onDismiss = { showDelete = false },
+        )
+    }
+
+    if (showDiscard) {
         DiscardChangesDialog(
-            onDiscard = { showDiscardDialog = false; onNavigateBack() },
-            onKeepEditing = { showDiscardDialog = false },
+            onDiscard = { showDiscard = false; onNavigateBack() },
+            onKeepEditing = { showDiscard = false },
         )
     }
 }
 
-// ── Priority selector with description cards ──────────────────────────────────
-
-@Composable
-private fun PrioritySelector(selected: Int, onSelect: (Int) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        PriorityCard(
-            value = 0,
-            label = "Low",
-            accentColor = LowColor,
-            description = "Normal notification when due. No alarm screen. Dismiss and Done available directly.",
-            selected = selected == 0,
-            onClick = { onSelect(0) },
-        )
-        PriorityCard(
-            value = 1,
-            label = "Medium",
-            accentColor = MediumColor,
-            description = "Silent alarm screen (no sound/vibration). Snooze, reschedule, and dismiss available. Stays as a soft reminder after dismissal.",
-            selected = selected == 1,
-            onClick = { onSelect(1) },
-        )
-        PriorityCard(
-            value = 2,
-            label = "High",
-            accentColor = HighColor,
-            description = "Loud alarm screen with sound and vibration. No dismiss; Done requires confirmation. Keeps a persistent notification until completed. Snoozes and reschedules are limited — editing the todo in the app stays possible at any time.",
-            selected = selected == 2,
-            onClick = { onSelect(2) },
-        )
-    }
+private fun guardTitle(action: GuardAction): String = when (action) {
+    GuardAction.DONE -> "Marking it done"
+    GuardAction.SNOOZE -> "Snoozing"
+    GuardAction.RESCHEDULE -> "Rescheduling"
 }
 
 @Composable
-private fun PriorityCard(
-    value: Int,
-    label: String,
-    accentColor: Color,
-    description: String,
+private fun PriorityRow(
+    priority: Int,
     selected: Boolean,
-    onClick: () -> Unit,
+    onSelect: (Int) -> Unit,
+    title: String,
+    detail: String,
 ) {
-    val borderColor = if (selected) accentColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    val bgColor     = if (selected) accentColor.copy(alpha = 0.08f) else Color.Transparent
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-            .background(bgColor, RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-            .padding(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        FilterChip(
-            selected = selected,
-            onClick = onClick,
-            label = { Text(label, fontWeight = FontWeight.SemiBold) },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                selectedLabelColor     = accentColor,
-            ),
-            border = FilterChipDefaults.filterChipBorder(
-                enabled = true,
-                selected = selected,
-                selectedBorderColor = accentColor,
-            ),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text  = description,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-    }
-}
-
-// ── High priority snooze/reschedule limit settings ────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun HighPrioritySettings(
-    maxSnoozeCount: Int,
-    maxRescheduleCount: Int,
-    onSnoozeChange: (Int) -> Unit,
-    onRescheduleChange: (Int) -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                1.dp,
-                HighColor.copy(alpha = 0.3f),
-                RoundedCornerShape(12.dp),
+    val colors = FfTheme.colors
+    ListRow(
+        title = title,
+        subtitle = detail,
+        subtitleMaxLines = 3,
+        onClick = { onSelect(priority) },
+        leading = {
+            CompletionRing(
+                checked = false,
+                onClick = { onSelect(priority) },
+                color = colors.priority(priority),
+                contentDescription = "$title priority",
             )
-            .background(HighColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            "High priority limits",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = HighColor,
-        )
-        Text(
-            "Snooze delays the alarm by minutes; reschedule moves it to another time. " +
-                "Once both are used up, the alarm only stops by completing the todo — " +
-                "though you can always edit or delete it here.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        CountDropdown(
-            label = "Max snoozes",
-            value = maxSnoozeCount,
-            options = (1..ComplianceLimits.MAX_TODO_SNOOZE_LIMIT).toList(),
-            onChange = onSnoozeChange,
-        )
-        CountDropdown(
-            label = "Max reschedules",
-            value = maxRescheduleCount,
-            options = (1..ComplianceLimits.MAX_TODO_RESCHEDULE_LIMIT).toList(),
-            onChange = onRescheduleChange,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CountDropdown(
-    label: String,
-    value: Int,
-    options: List<Int>,
-    onChange: (Int) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-            modifier = Modifier.width(100.dp),
-        ) {
-            OutlinedTextField(
-                value = value.toString(),
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                singleLine = true,
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-            ) {
-                options.forEach { opt ->
-                    DropdownMenuItem(
-                        text = { Text(opt.toString()) },
-                        onClick = { onChange(opt); expanded = false },
-                    )
-                }
+        },
+        trailing = {
+            if (selected) {
+                Icon(Icons.Filled.Check, contentDescription = "Selected", tint = colors.accent, modifier = Modifier.size(20.dp))
+            } else {
+                Spacer(Modifier.size(20.dp))
             }
-        }
-    }
+        },
+    )
 }
-
-// ── Checklist editor ──────────────────────────────────────────────────────────
 
 @Composable
 private fun ChecklistEditor(
@@ -585,123 +437,86 @@ private fun ChecklistEditor(
     onAdd: (String) -> Unit,
     onMove: (from: Int, to: Int) -> Unit,
 ) {
-    var newItemText by remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        items.forEachIndexed { index, item ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    IconButton(
-                        onClick = { if (index > 0) onMove(index, index - 1) },
-                        enabled = index > 0,
-                        modifier = Modifier.size(24.dp),
-                    ) {
+    val colors = FfTheme.colors
+    var draft by remember { mutableStateOf("") }
+    val submit = {
+        if (draft.isNotBlank()) {
+            onAdd(draft)
+            draft = ""
+        }
+    }
+    FfCard {
+        if (items.isNotEmpty()) {
+            // Items are identified by position: two items may carry the same text.
+            val indexed = items.withIndex().toList()
+            ReorderableColumn(
+                items = indexed,
+                key = { "${it.index}:${it.value.text}" },
+                rowHeight = 52.dp,
+                onMove = onMove,
+            ) { entry, handle, _ ->
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(start = 2.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(modifier = handle.size(40.dp), contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Filled.KeyboardArrowUp,
-                            contentDescription = "Move up",
-                            tint = if (index > 0) MaterialTheme.colorScheme.onSurfaceVariant
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                            modifier = Modifier.size(16.dp),
+                            Icons.Filled.DragHandle,
+                            contentDescription = "Drag to reorder",
+                            tint = colors.textFaint,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
-                    IconButton(
-                        onClick = { if (index < items.lastIndex) onMove(index, index + 1) },
-                        enabled = index < items.lastIndex,
-                        modifier = Modifier.size(24.dp),
-                    ) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowDown,
-                            contentDescription = "Move down",
-                            tint = if (index < items.lastIndex) MaterialTheme.colorScheme.onSurfaceVariant
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-                Checkbox(
-                    checked = item.done,
-                    onCheckedChange = { onToggle(index) },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = MaterialTheme.colorScheme.primary,
-                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                )
-                Text(
-                    text = item.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (item.done) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onBackground,
-                    textDecoration = if (item.done) TextDecoration.LineThrough else TextDecoration.None,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { onRemove(index) }) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "Remove",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
+                    CompletionRing(
+                        checked = entry.value.done,
+                        onClick = { onToggle(entry.index) },
+                        contentDescription = entry.value.text,
                     )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = entry.value.text,
+                        style = FfType.rowTitle,
+                        color = if (entry.value.done) colors.textMuted else colors.text,
+                        maxLines = 2,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { onRemove(entry.index) }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Remove ${entry.value.text}",
+                            tint = colors.textMuted,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
+            RowDivider()
         }
-
-        Spacer(Modifier.height(4.dp))
-
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
-                value = newItemText,
-                onValueChange = { newItemText = it },
-                placeholder = { Text("New item") },
-                singleLine = true,
+            FfTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                placeholder = "Add an item",
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier.weight(1f),
             )
-            FilledTonalButton(
-                onClick = { onAdd(newItemText); newItemText = "" },
-                enabled = newItemText.isNotBlank(),
-                shape = RoundedCornerShape(8.dp),
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
+            IconButton(onClick = submit, enabled = draft.isNotBlank()) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Add item",
+                    tint = if (draft.isNotBlank()) colors.accent else colors.textFaint,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable(enabled = false) {},
+                )
             }
         }
     }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy \u00b7 HH:mm", Locale.ENGLISH)
-
-private fun formatDateTime(millis: Long): String =
-    LocalDateTime
-        .ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault())
-        .format(dateFormatter)
-
-private fun combineDateAndTime(dateMillis: Long, hour: Int, minute: Int): Long {
-    val ldt = LocalDateTime
-        .ofInstant(Instant.ofEpochMilli(dateMillis), ZoneId.systemDefault())
-        .withHour(hour)
-        .withMinute(minute)
-        .withSecond(0)
-        .withNano(0)
-    return ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 }

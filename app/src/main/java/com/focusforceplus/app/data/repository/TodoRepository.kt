@@ -6,50 +6,51 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Plain storage access for todos. It deliberately knows nothing about alarms or
+ * notifications: everything that changes what a todo should be doing right now
+ * goes through [com.focusforceplus.app.util.TodoReminderEngine], which writes
+ * here and then brings alarms and notifications in line.
+ */
 @Singleton
 class TodoRepository @Inject constructor(
-    private val todoDao: TodoDao
+    private val todoDao: TodoDao,
 ) {
+    /** Open and completed todos; nothing from the trash. */
+    fun getAllTodos(): Flow<List<TodoEntity>> = todoDao.getAll()
 
-    fun getAllTodos(): Flow<List<TodoEntity>> =
-        todoDao.getAll()
+    fun getUncompletedTodos(): Flow<List<TodoEntity>> = todoDao.getUncompleted()
 
-    fun getUncompletedTodos(): Flow<List<TodoEntity>> =
-        todoDao.getUncompleted()
+    fun getCompletedTodos(): Flow<List<TodoEntity>> = todoDao.getCompleted()
 
-    fun getOverdueTodos(currentTime: Long): Flow<List<TodoEntity>> =
-        todoDao.getOverdue(currentTime)
+    fun getTrashedTodos(): Flow<List<TodoEntity>> = todoDao.getTrashed()
 
-    fun getTodosForTimeRange(start: Long, end: Long): Flow<List<TodoEntity>> =
-        todoDao.getScheduledForTimeRange(start, end)
+    fun observeTodo(id: Long): Flow<TodoEntity?> = todoDao.observeById(id)
 
-    suspend fun insertTodo(todo: TodoEntity): Long =
-        todoDao.insert(todo)
+    suspend fun getTodoById(id: Long): TodoEntity? = todoDao.getById(id)
 
-    suspend fun updateTodo(todo: TodoEntity) =
-        todoDao.update(todo)
+    suspend fun getOpenTodosOnce(): List<TodoEntity> = todoDao.getOpenOnce()
 
-    suspend fun deleteTodo(todo: TodoEntity) =
-        todoDao.delete(todo)
+    suspend fun getAllActiveOnce(): List<TodoEntity> = todoDao.getAllActiveOnce()
 
-    suspend fun markCompleted(id: Long, completedAt: Long) =
-        todoDao.markCompleted(id, completedAt)
+    suspend fun insertTodo(todo: TodoEntity): Long = todoDao.insert(todo)
 
-    suspend fun updateSnoozeCount(id: Long, count: Int) =
-        todoDao.updateSnoozeCount(id, count)
+    suspend fun updateTodo(todo: TodoEntity) = todoDao.update(todo)
 
-    suspend fun updateRescheduleCount(id: Long, count: Int) =
-        todoDao.updateRescheduleCount(id, count)
+    suspend fun updateChecklistJson(id: Long, json: String?) = todoDao.updateChecklistJson(id, json)
 
-    suspend fun updateChecklistJson(id: Long, json: String?) =
-        todoDao.updateChecklistJson(id, json)
+    // ── Trash ─────────────────────────────────────────────────────────────────
 
-    fun getCompletedTodos(): Flow<List<TodoEntity>> =
-        todoDao.getCompleted()
+    suspend fun moveToTrash(id: Long) = todoDao.moveToTrash(id, System.currentTimeMillis())
 
-    suspend fun getTodoById(id: Long): TodoEntity? =
-        todoDao.getById(id)
+    suspend fun restoreFromTrash(id: Long) = todoDao.restoreFromTrash(id)
 
-    suspend fun deleteCompletedBefore(beforeTimestamp: Long) =
-        todoDao.deleteCompletedBefore(beforeTimestamp)
+    suspend fun deleteForever(id: Long) = todoDao.deleteForever(id)
+
+    suspend fun emptyTrash() = todoDao.emptyTrash()
+
+    suspend fun purgeTrashedBefore(before: Long) = todoDao.purgeTrashedBefore(before)
+
+    suspend fun trashCompletedBefore(before: Long) =
+        todoDao.trashCompletedBefore(before, System.currentTimeMillis())
 }

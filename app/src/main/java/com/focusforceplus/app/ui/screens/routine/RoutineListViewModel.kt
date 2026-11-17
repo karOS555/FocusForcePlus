@@ -71,7 +71,7 @@ class RoutineListViewModel @Inject constructor(
             alarmHelper.cancelRoutineAlarms(routine.id)
             alarmHelper.cancelRescheduleAlarm(routine.id)
             rescheduleTracker.clear(routine.id)
-            repository.deleteRoutine(routine)
+            repository.moveToTrash(routine.id)
         }
         return true
     }

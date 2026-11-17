@@ -164,7 +164,7 @@ class FocusListViewModel @Inject constructor(
         }
         viewModelScope.launch {
             focusAlarmHelper.cancelSessionAlarms(session.id)
-            repository.deleteSession(session)
+            repository.moveToTrash(session.id)
         }
     }
 

@@ -76,7 +76,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.focusforceplus.app.ui.theme.Error
 import com.focusforceplus.app.ui.theme.Warning
 import com.focusforceplus.app.util.PermissionHelper
-import com.focusforceplus.app.util.TodoAlarmHelper
+import com.focusforceplus.app.util.TodoAlarmScheduler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -247,10 +247,10 @@ fun SettingsScreen(
                             }
                         }
 
-                        if (uiState.digestTimes.size < TodoAlarmHelper.MAX_DIGEST_SLOTS) {
+                        if (uiState.digestTimes.size < TodoAlarmScheduler.MAX_DIGEST_SLOTS) {
                             TextButton(
                                 onClick = {
-                                    editingSlot = TodoAlarmHelper.MAX_DIGEST_SLOTS
+                                    editingSlot = TodoAlarmScheduler.MAX_DIGEST_SLOTS
                                     showTimePicker = true
                                 },
                             ) {

@@ -63,7 +63,6 @@ fun NavEditSheet(
 ) {
     val colors = FfTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var confirmOff by remember { mutableStateOf<AppModule?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -96,25 +95,46 @@ fun NavEditSheet(
                 color = colors.textMuted,
             )
             Spacer(Modifier.height(16.dp))
+            NavEditor(
+                config = config,
+                onMove = onMove,
+                onSetShown = onSetShown,
+                onSetModuleOn = onSetModuleOn,
+            )
+        }
+    }
+}
 
-            FfCard {
-                ReorderableColumn(
-                    items = config.order,
-                    key = { it.key },
-                    rowHeight = ROW_HEIGHT,
-                    onMove = onMove,
-                ) { module, handle, _ ->
-                    NavEditRow(
-                        module = module,
-                        state = config.state(module),
-                        showDivider = config.order.firstOrNull() != module,
-                        handle = handle,
-                        onSetShown = { onSetShown(module, it) },
-                        onSwitchOff = { confirmOff = module },
-                        onSwitchOn = { onSetModuleOn(module, true) },
-                    )
-                }
-            }
+/**
+ * The arrangeable list of everything that can be in the bar. Used by the sheet
+ * behind the bar's Edit entry and by the last steps of onboarding.
+ */
+@Composable
+fun NavEditor(
+    config: NavConfig,
+    onMove: (from: Int, to: Int) -> Unit,
+    onSetShown: (AppModule, Boolean) -> Unit,
+    onSetModuleOn: (AppModule, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var confirmOff by remember { mutableStateOf<AppModule?>(null) }
+
+    FfCard(modifier = modifier) {
+        ReorderableColumn(
+            items = config.order,
+            key = { it.key },
+            rowHeight = ROW_HEIGHT,
+            onMove = onMove,
+        ) { module, handle, _ ->
+            NavEditRow(
+                module = module,
+                state = config.state(module),
+                showDivider = config.order.firstOrNull() != module,
+                handle = handle,
+                onSetShown = { onSetShown(module, it) },
+                onSwitchOff = { confirmOff = module },
+                onSwitchOn = { onSetModuleOn(module, true) },
+            )
         }
     }
 
@@ -122,7 +142,7 @@ fun NavEditSheet(
         ConfirmDialog(
             title = "Switch ${module.label} off?",
             message = "It leaves the bar and the home screen, and its reminders stay quiet " +
-                "until you switch it back on here. Nothing is deleted.",
+                "until you switch it back on. Nothing is deleted.",
             confirmLabel = "Switch off",
             onConfirm = {
                 onSetModuleOn(module, false)

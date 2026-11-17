@@ -273,7 +273,7 @@ class RoutineViewModel @Inject constructor(
             try {
                 repository.getRoutineById(editRoutineId).first()?.let { entity ->
                     alarmHelper.cancelRoutineAlarms(entity.id)
-                    repository.deleteRoutine(entity)
+                    repository.moveToTrash(entity.id)
                     onSuccess()
                 }
             } catch (e: Exception) {

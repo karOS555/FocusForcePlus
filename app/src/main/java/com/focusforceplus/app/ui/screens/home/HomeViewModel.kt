@@ -11,12 +11,9 @@ import com.focusforceplus.app.data.repository.TodoRepository
 import com.focusforceplus.app.service.ActiveFocusSession
 import com.focusforceplus.app.service.ActiveRoutineRegistry
 import com.focusforceplus.app.service.FocusSessionRegistry
-import com.focusforceplus.app.service.TodoAlarmForegroundService
 import com.focusforceplus.app.util.PermissionHelper
-import com.focusforceplus.app.util.TodoAlarmHelper
-import com.focusforceplus.app.util.TodoNotificationHelper
+import com.focusforceplus.app.util.TodoReminderEngine
 import com.focusforceplus.app.util.UsageTracker
-import com.focusforceplus.app.util.nextOccurrenceMillis
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,8 +74,7 @@ class HomeViewModel @Inject constructor(
     routineRegistry: ActiveRoutineRegistry,
     focusRegistry: FocusSessionRegistry,
     private val usageTracker: UsageTracker,
-    private val todoAlarmHelper: TodoAlarmHelper,
-    private val todoNotifHelper: TodoNotificationHelper,
+    private val todoReminders: TodoReminderEngine,
     private val sleepAlarmHelper: com.focusforceplus.app.util.SleepAlarmHelper,
     private val tamperGuard: com.focusforceplus.app.compliance.TamperProtectionGuard,
 ) : ViewModel() {
@@ -227,31 +223,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** Marks a todo done straight from the dashboard (same side effects as the list). */
+    /** Marks a todo done straight from the dashboard. */
     fun completeTodo(todo: TodoEntity) {
-        viewModelScope.launch {
-            todoRepository.markCompleted(todo.id, System.currentTimeMillis())
-            todoAlarmHelper.cancelTodoAlarm(todo.id)
-            todoAlarmHelper.cancelTodoSnoozeAlarm(todo.id)
-            runCatching {
-                context.startService(TodoAlarmForegroundService.stopIntent(context))
-            }
-            todoNotifHelper.cancelNotification(TodoNotificationHelper.todoAlarmNotificationId(todo.id))
-            todoNotifHelper.cancelNotification(TodoNotificationHelper.todoDigestNotificationId(todo.id))
-            if (todo.isRecurring && todo.recurringPattern != null && todo.dueDateTime != null) {
-                val next = todo.copy(
-                    id = 0L,
-                    dueDateTime = nextOccurrenceMillis(todo.dueDateTime, todo.recurringPattern),
-                    isCompleted = false,
-                    completedAt = null,
-                    snoozeCount = 0,
-                    rescheduleCount = 0,
-                    postponedTo = null,
-                )
-                val newId = todoRepository.insertTodo(next)
-                todoAlarmHelper.scheduleTodoAlarm(next.copy(id = newId))
-            }
-        }
+        viewModelScope.launch { todoReminders.complete(todo.id) }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

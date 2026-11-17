@@ -9,7 +9,6 @@ import com.focusforceplus.app.data.repository.FocusRepository
 import com.focusforceplus.app.data.repository.NavRepository
 import com.focusforceplus.app.data.repository.RoutineRepository
 import com.focusforceplus.app.data.repository.SleepRepository
-import com.focusforceplus.app.data.repository.TodoRepository
 import com.focusforceplus.app.service.ActiveRoutineRegistry
 import com.focusforceplus.app.service.FocusSessionRegistry
 import com.focusforceplus.app.ui.navigation.AppModule
@@ -37,11 +36,10 @@ class ModuleController @Inject constructor(
     private val focusRepository: FocusRepository,
     private val blockerRepository: BlockerRepository,
     private val sleepRepository: SleepRepository,
-    private val todoRepository: TodoRepository,
     private val alarmHelper: AlarmHelper,
     private val focusAlarmHelper: FocusAlarmHelper,
     private val sleepAlarmHelper: SleepAlarmHelper,
-    private val todoAlarmHelper: TodoAlarmHelper,
+    private val todoReminders: TodoReminderEngine,
     private val alarmRearmer: AlarmRearmer,
     private val activeRoutineRegistry: ActiveRoutineRegistry,
     private val focusSessionRegistry: FocusSessionRegistry,
@@ -109,13 +107,7 @@ class ModuleController @Inject constructor(
             AppModule.ROUTINES -> runCatching {
                 routineRepository.getAllRoutines().first().forEach { alarmHelper.cancelRoutineAlarms(it.id) }
             }
-            AppModule.TODOS -> runCatching {
-                todoRepository.getAllTodos().first().forEach {
-                    todoAlarmHelper.cancelTodoAlarm(it.id)
-                    todoAlarmHelper.cancelTodoSnoozeAlarm(it.id)
-                }
-                todoAlarmHelper.cancelAllDigestAlarms()
-            }
+            AppModule.TODOS -> runCatching { todoReminders.pauseAll() }
             AppModule.FOCUS -> runCatching {
                 focusRepository.getAllSessions().first().forEach { focusAlarmHelper.cancelSessionAlarms(it.id) }
             }

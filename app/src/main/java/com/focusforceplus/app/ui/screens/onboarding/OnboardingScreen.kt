@@ -2,12 +2,17 @@ package com.focusforceplus.app.ui.screens.onboarding
 
 import android.Manifest
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,55 +28,60 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DoNotDisturbOn
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.focusforceplus.app.R
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.focusforceplus.app.ui.components.FfCard
+import com.focusforceplus.app.ui.components.FfPaddedCard
+import com.focusforceplus.app.ui.components.IconCircle
+import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.LogoMark
+import com.focusforceplus.app.ui.components.OutlineButton
+import com.focusforceplus.app.ui.components.PrimaryButton
+import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.components.TextAction
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.navigation.Dock
+import com.focusforceplus.app.ui.navigation.NavEditor
+import com.focusforceplus.app.ui.navigation.NavViewModel
+import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.util.PermissionHelper
 import kotlinx.coroutines.launch
 
+private const val PAGE_COUNT = 7
+
 /**
- * First-launch onboarding: welcome + local-data promise + health disclaimer,
- * permission explanations (why each one exists), a grant checklist, and an optional
- * jump into creating the first routine.
+ * First launch: what the app is and what stays private, why each permission is
+ * asked for and a place to grant them, how updates arrive, a word of thanks, the
+ * navigation bar arranged to taste, and an optional first routine.
  *
  * Accessibility and Usage Access deliberately route through the prominent
  * disclosure screen instead of straight to system settings (Golden Rule #10).
@@ -81,9 +91,14 @@ fun OnboardingScreen(
     onFinish: (createFirstRoutine: Boolean) -> Unit,
     onOpenDisclosure: (String) -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel(),
+    navViewModel: NavViewModel = hiltViewModel(),
 ) {
-    val pagerState = rememberPagerState(pageCount = { 6 })
+    val colors = FfTheme.colors
+    val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val scope = rememberCoroutineScope()
+    fun next() {
+        scope.launch { pagerState.animateScrollToPage((pagerState.currentPage + 1).coerceAtMost(PAGE_COUNT - 1)) }
+    }
 
     // Re-check grants whenever the user returns from system settings.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -98,245 +113,217 @@ fun OnboardingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(colors.background),
     ) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f),
-            userScrollEnabled = true,
         ) { page ->
             when (page) {
-                0 -> WelcomePage(onContinue = { scope.launch { pagerState.animateScrollToPage(1) } })
-                1 -> PermissionsExplainedPage(onContinue = { scope.launch { pagerState.animateScrollToPage(2) } })
-                2 -> PermissionChecklistPage(
-                    viewModel = viewModel,
-                    onOpenDisclosure = onOpenDisclosure,
-                    onContinue = { scope.launch { pagerState.animateScrollToPage(3) } },
-                )
-                3 -> UpdatesPage(onContinue = { scope.launch { pagerState.animateScrollToPage(4) } })
-                4 -> ThanksPage(onContinue = { scope.launch { pagerState.animateScrollToPage(5) } })
-                5 -> FirstRoutinePage(
+                0 -> WelcomePage(onContinue = ::next)
+                1 -> PermissionsExplainedPage(onContinue = ::next)
+                2 -> PermissionChecklistPage(viewModel, onOpenDisclosure, onContinue = ::next)
+                3 -> UpdatesPage(onContinue = ::next)
+                4 -> ThanksPage(onContinue = ::next)
+                5 -> NavBarPage(navViewModel, onContinue = ::next)
+                else -> FinishPage(
+                    navViewModel = navViewModel,
                     onCreateRoutine = { viewModel.completeOnboarding { onFinish(true) } },
                     onLater = { viewModel.completeOnboarding { onFinish(false) } },
                 )
             }
         }
 
-        // Page indicator
+        // Where you are
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp),
+                .padding(top = 4.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            repeat(pagerState.pageCount) { index ->
+            repeat(PAGE_COUNT) { index ->
+                val current = pagerState.currentPage == index
+                val width by animateDpAsState(if (current) 18.dp else 6.dp, label = "dot")
+                val color by animateColorAsState(if (current) colors.accent else colors.surfaceHigh, label = "dot")
                 Box(
                     modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .size(if (pagerState.currentPage == index) 10.dp else 8.dp)
-                        .background(
-                            if (pagerState.currentPage == index) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant,
-                            CircleShape,
-                        ),
+                        .padding(horizontal = 3.dp)
+                        .height(6.dp)
+                        .width(width)
+                        .clip(CircleShape)
+                        .background(color),
                 )
             }
         }
     }
 }
 
-// ── Page 1: Welcome ───────────────────────────────────────────────────────────
+/**
+ * One page: a title and a line under it, content that scrolls, and the main
+ * button pinned to the bottom so it is never below the fold.
+ */
+@Composable
+private fun OnboardingPage(
+    title: String,
+    body: String?,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
+    centered: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit = {},
+) {
+    val colors = FfTheme.colors
+    Column(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(top = 40.dp, bottom = 20.dp),
+            horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
+            verticalArrangement = if (centered) Arrangement.Center else Arrangement.Top,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.text,
+                textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+            )
+            if (body != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.textMuted,
+                    textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+            content()
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PrimaryButton(text = primaryLabel, onClick = onPrimary, modifier = Modifier.fillMaxWidth())
+            if (secondaryLabel != null && onSecondary != null) {
+                OutlineButton(text = secondaryLabel, onClick = onSecondary, modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoCard(title: String, body: String, content: @Composable ColumnScope.() -> Unit = {}) {
+    val colors = FfTheme.colors
+    FfPaddedCard(spacing = 4.dp) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = colors.text)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        content()
+    }
+}
+
+// ── Welcome ───────────────────────────────────────────────────────────────────
 
 @Composable
 private fun WelcomePage(onContinue: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        com.focusforceplus.app.ui.components.LogoMark(size = 88.dp)
-        Spacer(Modifier.height(20.dp))
-
-        Row {
-            Text(
-                "FOCUSFORCE",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                "+",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            "Your tool for focus and discipline",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    val colors = FfTheme.colors
+    Column(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(top = 48.dp, bottom = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Lock,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Yours, and only yours",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                Text(
-                    "Everything stays on your device. No account, no cloud, no tracking, " +
-                        "no ads - the app has no internet access at all.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+            LogoMark(size = 72.dp)
+            Spacer(Modifier.height(18.dp))
+            Text(
+                "FocusForce+",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.text,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Routines, todos, an app blocker and focus sessions in one app, made to be " +
+                    "hard to ignore.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textMuted,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(28.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                InfoCard(
+                    title = "Everything stays on your phone",
+                    body = "No account, no cloud, no tracking, no ads. The app has no internet " +
+                        "access at all.",
+                )
+                InfoCard(
+                    title = "An honest note",
+                    body = "FocusForce+ is a self-help tool, not a medical app. It does not " +
+                        "diagnose or treat ADHD or anything else, and it is no substitute for " +
+                        "professional care. If you are struggling, please talk to a doctor or " +
+                        "a therapist.",
                 )
             }
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.FavoriteBorder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "An honest note",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                Text(
-                    "FocusForce+ is a self-help tool for building focus and habits - not a " +
-                        "medical app. It doesn't diagnose, treat, or cure ADHD or any other " +
-                        "condition, and it's no substitute for professional care. If you're " +
-                        "struggling, please reach out to a qualified healthcare professional.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        Button(
+        PrimaryButton(
+            text = "Get started",
             onClick = onContinue,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Continue") }
+                .padding(horizontal = 24.dp),
+        )
     }
 }
 
-// ── Page 2: Permissions explained ─────────────────────────────────────────────
+// ── Why permissions ───────────────────────────────────────────────────────────
 
 @Composable
 private fun PermissionsExplainedPage(onContinue: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    OnboardingPage(
+        title = "Why it asks for permissions",
+        body = "Each permission powers one feature. All of them are optional: skip one and " +
+            "that feature simply stays off.",
+        primaryLabel = "Set them up",
+        onPrimary = onContinue,
     ) {
-        Text(
-            "Why FocusForce+ asks for permissions",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
+        val rows = listOf(
+            Triple(Icons.Filled.Notifications, "Notifications", "Alarms and reminders for routines and todos."),
+            Triple(Icons.Filled.AccessTime, "Exact alarms", "So reminders go off on the minute."),
+            Triple(Icons.Filled.Layers, "Display over other apps", "Shows the alarm screen while you are in another app."),
+            Triple(
+                Icons.Filled.Accessibility, "Accessibility service",
+                "Notices which app is opened, so blocked apps can be covered. Reads no screen content.",
+            ),
+            Triple(Icons.Filled.QueryStats, "Usage access", "Counts app time for daily limits and your stats."),
+            Triple(Icons.Filled.BatteryChargingFull, "Battery: unrestricted", "Keeps reminders reliable on strict battery savers."),
+            Triple(Icons.Filled.DoNotDisturbOn, "Do Not Disturb access", "Lets focus and sleep silence interruptions."),
         )
-        Text(
-            "Each permission powers exactly one feature. Everything is optional - " +
-                "skip any of them and the related feature simply stays off.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(6.dp))
-
-        ExplainRow(Icons.Filled.Notifications, "Notifications", "Routine alarms and todo reminders.")
-        ExplainRow(Icons.Filled.AccessTime, "Exact alarms", "So reminders fire exactly on time.")
-        ExplainRow(Icons.Filled.Layers, "Display over other apps", "Shows the alarm screen while you are in another app.")
-        ExplainRow(Icons.Filled.Accessibility, "Accessibility service", "Detects which app you open, so blocked apps can be covered. Reads no screen content.")
-        ExplainRow(Icons.Filled.QueryStats, "Usage access", "Measures app usage for daily limits and your screen-time stats.")
-        ExplainRow(Icons.Filled.BatteryChargingFull, "Battery: unrestricted", "Keeps reminders reliable on aggressive battery savers.")
-        ExplainRow(Icons.Filled.DoNotDisturbOn, "Do Not Disturb access", "Lets focus sessions silence interruptions.")
-
-        Spacer(Modifier.height(20.dp))
-
-        Button(
-            onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Set up permissions") }
-    }
-}
-
-@Composable
-private fun ExplainRow(icon: ImageVector, title: String, text: String) {
-    Row(verticalAlignment = Alignment.Top) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .size(20.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        FfCard {
+            rows.forEachIndexed { index, (icon, title, detail) ->
+                if (index > 0) RowDivider()
+                ListRow(
+                    title = title,
+                    subtitle = detail,
+                    subtitleMaxLines = 3,
+                    leading = { IconCircle(icon = icon, size = 34.dp) },
+                )
+            }
         }
     }
 }
 
-// ── Page 3: Permission checklist ──────────────────────────────────────────────
+// ── Grant ─────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun PermissionChecklistPage(
@@ -346,328 +333,237 @@ private fun PermissionChecklistPage(
 ) {
     val context = LocalContext.current
     val perms by viewModel.permissions.collectAsState()
-
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { viewModel.refreshPermissions() }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    OnboardingPage(
+        title = "Grant permissions",
+        body = "Tap Grant for the ones you want. All of them can be changed later in Settings.",
+        primaryLabel = "Continue",
+        onPrimary = onContinue,
     ) {
-        Text(
-            "Grant permissions",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            "You can skip any of these and grant them later from Settings.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(6.dp))
-
-        ChecklistRow("Notifications", perms.notifications) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        FfCard {
+            GrantRow("Notifications", perms.notifications) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
-        }
-        ChecklistRow("Exact alarms", perms.exactAlarms) {
-            PermissionHelper.openExactAlarmSettings(context)
-        }
-        ChecklistRow("Display over other apps", perms.overlay) {
-            PermissionHelper.openOverlaySettings(context)
-        }
-        // Only offered where the phone actually has the screen for it — several
-        // OEMs (Samsung One UI) ship no full-screen-notification toggle at all,
-        // and a row that cannot be ticked reads as a broken app.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-            (perms.fullScreenIntent || PermissionHelper.hasFullScreenIntentSettingsScreen(context))
-        ) {
-            ChecklistRow("Full-screen alarms", perms.fullScreenIntent) {
-                PermissionHelper.openFullScreenIntentSettings(context)
+            RowDivider()
+            GrantRow("Exact alarms", perms.exactAlarms) { PermissionHelper.openExactAlarmSettings(context) }
+            RowDivider()
+            GrantRow("Display over other apps", perms.overlay) { PermissionHelper.openOverlaySettings(context) }
+            // Only offered where the phone actually has the screen for it. Several
+            // OEMs (Samsung One UI) ship no full-screen-notification toggle at all,
+            // and a row that cannot be ticked reads as a broken app.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                (perms.fullScreenIntent || PermissionHelper.hasFullScreenIntentSettingsScreen(context))
+            ) {
+                RowDivider()
+                GrantRow("Full-screen alarms", perms.fullScreenIntent) {
+                    PermissionHelper.openFullScreenIntentSettings(context)
+                }
             }
+            RowDivider()
+            GrantRow("Accessibility (app blocker)", perms.accessibility) { onOpenDisclosure("accessibility") }
+            RowDivider()
+            GrantRow("Usage access (daily limits)", perms.usageStats) { onOpenDisclosure("usage") }
+            RowDivider()
+            GrantRow("Battery: unrestricted", perms.batteryUnrestricted) {
+                PermissionHelper.openBatteryOptimizationSettings(context)
+            }
+            RowDivider()
+            GrantRow("Do Not Disturb access", perms.dndAccess) { PermissionHelper.openDndAccessSettings(context) }
         }
-        ChecklistRow("Accessibility (app blocker)", perms.accessibility) {
-            onOpenDisclosure("accessibility")
-        }
-        ChecklistRow("Usage access (daily limits)", perms.usageStats) {
-            onOpenDisclosure("usage")
-        }
-        ChecklistRow("Battery: unrestricted", perms.batteryUnrestricted) {
-            PermissionHelper.openBatteryOptimizationSettings(context)
-        }
-        ChecklistRow("Do Not Disturb access", perms.dndAccess) {
-            PermissionHelper.openDndAccessSettings(context)
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Continue") }
     }
 }
 
 @Composable
-private fun ChecklistRow(
-    title: String,
-    granted: Boolean,
-    onGrant: () -> Unit,
-) {
-    Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = if (granted) Icons.Filled.Check else Icons.Filled.Close,
-                contentDescription = if (granted) "Granted" else "Not granted",
-                tint = if (granted) Color(0xFF34d399) else MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f),
-            )
-            if (!granted) {
-                TextButton(onClick = onGrant) { Text("Grant") }
+private fun GrantRow(title: String, granted: Boolean, onGrant: () -> Unit) {
+    val colors = FfTheme.colors
+    ListRow(
+        title = title,
+        subtitle = if (granted) "Granted" else null,
+        subtitleColor = colors.success,
+        onClick = if (granted) null else onGrant,
+        trailing = {
+            if (granted) {
+                Icon(Icons.Filled.Check, contentDescription = "Granted", tint = colors.success)
+            } else {
+                TextAction("Grant", onClick = onGrant)
             }
-        }
-    }
+        },
+    )
 }
 
-// ── Page 4: Updates ───────────────────────────────────────────────────────────
+// ── Updates ───────────────────────────────────────────────────────────────────
 
 @Composable
 private fun UpdatesPage(onContinue: () -> Unit) {
     val uriHandler = LocalUriHandler.current
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    OnboardingPage(
+        title = "Keeping it up to date",
+        body = "FocusForce+ is not in an app store yet, and without internet access it " +
+            "cannot look for updates itself. Two ways to stay current:",
+        primaryLabel = "Continue",
+        onPrimary = onContinue,
     ) {
-        Icon(
-            Icons.Filled.SystemUpdate,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(56.dp),
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Keeping the app updated",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "FocusForce+ isn't on the Play Store yet, so updates don't arrive on their own. " +
-                "And because the app has no internet access, it can't check for them itself. " +
-                "Two easy ways to stay current:",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(20.dp))
-
-        UpdateOptionCard(
-            title = "Check it yourself",
-            body = "Settings > About > Check for updates opens the releases page, where " +
-                "you can see if there's a newer version. Or just watch the GitHub repo.",
-        )
-        Spacer(Modifier.height(12.dp))
-        UpdateOptionCard(
-            title = "Or let it update automatically",
-            body = "Install FocusForce+ through Obtainium, an app that watches GitHub " +
-                "releases and updates directly-installed apps for you. Set it once and " +
-                "forget it. FocusForce+ still never goes online, Obtainium does the checking.",
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(
-            onClick = { uriHandler.openUri("https://github.com/ImranR98/Obtainium") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Get Obtainium") }
-
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Continue") }
-    }
-}
-
-@Composable
-private fun UpdateOptionCard(title: String, body: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            InfoCard(
+                title = "Check now and then",
+                body = "Settings > About > Check for updates opens the releases page, so you " +
+                    "can see whether there is a newer version.",
             )
-            Text(
-                body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            InfoCard(
+                title = "Or let Obtainium do it",
+                body = "Obtainium watches GitHub releases and updates apps you installed " +
+                    "directly. FocusForce+ itself still never goes online.",
+            ) {
+                Spacer(Modifier.height(8.dp))
+                OutlineButton(
+                    text = "Get Obtainium",
+                    onClick = { uriHandler.openUri("https://github.com/ImranR98/Obtainium") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
 
-// ── Page 5: Thanks ────────────────────────────────────────────────────────────
+// ── Thanks ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ThanksPage(onContinue: () -> Unit) {
     val uriHandler = LocalUriHandler.current
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    OnboardingPage(
+        title = "Thanks for trying it",
+        body = "I built FocusForce+ for myself, because nothing I tried was stubborn enough " +
+            "to get me going. Putting it on GitHub came later. If it helps you too, that is " +
+            "the best outcome I could ask for.",
+        primaryLabel = "Continue",
+        onPrimary = onContinue,
     ) {
-        Icon(
-            Icons.Filled.Favorite,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(56.dp),
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Thanks for giving it a try",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "I built FocusForce+ for myself, because nothing I tried was stubborn " +
-                "enough to get me going. Putting it on GitHub came later. It means a " +
-                "lot that you are here, and if it helps you too, that is the best " +
-                "outcome I could ask for.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(16.dp))
-
-        UpdateOptionCard(
-            title = "A star costs you two seconds",
-            body = "The app collects nothing and phones home to nobody, so a star on " +
-                "GitHub is the only way I get to see that anyone is using this.",
-        )
-        Spacer(Modifier.height(10.dp))
-        UpdateOptionCard(
-            title = "Tell me what breaks, or what doesn't",
-            body = "Bugs, rough edges, ideas, anything that annoyed you. And if it all " +
-                "just worked, that is worth writing too. Without analytics I have no " +
-                "other way of knowing.",
-        )
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedButton(
-            onClick = { uriHandler.openUri("https://github.com/karOS555/FocusForcePlus") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Star on GitHub") }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = {
-                uriHandler.openUri("https://github.com/karOS555/FocusForcePlus/issues/new/choose")
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Leave feedback") }
-
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Continue") }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            InfoCard(
+                title = "A star takes two seconds",
+                body = "The app collects nothing and phones home to nobody, so a star on " +
+                    "GitHub is the only way I see that anyone uses it.",
+            )
+            InfoCard(
+                title = "Tell me what breaks, or what doesn't",
+                body = "Bugs, rough edges, ideas, anything that annoyed you. Without " +
+                    "analytics there is no other way for me to know.",
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlineButton(
+                    text = "Star on GitHub",
+                    onClick = { uriHandler.openUri("https://github.com/karOS555/FocusForcePlus") },
+                    modifier = Modifier.weight(1f),
+                )
+                OutlineButton(
+                    text = "Feedback",
+                    onClick = {
+                        uriHandler.openUri("https://github.com/karOS555/FocusForcePlus/issues/new/choose")
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
 }
 
-// ── Page 6: First routine ─────────────────────────────────────────────────────
+// ── The bar ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun FirstRoutinePage(
+private fun NavBarPage(navViewModel: NavViewModel, onContinue: () -> Unit) {
+    val colors = FfTheme.colors
+    val context = LocalContext.current
+    val config by navViewModel.config.collectAsState()
+    val message by navViewModel.message.collectAsState()
+    LaunchedEffect(message) {
+        message?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            navViewModel.clearMessage()
+        }
+    }
+
+    OnboardingPage(
+        title = "Make the bar yours",
+        body = "Choose what goes in the bar at the bottom of the screen, and drag the " +
+            "handles to put it in your order.",
+        primaryLabel = "Continue",
+        onPrimary = onContinue,
+    ) {
+        val current = config ?: return@OnboardingPage
+        Text("Your bar", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+        Spacer(Modifier.height(8.dp))
+        // The real bar, so what you arrange is exactly what you will get, Edit
+        // entry included.
+        Dock(
+            entries = current.dock,
+            currentRoute = AppModule.HOME.route,
+            onSelect = {},
+            onEdit = {},
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, colors.outline, RoundedCornerShape(16.dp)),
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.Top) {
+            Icon(
+                Icons.Filled.Edit,
+                contentDescription = null,
+                tint = colors.accent,
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(18.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "Not final. Tap Edit at the end of the bar, or press and hold the bar, " +
+                    "to change this whenever you like.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        NavEditor(
+            config = current,
+            onMove = navViewModel::move,
+            onSetShown = navViewModel::setShown,
+            onSetModuleOn = navViewModel::setModuleOn,
+        )
+    }
+}
+
+// ── Finish ────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun FinishPage(
+    navViewModel: NavViewModel,
     onCreateRoutine: () -> Unit,
     onLater: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 28.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            "Ready to build your first routine?",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
+    val config by navViewModel.config.collectAsState()
+    val routinesOn = config?.isOn(AppModule.ROUTINES) ?: true
+    if (routinesOn) {
+        OnboardingPage(
+            title = "Start with a routine?",
+            body = "A routine is a few steps with a timer each, started by an alarm that does " +
+                "not let you quietly skip it. Mornings and evenings are a good place to begin.",
+            primaryLabel = "Create a routine",
+            onPrimary = onCreateRoutine,
+            secondaryLabel = "Not now",
+            onSecondary = onLater,
+            centered = true,
         )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Routines are the heart of FocusForce+: multi-step timers with alarm-style " +
-                "wake-ups that do not let you quietly skip.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
+    } else {
+        OnboardingPage(
+            title = "All set",
+            body = "What you kept is in the bar. Everything else is in Settings.",
+            primaryLabel = "Start",
+            onPrimary = onLater,
+            centered = true,
         )
-        Spacer(Modifier.height(32.dp))
-        Button(
-            onClick = onCreateRoutine,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Yes, let's go") }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = onLater,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Later") }
     }
 }

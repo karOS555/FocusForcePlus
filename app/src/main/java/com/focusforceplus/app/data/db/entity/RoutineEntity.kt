@@ -20,5 +20,9 @@ data class RoutineEntity(
     val maxSnoozeCount: Int = 2,
     val maxRescheduleCount: Int = 1,
     val iconKey: String? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    /** Set when the routine is in the trash; null = not deleted. */
+    val deletedAt: Long? = null,
+    /** This routine's own speed bumps (see GuardOverrides); null = the defaults. */
+    val guards: String? = null,
 )

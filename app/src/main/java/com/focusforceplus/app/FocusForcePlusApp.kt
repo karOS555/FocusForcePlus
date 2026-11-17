@@ -13,8 +13,8 @@ import com.focusforceplus.app.util.NotificationHelper
 import com.focusforceplus.app.util.NotificationStyle
 import com.focusforceplus.app.util.SleepAlarmHelper
 import com.focusforceplus.app.util.SleepNotificationHelper
-import com.focusforceplus.app.util.TodoAlarmHelper
-import com.focusforceplus.app.util.TodoNotificationHelper
+import com.focusforceplus.app.util.AlarmRearmer
+import com.focusforceplus.app.util.TodoNotifications
 import com.focusforceplus.app.worker.AlarmGuardWorker
 import com.focusforceplus.app.worker.DailyResetWorker
 import com.focusforceplus.app.worker.TodoOverdueWorker
@@ -32,11 +32,11 @@ import javax.inject.Inject
 class FocusForcePlusApp : Application() {
 
     @Inject lateinit var notificationHelper: NotificationHelper
-    @Inject lateinit var todoNotificationHelper: TodoNotificationHelper
+    @Inject lateinit var todoNotifications: TodoNotifications
     @Inject lateinit var blockerNotificationHelper: BlockerNotificationHelper
     @Inject lateinit var focusNotificationHelper: FocusNotificationHelper
     @Inject lateinit var sleepNotificationHelper: SleepNotificationHelper
-    @Inject lateinit var todoAlarmHelper: TodoAlarmHelper
+    @Inject lateinit var alarmRearmer: AlarmRearmer
     @Inject lateinit var sleepAlarmHelper: SleepAlarmHelper
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var sleepRepository: SleepRepository
@@ -48,19 +48,15 @@ class FocusForcePlusApp : Application() {
         // Channel groups first — channels reference them by id.
         NotificationStyle.createChannelGroups(this)
         notificationHelper.createChannels()
-        todoNotificationHelper.createChannels()
+        todoNotifications.createChannels()
         blockerNotificationHelper.createChannels()
         focusNotificationHelper.createChannels()
         sleepNotificationHelper.createChannels()
 
-        appScope.launch {
-            val times = settingsRepository.digestTimes.first()
-            todoAlarmHelper.scheduleDigestAlarms(times)
-        }
-
-        appScope.launch {
-            sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
-        }
+        // Every start of the process brings alarms and notifications back in line
+        // with what is stored. Phones that kill the app overnight would otherwise
+        // leave a todo without its next reminder until someone opened the app.
+        appScope.launch { alarmRearmer.rearmAll() }
 
         // Keep the synchronous alarm sound/vibration snapshot in sync with settings.
         appScope.launch {

@@ -27,5 +27,9 @@ data class FocusSessionEntity(
     val scheduledTimeHour: Int? = null,
     val scheduledTimeMinute: Int? = null,
     val isActive: Boolean = true,
-    val createdAt: Long
+    val createdAt: Long,
+    /** Icon from the shared icon catalogue; null = the icon of the session type. */
+    val iconKey: String? = null,
+    /** Set when the session is in the trash; null = not deleted. */
+    val deletedAt: Long? = null,
 )
