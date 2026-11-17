@@ -8,6 +8,7 @@ object SettingsRoutes {
     const val SETTINGS = "settings"
     const val SPEED_BUMPS = "settings/speed-bumps"
     const val INTEGRATIONS = "settings/integrations"
+    const val AUTO_BACKUP = "settings/backup"
 }
 
 object OnboardingRoutes {

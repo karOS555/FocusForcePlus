@@ -66,6 +66,7 @@ data class SettingsUiState(
     val todoRingSeconds: Int = 60,
     val trashRetentionDays: Int = SettingsRepository.DEFAULT_TRASH_RETENTION_DAYS,
     val externalStartsAllowed: Boolean = false,
+    val autoBackupOn: Boolean = false,
 )
 
 @HiltViewModel
@@ -148,6 +149,9 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             settingsRepository.externalStartsAllowed.collect { a -> _uiState.update { it.copy(externalStartsAllowed = a) } }
+        }
+        viewModelScope.launch {
+            settingsRepository.autoBackup.collect { b -> _uiState.update { it.copy(autoBackupOn = b.folderUri != null) } }
         }
         refreshPermissions()
     }

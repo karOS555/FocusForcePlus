@@ -58,6 +58,12 @@ class SettingsRepository @Inject constructor(
         private val NAG_MED_REPEATS_KEY    = intPreferencesKey("todo_nag_medium_repeats")
         private val RING_SECONDS_KEY       = intPreferencesKey("todo_ring_seconds")
         private val TRASH_RETENTION_KEY    = intPreferencesKey("trash_retention_days")
+        private val AUTO_BACKUP_URI_KEY    = stringPreferencesKey("auto_backup_uri")
+        private val AUTO_BACKUP_KEEP_KEY   = intPreferencesKey("auto_backup_keep")
+        private val AUTO_BACKUP_LAST_KEY   = longPreferencesKey("auto_backup_last")
+        private val AUTO_BACKUP_ERROR_KEY  = stringPreferencesKey("auto_backup_error")
+
+        const val DEFAULT_AUTO_BACKUP_KEEP = 7
 
         const val DEFAULT_RING_SECONDS = 60
         const val DEFAULT_TRASH_RETENTION_DAYS = 30
@@ -385,6 +391,47 @@ class SettingsRepository @Inject constructor(
     // ── Trash ─────────────────────────────────────────────────────────────────
 
     /** Days a deleted item stays in the trash before it is removed for good. */
+    /** Where automatic backups go, or null when they are off. Never part of a backup. */
+    data class AutoBackupState(
+        val folderUri: String? = null,
+        val keep: Int = DEFAULT_AUTO_BACKUP_KEEP,
+        val lastAt: Long? = null,
+        val lastError: String? = null,
+    )
+
+    val autoBackup: Flow<AutoBackupState> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            AutoBackupState(
+                folderUri = prefs[AUTO_BACKUP_URI_KEY],
+                keep = prefs[AUTO_BACKUP_KEEP_KEY] ?: DEFAULT_AUTO_BACKUP_KEEP,
+                lastAt = prefs[AUTO_BACKUP_LAST_KEY],
+                lastError = prefs[AUTO_BACKUP_ERROR_KEY],
+            )
+        }
+
+    suspend fun saveAutoBackupFolder(uri: String?) {
+        dataStore.edit { prefs ->
+            if (uri == null) prefs.remove(AUTO_BACKUP_URI_KEY) else prefs[AUTO_BACKUP_URI_KEY] = uri
+            prefs.remove(AUTO_BACKUP_ERROR_KEY)
+        }
+    }
+
+    suspend fun saveAutoBackupKeep(keep: Int) {
+        dataStore.edit { it[AUTO_BACKUP_KEEP_KEY] = keep.coerceIn(1, 60) }
+    }
+
+    suspend fun saveAutoBackupResult(at: Long, error: String?) {
+        dataStore.edit { prefs ->
+            if (error == null) {
+                prefs[AUTO_BACKUP_LAST_KEY] = at
+                prefs.remove(AUTO_BACKUP_ERROR_KEY)
+            } else {
+                prefs[AUTO_BACKUP_ERROR_KEY] = error
+            }
+        }
+    }
+
     val trashRetentionDays: Flow<Int> = dataStore.data
         .catch { emit(emptyPreferences()) }
         .map { prefs ->

@@ -93,6 +93,7 @@ fun SettingsScreen(
     onOpenSpeedBumps: () -> Unit = {},
     onOpenTrash: () -> Unit = {},
     onOpenIntegrations: () -> Unit = {},
+    onOpenAutoBackup: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     navViewModel: NavViewModel = hiltViewModel(),
 ) {
@@ -415,6 +416,12 @@ fun SettingsScreen(
                             title = "Export a backup",
                             subtitle = "Everything in one file, saved where you choose",
                             onClick = { exportLauncher.launch(BackupManager.SUGGESTED_FILE_NAME) },
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Automatic backup",
+                            subtitle = if (state.autoBackupOn) "Every night into a folder you chose" else "Off",
+                            onClick = onOpenAutoBackup,
                         )
                         RowDivider()
                         LinkRow(

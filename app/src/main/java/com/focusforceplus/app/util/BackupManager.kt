@@ -92,6 +92,15 @@ class BackupManager @Inject constructor(
 
     /** Writes the backup to [uri]; returns a summary or throws on I/O failure. */
     suspend fun exportTo(uri: Uri): String = withContext(Dispatchers.IO) {
+        val (root, summary) = buildBackup()
+        context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
+            stream.write(root.toString(2).toByteArray(Charsets.UTF_8))
+        } ?: throw IllegalStateException("Could not open the selected file for writing.")
+        summary
+    }
+
+    /** The whole backup as one JSON document, plus a sentence saying what is in it. */
+    suspend fun buildBackup(): Pair<JSONObject, String> = withContext(Dispatchers.IO) {
         val routines = routineDao.getAllOnce()
         val tasks = routineTaskDao.getAllOnce()
         val todos = todoDao.getAllOnce()
@@ -116,11 +125,7 @@ class BackupManager @Inject constructor(
             put("sleep", sleepJson(sleepRepository.schedule.first()))
         }
 
-        context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
-            stream.write(root.toString(2).toByteArray(Charsets.UTF_8))
-        } ?: throw IllegalStateException("Could not open the selected file for writing.")
-
-        "Exported ${routines.size} routines, ${todos.size} todos, ${lists.size} lists, " +
+        root to "Exported ${routines.size} routines, ${todos.size} todos, ${lists.size} lists, " +
             "${blockedApps.size} blocker rules, ${focusSessions.size} focus sessions, " +
             "plus your settings and sleep schedule."
     }

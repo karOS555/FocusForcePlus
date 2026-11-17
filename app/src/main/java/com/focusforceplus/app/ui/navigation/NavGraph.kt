@@ -276,6 +276,13 @@ fun NavGraph(
                 onOpenSpeedBumps = { navController.navigate(SettingsRoutes.SPEED_BUMPS) },
                 onOpenTrash = { navController.navigate(TrashRoutes.TRASH) },
                 onOpenIntegrations = { navController.navigate(SettingsRoutes.INTEGRATIONS) },
+                onOpenAutoBackup = { navController.navigate(SettingsRoutes.AUTO_BACKUP) },
+            )
+        }
+
+        composable(SettingsRoutes.AUTO_BACKUP) {
+            com.focusforceplus.app.ui.screens.settings.AutoBackupScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 
