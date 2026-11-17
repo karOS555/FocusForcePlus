@@ -16,21 +16,22 @@ fun routineDayLabel(key: String): String = when (key) {
     else -> key
 }
 
-private val WEEK = listOf("MO", "DI", "MI", "DO", "FR", "SA", "SO")
-private val SHORT = mapOf(
-    "MO" to "Mon", "DI" to "Tue", "MI" to "Wed", "DO" to "Thu",
-    "FR" to "Fri", "SA" to "Sat", "SO" to "Sun",
+// Routines store German day keys, focus sessions English ones; both map to 0..6.
+private val DAY_INDEX = mapOf(
+    "MO" to 0, "DI" to 1, "TU" to 1, "MI" to 2, "WE" to 2, "DO" to 3, "TH" to 3,
+    "FR" to 4, "SA" to 5, "SO" to 6, "SU" to 6,
 )
+private val SHORT = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
-/** "Every day", "Mon to Fri", "Weekends", or "Mon, Wed, Fri". */
+/** "Every day", "Mon to Fri", "Weekends", or "Mon, Wed, Fri", for either key set. */
 fun routineDaysSummary(activeDaysCsv: String): String {
-    val days = activeDaysCsv.split(",").filter { it in WEEK }.toSet()
+    val days = activeDaysCsv.split(",").mapNotNull { DAY_INDEX[it.trim()] }.toSet()
     return when {
         days.size == 7 -> "Every day"
-        days == setOf("MO", "DI", "MI", "DO", "FR") -> "Mon to Fri"
-        days == setOf("SA", "SO") -> "Weekends"
+        days == setOf(0, 1, 2, 3, 4) -> "Mon to Fri"
+        days == setOf(5, 6) -> "Weekends"
         days.isEmpty() -> "No days"
-        else -> WEEK.filter { it in days }.joinToString(", ") { SHORT.getValue(it) }
+        else -> days.sorted().joinToString(", ") { SHORT[it] }
     }
 }
 

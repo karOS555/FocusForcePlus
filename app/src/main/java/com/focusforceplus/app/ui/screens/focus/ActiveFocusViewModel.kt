@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardSlot
+import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.service.FocusForegroundService
 import com.focusforceplus.app.service.FocusSessionRegistry
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +30,8 @@ data class ActiveFocusUiState(
     val isRunning: Boolean = true,
     /** True when the session reached its natural end while this screen was open. */
     val showCompleted: Boolean = false,
+    /** What ending early asks for first; it always asks at least once. */
+    val endGuard: Guard = Guard(confirm = true),
 )
 
 /**
@@ -36,6 +42,7 @@ data class ActiveFocusUiState(
 class ActiveFocusViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val registry: FocusSessionRegistry,
+    private val settingsRepository: SettingsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -47,6 +54,10 @@ class ActiveFocusViewModel @Inject constructor(
     private var sawSessionRunning = false
 
     init {
+        viewModelScope.launch {
+            val guard = settingsRepository.guardSettings.first()[GuardSlot.FOCUS_END]
+            _uiState.update { it.copy(endGuard = guard.copy(confirm = true)) }
+        }
         viewModelScope.launch {
             while (true) {
                 val active = registry.activeSession.value

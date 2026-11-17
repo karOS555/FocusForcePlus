@@ -21,6 +21,7 @@ import javax.inject.Inject
 
 data class CreateFocusUiState(
     val name: String = "",
+    val iconKey: String? = null,
     val type: String = "CUSTOM",
     val durationMinutes: Int = 25,
     val enableDnd: Boolean = true,
@@ -60,7 +61,8 @@ class CreateFocusViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CreateFocusUiState())
     val uiState: StateFlow<CreateFocusUiState> = _uiState.asStateFlow()
 
-    private var originalCreatedAt: Long? = null
+    // The stored session, so fields the form does not show survive an edit.
+    private var original: FocusSessionEntity? = null
 
     // Baseline for the discard-changes warning: state as loaded (edit) or default (create).
     private var snapshotState: CreateFocusUiState? = null
@@ -84,10 +86,11 @@ class CreateFocusViewModel @Inject constructor(
     private fun loadSession() {
         viewModelScope.launch {
             repository.getSessionById(editSessionId).first()?.let { s ->
-                originalCreatedAt = s.createdAt
+                original = s
                 _uiState.update {
                     it.copy(
                         name = s.name,
+                        iconKey = s.iconKey,
                         type = s.type,
                         durationMinutes = s.durationMinutes,
                         enableDnd = s.enableDnd,
@@ -111,6 +114,7 @@ class CreateFocusViewModel @Inject constructor(
     }
 
     fun updateName(v: String) = _uiState.update { it.copy(name = v, nameError = false) }
+    fun updateIcon(v: String?) = _uiState.update { it.copy(iconKey = v) }
 
     /** Selecting a type applies its preset (duration + toggles); Custom changes nothing.
      *  Presets are suggestions — every field stays freely editable afterwards. */
@@ -187,9 +191,16 @@ class CreateFocusViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, error = null) }
         viewModelScope.launch {
             try {
-                val entity = FocusSessionEntity(
+                val base = original ?: FocusSessionEntity(
+                    name = "",
+                    type = state.type,
+                    durationMinutes = state.durationMinutes,
+                    createdAt = System.currentTimeMillis(),
+                )
+                val entity = base.copy(
                     id = if (isEditMode) editSessionId else 0L,
                     name = state.name.trim(),
+                    iconKey = state.iconKey,
                     type = state.type,
                     durationMinutes = state.durationMinutes,
                     enableDnd = state.enableDnd,
@@ -202,9 +213,9 @@ class CreateFocusViewModel @Inject constructor(
                     scheduledDays = if (state.scheduleEnabled) state.scheduledDays.joinToString(",") else null,
                     scheduledTimeHour = if (state.scheduleEnabled) state.scheduledHour else null,
                     scheduledTimeMinute = if (state.scheduleEnabled) state.scheduledMinute else null,
-                    isActive = true,
-                    createdAt = if (isEditMode) originalCreatedAt ?: System.currentTimeMillis()
-                                else System.currentTimeMillis(),
+                    // A schedule that was just switched on starts active; otherwise
+                    // a paused schedule stays paused.
+                    isActive = if (original?.scheduledDays == null) true else base.isActive,
                 )
                 val savedId = if (isEditMode) {
                     repository.updateSession(entity); editSessionId
