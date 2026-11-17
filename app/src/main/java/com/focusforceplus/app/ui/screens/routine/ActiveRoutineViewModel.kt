@@ -246,6 +246,7 @@ class ActiveRoutineViewModel @Inject constructor(
                 notificationHelper.buildSnoozedNotification(
                     routineId = routineId,
                     routineName = routine.name,
+                    iconKey = routine.iconKey,
                     triggerMillis = triggerMillis,
                     snoozeCount = newCount,
                     maxSnoozeCount = routine.maxSnoozeCount,
@@ -305,6 +306,7 @@ class ActiveRoutineViewModel @Inject constructor(
                     notificationHelper.buildSnoozedNotification(
                         routineId      = routineId,
                         routineName    = routine.name,
+                        iconKey = routine.iconKey,
                         triggerMillis  = triggerAt,
                         snoozeCount    = 0,
                         maxSnoozeCount = routine.maxSnoozeCount,

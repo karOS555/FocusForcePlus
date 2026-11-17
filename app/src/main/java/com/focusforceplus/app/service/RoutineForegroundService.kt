@@ -65,6 +65,7 @@ class RoutineForegroundService : Service() {
 
     private var routineId: Long = 0L
     private var routineName: String = ""
+    private var routineIconKey: String? = null
     private var invincible: Boolean = false
     private var blocksApps: Boolean = false
     private var tasks: List<RoutineTaskEntity> = emptyList()
@@ -127,6 +128,7 @@ class RoutineForegroundService : Service() {
             val loadedTasks = repository.getTasksForRoutine(id).first()
             if (routine == null || loadedTasks.isEmpty()) { stopSelf(); return@launch }
             routineName = routine.name
+            routineIconKey = routine.iconKey
             invincible = routine.invincibleMode
             blocksApps = routine.appBlockerEnabled
             tasks = loadedTasks
@@ -151,6 +153,7 @@ class RoutineForegroundService : Service() {
             }
             routineId = snapshot.routineId
             routineName = routine.name
+            routineIconKey = routine.iconKey
             invincible = routine.invincibleMode
             blocksApps = routine.appBlockerEnabled
             tasks = loadedTasks
@@ -349,7 +352,7 @@ class RoutineForegroundService : Service() {
         notificationHelper.showNotification(
             NotificationHelper.taskEndNotificationId(routineId),
             notificationHelper.buildTaskEndAlarmNotification(
-                routineId, routineName, taskName, overtimeSeconds() / 60,
+                routineId, routineName, taskName, overtimeSeconds() / 60, iconKey = routineIconKey,
             ),
         )
         startAlarmRing()
@@ -472,7 +475,7 @@ class RoutineForegroundService : Service() {
     private fun startForegroundPlaceholder() {
         pin(notificationHelper.buildOngoingNotification(
             routineId, routineName.ifEmpty { "Routine" }, "Starting…",
-            System.currentTimeMillis(), overtime = false,
+            System.currentTimeMillis(), overtime = false, iconKey = routineIconKey,
         ))
     }
 
@@ -489,6 +492,7 @@ class RoutineForegroundService : Service() {
             elapsedSeconds = elapsedInRoutineSeconds(),
             chipSeconds = if (inOvertime) overtimeSeconds() else remainingSeconds(),
             invincible = invincible,
+            iconKey = routineIconKey,
         ))
     }
 

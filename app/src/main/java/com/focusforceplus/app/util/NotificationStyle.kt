@@ -1,11 +1,12 @@
 package com.focusforceplus.app.util
 
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.common.AppIcon
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.focusforceplus.app.R
 
 /**
  * One visual language for every notification this app posts.
@@ -72,15 +73,29 @@ object NotificationStyle {
 
     // ── Shared look ───────────────────────────────────────────────────────────
 
+    /** Item badges: the item's own icon, light on dark blue, as in the app. */
+    const val BADGE_BACKGROUND = 0xFF152E54.toInt()
+    const val BADGE_FOREGROUND = 0xFF93C5FD.toInt()
+
     /**
-     * The house style: brand icon and accent, plus a sub-text naming the module so
-     * a glance at a stack of notifications tells the user which part of the app is
-     * talking to them.
+     * The house style: the module's own glyph in the status bar (the same one as in
+     * the app's bar), the accent colour, a sub-text naming the module, and the
+     * item's icon as the large icon when it has one. A glance at a stack of
+     * notifications tells which part of the app is talking, and about what.
      */
-    fun NotificationCompat.Builder.applyBrand(module: String): NotificationCompat.Builder = this
-        .setSmallIcon(R.drawable.ic_notification)
-        .setColor(ACCENT)
-        .setSubText(module)
+    fun NotificationCompat.Builder.applyBrand(
+        context: Context,
+        module: AppModule,
+        subText: String = module.label,
+        item: AppIcon? = null,
+    ): NotificationCompat.Builder = apply {
+        setSmallIcon(NotificationIcons.small(context, "module_${module.key}", module.icon))
+        setColor(ACCENT)
+        setSubText(subText)
+        if (item != null) {
+            setLargeIcon(NotificationIcons.badge(context, item.key, item.vector, BADGE_BACKGROUND, BADGE_FOREGROUND))
+        }
+    }
 
     /**
      * Marks a notification as the live view of a session the user started.
@@ -108,6 +123,10 @@ object NotificationStyle {
         setOngoing(true)
         setOnlyAlertOnce(true)
         setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        // A session the user just started should show at once. Android otherwise
+        // holds back a foreground service's notification for up to ten seconds
+        // when it has no buttons.
+        setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         if (Build.VERSION.SDK_INT >= 36) {
             setRequestPromotedOngoing(true)
             if (shortCriticalText != null) setShortCriticalText(shortCriticalText)

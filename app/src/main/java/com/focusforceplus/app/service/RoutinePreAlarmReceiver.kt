@@ -42,6 +42,7 @@ class RoutinePreAlarmReceiver : BroadcastReceiver() {
                         notificationHelper.buildPreAlarmNotification(
                             routineId      = routineId,
                             routineName    = routine.name,
+                            iconKey = routine.iconKey,
                             startHour      = startHour,
                             startMinute    = startMinute,
                             invincibleMode = routine.invincibleMode,

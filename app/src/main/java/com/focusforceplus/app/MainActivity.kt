@@ -46,6 +46,7 @@ import com.focusforceplus.app.ui.common.FocusForceTopBar
 import com.focusforceplus.app.ui.components.ConfirmDialog
 import com.focusforceplus.app.ui.navigation.AppModule
 import com.focusforceplus.app.ui.navigation.Dock
+import com.focusforceplus.app.ui.navigation.FocusRoutes
 import com.focusforceplus.app.ui.navigation.DockFooter
 import com.focusforceplus.app.ui.navigation.NavEditSheet
 import com.focusforceplus.app.ui.navigation.NavGraph
@@ -183,11 +184,16 @@ class MainActivity : ComponentActivity() {
 
     /** Only routes of known modules are accepted; anything else is ignored. */
     private fun Intent.openRoute(): String? =
-        getStringExtra(EXTRA_OPEN_ROUTE)?.takeIf { route -> AppModule.fromRoute(route) != null }
+        getStringExtra(EXTRA_OPEN_ROUTE)?.takeIf { route ->
+            AppModule.fromRoute(route) != null || ACTIVE_FOCUS_ROUTE.matches(route)
+        }
 
     companion object {
         /** Intent extra: route of the module to show, e.g. "todos". */
         const val EXTRA_OPEN_ROUTE = "openRoute"
+
+        /** The running focus session, opened from its notification. */
+        val ACTIVE_FOCUS_ROUTE = Regex("focus/active/[0-9]+")
     }
 
     private fun Intent.routineId(): Long =
@@ -266,8 +272,13 @@ private fun AppContent(
     }
 
     LaunchedEffect(openRouteRequest) {
-        val module = AppModule.fromRoute(openRouteRequest.first)
-        if (module != null) openModule(module)
+        val route = openRouteRequest.first
+        val module = AppModule.fromRoute(route)
+        when {
+            module != null -> openModule(module)
+            route != null && MainActivity.ACTIVE_FOCUS_ROUTE.matches(route) ->
+                if (currentRoute != FocusRoutes.ACTIVE) navController.navigate(route) { launchSingleTop = true }
+        }
     }
 
     Scaffold(

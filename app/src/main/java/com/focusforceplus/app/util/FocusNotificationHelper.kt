@@ -1,5 +1,8 @@
 package com.focusforceplus.app.util
 
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.navigation.FocusRoutes
+import com.focusforceplus.app.ui.common.AppIcon
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -30,7 +33,6 @@ class FocusNotificationHelper @Inject constructor(
         const val NOTIFICATION_ID_FOCUS_SCHEDULED = 9003
 
         private const val RC_FOCUS_TAP = 900_001
-        private const val RC_FOCUS_END = 900_002
         private const val RC_FOCUS_DONE_TAP = 900_003
         private const val RC_SCHEDULED_TAP = 900_004
         private const val RC_SCHEDULED_START = 900_005
@@ -66,21 +68,26 @@ class FocusNotificationHelper @Inject constructor(
      * re-posts on a slow tick to advance the tracker.
      */
     fun buildOngoingNotification(
+        sessionId: Long,
         sessionName: String,
         remainingSeconds: Int,
         paused: Boolean,
         invincible: Boolean,
         totalSeconds: Int = 0,
+        icon: AppIcon? = null,
     ): Notification {
-        val tap = mainActivityIntent(RC_FOCUS_TAP)
+        // Tapping opens the running session. Ending it early happens there, behind
+        // its speed bump; a button here would skip that.
+        val tap = activeSessionIntent(sessionId)
         val total = totalSeconds.coerceAtLeast(remainingSeconds).coerceAtLeast(1)
         val elapsed = (total - remainingSeconds).coerceIn(0, total)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_FOCUS_LIVE)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.FOCUS, MODULE, icon)
             .setContentTitle(if (paused) "$sessionName (paused)" else sessionName)
             .setContentText(
-                if (paused) "Paused - ${NotificationStyle.formatDuration(remainingSeconds)} left"
+                if (paused) "Paused, ${NotificationStyle.formatDuration(remainingSeconds)} left"
+                else if (invincible) "${NotificationStyle.formatDuration(remainingSeconds)} of focus left, no early end"
                 else "${NotificationStyle.formatDuration(remainingSeconds)} of focus left"
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -113,24 +120,14 @@ class FocusNotificationHelper @Inject constructor(
                 .setChronometerCountDown(true)
         }
 
-        if (!invincible) {
-            val endIntent = PendingIntent.getBroadcast(
-                context, RC_FOCUS_END,
-                Intent(context, FocusSessionReceiver::class.java).apply {
-                    action = FocusSessionReceiver.ACTION_END_SESSION
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-            builder.addAction(0, "End session", endIntent)
-        }
         return builder.build()
     }
 
-    fun buildCompletionNotification(sessionName: String, focusedMinutes: Int): Notification =
+    fun buildCompletionNotification(sessionName: String, focusedMinutes: Int, icon: AppIcon? = null): Notification =
         NotificationCompat.Builder(context, CHANNEL_FOCUS)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.FOCUS, MODULE, icon)
             .setContentTitle("Focus session complete")
-            .setContentText("\"$sessionName\" done - $focusedMinutes minutes of focus. Well done!")
+            .setContentText("$focusedMinutes minutes of \"$sessionName\" are done.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setContentIntent(mainActivityIntent(RC_FOCUS_DONE_TAP))
@@ -138,7 +135,7 @@ class FocusNotificationHelper @Inject constructor(
             .build()
 
     /** Reminder fired by [com.focusforceplus.app.service.FocusAlarmReceiver] for scheduled sessions. */
-    fun buildScheduledSessionNotification(sessionId: Long, sessionName: String): Notification {
+    fun buildScheduledSessionNotification(sessionId: Long, sessionName: String, icon: AppIcon? = null): Notification {
         val startIntent = PendingIntent.getBroadcast(
             context, RC_SCHEDULED_START + sessionId.toInt(),
             Intent(context, FocusSessionReceiver::class.java).apply {
@@ -148,7 +145,7 @@ class FocusNotificationHelper @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(context, CHANNEL_FOCUS)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.FOCUS, MODULE, icon)
             .setContentTitle("Time to focus")
             .setContentText("\"$sessionName\" is scheduled for now.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -169,6 +166,16 @@ class FocusNotificationHelper @Inject constructor(
             .cancel(id)
     }
 
+    private fun activeSessionIntent(sessionId: Long): PendingIntent =
+        PendingIntent.getActivity(
+            context, RC_FOCUS_TAP,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(MainActivity.EXTRA_OPEN_ROUTE, FocusRoutes.active(sessionId))
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
     private fun mainActivityIntent(requestCode: Int): PendingIntent =
         PendingIntent.getActivity(
             context, requestCode,
@@ -184,3 +191,13 @@ class FocusNotificationHelper @Inject constructor(
         return "%d:%02d".format(m, s)
     }
 }
+
+/**
+ * The icon a focus session shows in its notifications: its own, or the one of its
+ * type when it has none.
+ */
+fun focusNotificationIcon(iconKey: String?, type: String?): AppIcon =
+    com.focusforceplus.app.ui.common.RoutineIcons.find(iconKey) ?: run {
+        val meta = com.focusforceplus.app.ui.screens.focus.FocusTypes.of(type)
+        AppIcon("focus_type_${meta.key}", meta.icon, meta.label)
+    }

@@ -10,6 +10,7 @@ import android.os.IBinder
 import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.repository.FocusRepository
 import com.focusforceplus.app.util.FocusNotificationHelper
+import com.focusforceplus.app.util.focusNotificationIcon
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,7 @@ class FocusForegroundService : Service() {
 
     private var sessionId: Long = 0L
     private var sessionName: String = ""
+    private var sessionIcon: com.focusforceplus.app.ui.common.AppIcon? = null
     private var sessionType: String = "CUSTOM"
     private var totalSeconds: Int = 0
     private var remainingSeconds: Int = 0
@@ -61,6 +63,7 @@ class FocusForegroundService : Service() {
                 sessionId = intent.getLongExtra(EXTRA_SESSION_ID, 0L)
                 sessionName = intent.getStringExtra(EXTRA_SESSION_NAME) ?: "Focus"
                 sessionType = intent.getStringExtra(EXTRA_SESSION_TYPE) ?: "CUSTOM"
+                sessionIcon = focusNotificationIcon(intent.getStringExtra(EXTRA_ICON_KEY), sessionType)
                 totalSeconds = intent.getIntExtra(EXTRA_DURATION_MINUTES, 25) * 60
                 remainingSeconds = totalSeconds
                 invincible = intent.getBooleanExtra(EXTRA_INVINCIBLE, false)
@@ -136,7 +139,7 @@ class FocusForegroundService : Service() {
 
     private fun startForegroundWithNotification() {
         val notification = notifHelper.buildOngoingNotification(
-            sessionName, remainingSeconds, paused, invincible, totalSeconds,
+            sessionId, sessionName, remainingSeconds, paused, invincible, totalSeconds, icon = sessionIcon,
         )
         // specialUse type exists from API 34; below that the manifest type applies.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -154,7 +157,7 @@ class FocusForegroundService : Service() {
         notifHelper.showNotification(
             FocusNotificationHelper.NOTIFICATION_ID_FOCUS,
             notifHelper.buildOngoingNotification(
-                sessionName, remainingSeconds, paused, invincible, totalSeconds,
+                sessionId, sessionName, remainingSeconds, paused, invincible, totalSeconds, icon = sessionIcon,
             ),
         )
     }
@@ -192,7 +195,7 @@ class FocusForegroundService : Service() {
         if (completed) {
             notifHelper.showNotification(
                 FocusNotificationHelper.NOTIFICATION_ID_FOCUS_DONE,
-                notifHelper.buildCompletionNotification(sessionName, totalSeconds / 60),
+                notifHelper.buildCompletionNotification(sessionName, totalSeconds / 60, sessionIcon),
             )
         }
         recordHistory(completed)
@@ -240,6 +243,7 @@ class FocusForegroundService : Service() {
         private const val EXTRA_SESSION_ID = "sessionId"
         private const val EXTRA_SESSION_NAME = "sessionName"
         private const val EXTRA_SESSION_TYPE = "sessionType"
+        private const val EXTRA_ICON_KEY = "iconKey"
         private const val EXTRA_DURATION_MINUTES = "durationMinutes"
         private const val EXTRA_ENABLE_DND = "enableDnd"
         private const val EXTRA_BLOCK_NOTIFICATIONS = "blockNotifications"
@@ -258,6 +262,7 @@ class FocusForegroundService : Service() {
             invincible: Boolean,
             type: String = "CUSTOM",
             blockedGroupsCsv: String? = null,
+            iconKey: String? = null,
         ) {
             context.startForegroundService(
                 Intent(context, FocusForegroundService::class.java).apply {
@@ -265,6 +270,7 @@ class FocusForegroundService : Service() {
                     putExtra(EXTRA_SESSION_ID, sessionId)
                     putExtra(EXTRA_SESSION_NAME, name)
                     putExtra(EXTRA_SESSION_TYPE, type)
+                    putExtra(EXTRA_ICON_KEY, iconKey)
                     putExtra(EXTRA_DURATION_MINUTES, durationMinutes)
                     putExtra(EXTRA_ENABLE_DND, enableDnd)
                     putExtra(EXTRA_BLOCK_NOTIFICATIONS, blockNotifications)

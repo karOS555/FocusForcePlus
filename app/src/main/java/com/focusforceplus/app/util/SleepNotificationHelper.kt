@@ -1,5 +1,6 @@
 package com.focusforceplus.app.util
 
+import com.focusforceplus.app.ui.navigation.AppModule
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -54,9 +55,9 @@ class SleepNotificationHelper @Inject constructor(
      */
     fun buildWindDownNotification(bedtimeText: String, minutesLeft: Int): Notification {
         val builder = NotificationCompat.Builder(context, CHANNEL_SLEEP)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.SLEEP, MODULE)
             .setContentTitle("Bedtime at $bedtimeText")
-            .setContentText("Wind down — $minutesLeft minutes until sleep mode starts.")
+            .setContentText("Time to wind down. Sleep mode starts in $minutesLeft minutes.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(tapIntent())
@@ -83,7 +84,7 @@ class SleepNotificationHelper @Inject constructor(
         val remaining = total - elapsed
 
         val builder = NotificationCompat.Builder(context, CHANNEL_SLEEP_LIVE)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.SLEEP, MODULE)
             .setContentTitle("Sleep mode until $wakeText")
             .setContentText(
                 buildString {

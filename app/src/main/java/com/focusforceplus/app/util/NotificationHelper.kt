@@ -1,5 +1,7 @@
 package com.focusforceplus.app.util
 
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.common.RoutineIcons
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -108,6 +110,7 @@ class NotificationHelper @Inject constructor(
         snoozeCount: Int = 0,
         maxSnoozeCount: Int = 2,
         invincibleMode: Boolean = false,
+        iconKey: String? = null,
     ): Notification {
         val tapIntent   = alarmScreenIntent(routineId, routineName, snoozeCount, isPreAlarm = false,
                                             (RC_ALARM_TAP + routineId).toInt())
@@ -115,8 +118,8 @@ class NotificationHelper @Inject constructor(
                                             (RC_START_ALARM + routineId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .applyBrand(MODULE)
-            .setContentTitle("Time to start your routine!")
+            .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
+            .setContentTitle("Time for your routine")
             .setContentText(routineName)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -139,6 +142,7 @@ class NotificationHelper @Inject constructor(
         startHour: Int,
         startMinute: Int,
         invincibleMode: Boolean = false,
+        iconKey: String? = null,
     ): Notification {
         val timeStr   = "%02d:%02d".format(startHour, startMinute)
         // Tap and "Start now" open the closeable pre-alarm screen.
@@ -148,7 +152,7 @@ class NotificationHelper @Inject constructor(
                                           (RC_START_PRE + routineId).toInt())
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
             .setContentTitle("\"$routineName\" starts at $timeStr")
             .setContentText("Your routine starts in 15 minutes.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -172,6 +176,7 @@ class NotificationHelper @Inject constructor(
         invincibleMode: Boolean,
         /** False when snoozing asks for a speed bump: then only the app can snooze. */
         snoozeDirect: Boolean = true,
+        iconKey: String? = null,
     ): Notification {
         val timeStr   = formatMillis(triggerMillis)
         val remaining = maxSnoozeCount - snoozeCount
@@ -182,7 +187,7 @@ class NotificationHelper @Inject constructor(
         val subText = if (remaining > 0) "$remaining snooze(s) remaining" else "No snoozes left"
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
             .setContentTitle("\"$routineName\" snoozed")
             .setContentText("Starts at $timeStr \u00b7 $subText")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -230,6 +235,7 @@ class NotificationHelper @Inject constructor(
         /** What the status-bar chip counts: time left in the step, or time over it. */
         chipSeconds: Int = 0,
         invincible: Boolean = false,
+        iconKey: String? = null,
     ): Notification {
         val tapIntent  = mainActivityIntent(routineId, (RC_FOREGROUND_TAP + routineId).toInt())
         val doneIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_COMPLETE_TASK,
@@ -242,10 +248,10 @@ class NotificationHelper @Inject constructor(
         } else {
             taskName
         }
-        val body = if (overtime) "$stepLabel \u2014 overtime" else stepLabel
+        val body = if (overtime) "$stepLabel \u00b7 over time" else stepLabel
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ROUTINE_SESSION)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
             .setContentTitle(routineName)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -328,6 +334,7 @@ class NotificationHelper @Inject constructor(
         routineName: String,
         taskName: String,
         overtimeMinutes: Int,
+        iconKey: String? = null,
     ): Notification {
         val tapIntent  = mainActivityIntent(routineId, (RC_TASK_END_TAP + routineId).toInt())
         val doneIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_COMPLETE_TASK,
@@ -335,13 +342,13 @@ class NotificationHelper @Inject constructor(
         val addTimeIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_ADD_TIME,
                                                 (RC_TASK_END_ADD + routineId).toInt())
         val body = if (overtimeMinutes > 0) {
-            "\"$taskName\" is $overtimeMinutes min over time — finish it or add time."
+            "\"$taskName\" is $overtimeMinutes min over time. Finish it or add time."
         } else {
             "Time is up for \"$taskName\"."
         }
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .applyBrand(MODULE)
-            .setContentTitle("Time is up — $routineName")
+            .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
+            .setContentTitle("Time is up: $routineName")
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -357,9 +364,9 @@ class NotificationHelper @Inject constructor(
     }
 
     /** Posted when a reboot (or forced stop) killed a running routine session. */
-    fun buildSessionInterruptedNotification(routineName: String): Notification =
+    fun buildSessionInterruptedNotification(routineName: String, iconKey: String? = null): Notification =
         NotificationCompat.Builder(context, CHANNEL_ROUTINE)
-            .applyBrand(MODULE)
+            .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
             .setContentTitle("Routine interrupted")
             .setContentText("\"$routineName\" was interrupted by a device restart.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

@@ -51,6 +51,7 @@ class FocusSessionReceiver : BroadcastReceiver() {
                             invincible = session.invincibleMode,
                             type = session.type,
                             blockedGroupsCsv = session.blockedGroupsCsv,
+                            iconKey = session.iconKey,
                         )
                     } finally {
                         pendingResult.finish()

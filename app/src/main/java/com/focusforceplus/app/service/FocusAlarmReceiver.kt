@@ -1,5 +1,6 @@
 package com.focusforceplus.app.service
 
+import com.focusforceplus.app.util.focusNotificationIcon
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -36,7 +37,9 @@ class FocusAlarmReceiver : BroadcastReceiver() {
                 if (!session.isActive) return@launch
                 notifHelper.showNotification(
                     FocusNotificationHelper.NOTIFICATION_ID_FOCUS_SCHEDULED,
-                    notifHelper.buildScheduledSessionNotification(session.id, session.name),
+                    notifHelper.buildScheduledSessionNotification(
+                        session.id, session.name, focusNotificationIcon(session.iconKey, session.type),
+                    ),
                 )
                 // Weekly repeat: re-arm all of this session's alarms.
                 focusAlarmHelper.cancelSessionAlarms(session.id)

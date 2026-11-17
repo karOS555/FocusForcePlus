@@ -72,6 +72,7 @@ class RoutineAlarmReceiver : BroadcastReceiver() {
                         notificationHelper.buildAlarmNotification(
                             routineId      = routineId,
                             routineName    = routine.name,
+                            iconKey = routine.iconKey,
                             snoozeCount    = 0,
                             maxSnoozeCount = routine.maxSnoozeCount,
                             invincibleMode = routine.invincibleMode,

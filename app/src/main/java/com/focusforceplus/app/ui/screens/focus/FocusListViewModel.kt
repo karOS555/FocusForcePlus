@@ -134,6 +134,7 @@ class FocusListViewModel @Inject constructor(
             invincible = session.invincibleMode,
             type = session.type,
             blockedGroupsCsv = session.blockedGroupsCsv,
+            iconKey = session.iconKey,
         )
         return true
     }

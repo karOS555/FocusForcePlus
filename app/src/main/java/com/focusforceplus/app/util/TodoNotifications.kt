@@ -1,5 +1,6 @@
 package com.focusforceplus.app.util
 
+import com.focusforceplus.app.ui.navigation.AppModule
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -62,8 +63,6 @@ class TodoNotifications @Inject constructor(
         private const val MODULE = "Todo"
         private const val COLOR_HIGH = 0xFFF87171.toInt()
         private const val COLOR_MEDIUM = 0xFFFBBF24.toInt()
-        private const val BADGE_BACKGROUND = 0xFF152E54.toInt()
-        private const val BADGE_FOREGROUND = 0xFF93C5FD.toInt()
 
         fun notificationId(todoId: Long): Int = ID_BASE + (todoId % 1_000_000).toInt()
     }
@@ -309,7 +308,10 @@ class TodoNotifications @Inject constructor(
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
         if (icon != null) {
             builder.setLargeIcon(
-                NotificationIcons.badge(context, icon.key, icon.vector, BADGE_BACKGROUND, BADGE_FOREGROUND)
+                NotificationIcons.badge(
+                    context, icon.key, icon.vector,
+                    NotificationStyle.BADGE_BACKGROUND, NotificationStyle.BADGE_FOREGROUND,
+                )
             )
         }
         if (!todo.description.isNullOrBlank()) {
@@ -320,7 +322,7 @@ class TodoNotifications @Inject constructor(
         return builder
     }
 
-    private fun moduleIcon() = NotificationIcons.small(context, "module_todo", Icons.Filled.CheckCircle)
+    private fun moduleIcon() = NotificationIcons.small(context, "module_${AppModule.TODOS.key}", AppModule.TODOS.icon)
 
     private fun openIntent(todoId: Long): PendingIntent =
         PendingIntent.getActivity(

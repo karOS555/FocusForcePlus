@@ -1,5 +1,6 @@
 package com.focusforceplus.app.util
 
+import com.focusforceplus.app.ui.navigation.AppModule
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -51,14 +52,14 @@ class BlockerNotificationHelper @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_BLOCKER)
-            .applyBrand("Blocker")
+            .applyBrand(context, AppModule.BLOCKER)
             .setContentTitle("App blocking is paused")
             .setContentText("The accessibility service was turned off, so blocked apps are no longer covered.")
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
                     "The accessibility service was turned off, so blocked apps are no " +
-                        "longer covered. Your rules are unchanged - re-enable the service " +
-                        "from the Blocker tab whenever you want blocking back."
+                        "longer covered. Your blocks are unchanged. Turn the service back " +
+                        "on from the Blocker tab whenever you want blocking back."
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

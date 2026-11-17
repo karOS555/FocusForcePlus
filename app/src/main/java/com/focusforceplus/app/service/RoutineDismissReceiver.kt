@@ -47,6 +47,7 @@ class RoutineDismissReceiver : BroadcastReceiver() {
                             notificationHelper.buildAlarmNotification(
                                 routineId      = routineId,
                                 routineName    = routine.name,
+                                iconKey = routine.iconKey,
                                 snoozeCount    = intent.getIntExtra("snoozeCount", 0),
                                 maxSnoozeCount = routine.maxSnoozeCount,
                                 invincibleMode = routine.invincibleMode,

@@ -53,6 +53,7 @@ class RoutineRescheduleReceiver : BroadcastReceiver() {
                     notificationHelper.buildSnoozedNotification(
                         routineId      = routineId,
                         routineName    = routine.name,
+                        iconKey = routine.iconKey,
                         triggerMillis  = triggerMillis,
                         snoozeCount    = newSnoozeCount,
                         maxSnoozeCount = routine.maxSnoozeCount,
