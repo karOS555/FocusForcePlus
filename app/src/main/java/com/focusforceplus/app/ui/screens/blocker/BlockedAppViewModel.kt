@@ -39,12 +39,15 @@ data class BlockedAppUiState(
     val groupName: String? = null,
     val groupLimitMinutes: Int? = null,
     val groupUsedMinutes: Int = 0,
+    /** What "a few more minutes" asks for first. */
+    val exceptionGuard: com.focusforceplus.app.compliance.Guard = com.focusforceplus.app.compliance.Guard.NONE,
 )
 
 @HiltViewModel
 class BlockedAppViewModel @Inject constructor(
     private val repository: BlockerRepository,
     private val sleepRepository: SleepRepository,
+    private val settingsRepository: com.focusforceplus.app.data.repository.SettingsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -63,6 +66,10 @@ class BlockedAppViewModel @Inject constructor(
     val uiState: StateFlow<BlockedAppUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            val guard = settingsRepository.guardSettings.first()[com.focusforceplus.app.compliance.GuardSlot.BLOCKER_EXCEPTION]
+            _uiState.update { it.copy(exceptionGuard = guard) }
+        }
         viewModelScope.launch {
             val rule = repository.getByPackageName(packageName)
             val nowCal = Calendar.getInstance()

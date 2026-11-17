@@ -48,8 +48,13 @@ object BlockerRoutes {
     const val LIST       = "blocker"
     const val SETTINGS   = "blocker/settings"
     const val DISCLOSURE = "blocker/disclosure/{type}"
+    const val BLOCK      = "blocker/block?name={name}"
 
     fun disclosure(type: String) = "blocker/disclosure/$type"
+
+    /** The block editor; no name means a new block. */
+    fun block(name: String? = null) =
+        if (name == null) "blocker/block" else "blocker/block?name=${android.net.Uri.encode(name)}"
 }
 
 object FocusRoutes {

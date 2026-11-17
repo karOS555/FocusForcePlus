@@ -207,6 +207,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 groupLimitReached = groupLimitReached,
                 groupWindowActive = groupWindowActive,
                 sleepBlocking = sleepApplies,
+                groupAlwaysBlocks = group?.alwaysBlock == true,
             ) ?: return@launch
 
             val lastShown = synchronized(lastBlockShownAt) { lastBlockShownAt[pkg] ?: 0L }

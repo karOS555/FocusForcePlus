@@ -378,4 +378,46 @@ class BlockDecisionTest {
         assertTrue(weakensInvincibleGroup(old, fewerDays))
         assertFalse(weakensInvincibleGroup(old, longer))
     }
+
+    @Test
+    fun `a group that always blocks blocks its apps without limit or schedule`() {
+        val reason = evaluateBlock(
+            app = app(),
+            nowMillis = 0L,
+            minutesOfDay = 600,
+            routineBlocking = false,
+            focusBlocking = false,
+            inGroup = true,
+            groupAlwaysBlocks = true,
+        )
+        assertEquals(BlockReason.GROUP_ALWAYS, reason)
+    }
+
+    @Test
+    fun `an exception still lets an always blocked app through for its minutes`() {
+        val reason = evaluateBlock(
+            app = app(exceptionUntilMillis = 10_000L),
+            nowMillis = 5_000L,
+            minutesOfDay = 600,
+            routineBlocking = false,
+            focusBlocking = false,
+            inGroup = true,
+            groupAlwaysBlocks = true,
+        )
+        assertNull(reason)
+    }
+
+    @Test
+    fun `a switched off rule is not blocked by an always blocking group`() {
+        val reason = evaluateBlock(
+            app = app(isBlocked = false),
+            nowMillis = 0L,
+            minutesOfDay = 600,
+            routineBlocking = false,
+            focusBlocking = false,
+            inGroup = true,
+            groupAlwaysBlocks = true,
+        )
+        assertNull(reason)
+    }
 }

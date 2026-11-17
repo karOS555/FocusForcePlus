@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,18 +112,21 @@ private fun BlockedAppScreen(
     onGoHome: () -> Unit,
     onUseException: () -> Unit,
 ) {
-    Box(
+    val colors = com.focusforceplus.app.ui.theme.FfTheme.colors
+    var asking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF050508), Color(0xFF0f2847)))),
-        contentAlignment = Alignment.Center,
+            .background(colors.background)
+            .safeDrawingPadding()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
     ) {
+        Text("Blocked", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .weight(1f)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.Center,
         ) {
             val bitmap = icon?.toBitmap(96, 96)
             if (bitmap != null) {
@@ -129,72 +134,51 @@ private fun BlockedAppScreen(
                     painter = BitmapPainter(bitmap.asImageBitmap()),
                     contentDescription = null,
                     tint = Color.Unspecified,
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier.size(56.dp),
                 )
             } else {
-                Icon(
-                    imageVector = Icons.Filled.Block,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(72.dp),
-                )
+                com.focusforceplus.app.ui.components.IconCircle(icon = Icons.Filled.Block, size = 56.dp)
             }
-
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = state.appName.ifBlank { state.packageName },
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
+                color = colors.text,
             )
-
+            Spacer(Modifier.height(10.dp))
             Text(
-                text = "This app is blocked",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White.copy(alpha = 0.7f),
+                text = reasonText(state),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textSecondary,
             )
-
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = Color.White.copy(alpha = 0.07f),
-            ) {
-                Text(
-                    text = reasonText(state),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Button(
-                onClick = onGoHome,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            ) {
-                Text("Back to home screen", style = MaterialTheme.typography.titleMedium)
-            }
-
-            if (!state.isLoading && state.canUseException) {
-                OutlinedButton(
-                    onClick = onUseException,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Text(
-                        "5-minute exception (${state.exceptionsLeft} left today)",
-                        color = Color.White.copy(alpha = 0.8f),
-                    )
-                }
-            }
         }
+        com.focusforceplus.app.ui.components.PrimaryButton(
+            text = "Back to the home screen",
+            onClick = onGoHome,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+        )
+        if (!state.isLoading && state.canUseException) {
+            Spacer(Modifier.height(10.dp))
+            com.focusforceplus.app.ui.components.OutlineButton(
+                text = "5 more minutes \u00B7 ${state.exceptionsLeft} left today",
+                onClick = { if (state.exceptionGuard.isNone) onUseException() else asking = true },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+    if (asking) {
+        com.focusforceplus.app.ui.guards.GuardDialog(
+            guard = state.exceptionGuard,
+            copy = com.focusforceplus.app.ui.guards.GuardCopy.BLOCKER_EXCEPTION,
+            subject = state.appName,
+            onPassed = {
+                asking = false
+                onUseException()
+            },
+            onDismiss = { asking = false },
+        )
     }
 }
 
@@ -236,6 +220,10 @@ private fun reasonText(state: BlockedAppUiState): String = when (state.reason) {
         }
     }
     BlockReason.MANUAL -> "You chose to block this app.\nYou can change the rule in FocusForce+ at any time."
+    BlockReason.GROUP_ALWAYS -> {
+        val group = state.groupName ?: "One of your blocks"
+        "\"$group\" blocks this app at all times.\nYou can change the block in FocusForce+ whenever you like."
+    }
 }
 
 private fun formatDuration(totalMinutes: Int): String {

@@ -23,6 +23,8 @@ enum class BlockReason {
     FOCUS_ACTIVE,
     /** The sleep schedule is running and the app's group is in its blocking scope. */
     SLEEP_ACTIVE,
+    /** The app's group is set to block its apps at all times. */
+    GROUP_ALWAYS,
 }
 
 /** Maximum temporary exceptions per app per day ("5 more minutes"). */
@@ -150,6 +152,7 @@ private fun isDayWindowActive(
  * @param groupLimitReached  that group's shared daily limit is used up
  * @param groupWindowActive  that group's blocking schedule is running right now
  * @param sleepBlocking      the sleep window is running and covers the app's group
+ * @param groupAlwaysBlocks  that group is set to block at all times
  * @return the reason to block, or null if the app is allowed
  */
 fun evaluateBlock(
@@ -162,6 +165,7 @@ fun evaluateBlock(
     groupLimitReached: Boolean = false,
     groupWindowActive: Boolean = false,
     sleepBlocking: Boolean = false,
+    groupAlwaysBlocks: Boolean = false,
 ): BlockReason? {
     if (app.packageName in NEVER_BLOCK_PACKAGES) return null
     if (!app.isBlocked) return null
@@ -174,6 +178,7 @@ fun evaluateBlock(
 
     if (groupLimitReached) return BlockReason.GROUP_LIMIT
     if (groupWindowActive) return BlockReason.GROUP_WINDOW
+    if (groupAlwaysBlocks) return BlockReason.GROUP_ALWAYS
 
     val hasLimit = app.dailyLimitMinutes != null
     val hasWindow = app.windowStartMinutes != null && app.windowEndMinutes != null

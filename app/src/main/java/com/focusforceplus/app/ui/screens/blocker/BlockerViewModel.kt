@@ -33,6 +33,22 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
+/** Everything the block editor collects for one group. */
+data class GroupEditorResult(
+    val name: String,
+    val limitMinutes: Int?,
+    val invincible: Boolean,
+    val windowStart: Int?,
+    val windowEnd: Int?,
+    val windowDaysCsv: String?,
+    val blockDuringRoutines: Boolean?,
+    val blockDuringFocus: Boolean?,
+    val members: Set<String>,
+    val memberDisplayNames: Map<String, String>,
+    val iconKey: String? = null,
+    val alwaysBlock: Boolean = false,
+)
+
 /** One row in the blocker list: an installed app plus its rule (if configured). */
 data class BlockerAppRow(
     val packageName: String,
@@ -50,7 +66,26 @@ data class BlockerGroupRow(
     val locked: Boolean,
 )
 
+/** One entry of "Your blocks": a group with its apps, or a single app's own rule. */
+sealed interface BlockItem {
+    val key: String
+
+    data class Group(val row: BlockerGroupRow, val members: List<BlockedAppEntity>) : BlockItem {
+        override val key: String get() = "g:" + row.group.name
+        val active: Boolean get() = members.any { it.isBlocked }
+    }
+
+    data class App(val rule: BlockedAppEntity) : BlockItem {
+        override val key: String get() = "a:" + rule.packageName
+    }
+}
+
+/** An app that cannot be opened at this moment, and why in a few words. */
+data class BlockedNow(val packageName: String, val appName: String, val why: String)
+
 data class BlockerListUiState(
+    val blocks: List<BlockItem> = emptyList(),
+    val blockedNow: List<BlockedNow> = emptyList(),
     val rows: List<BlockerAppRow> = emptyList(),
     val searchQuery: String = "",
     val groups: List<BlockerGroupRow> = emptyList(),
@@ -79,6 +114,10 @@ class BlockerViewModel @Inject constructor(
     private val _permissions = MutableStateFlow(false to false) // accessibility, usage
     private val _isLoadingApps = MutableStateFlow(true)
     private val _message = MutableStateFlow<String?>(null)
+
+    /** Speed bump defaults, for pausing the blocker or a block. */
+    val guards: StateFlow<com.focusforceplus.app.compliance.GuardSettings> = settingsRepository.guardSettings
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.focusforceplus.app.compliance.GuardSettings())
 
     val uiState: StateFlow<BlockerListUiState> = combine(
         combine(_installedApps, repository.getAllApps(), repository.getAllGroups(), _searchQuery, _selectedGroup) {
@@ -120,14 +159,18 @@ class BlockerViewModel @Inject constructor(
                 compareByDescending<BlockerAppRow> { it.isBlocked }
                     .thenBy { it.appName.lowercase() }
             )
-            sorted to groupRows
+            val blocks = groupRows.map { g -> BlockItem.Group(g, rules.filter { it.groupName == g.group.name }) } +
+                rules.filter { it.groupName == null }.sortedBy { it.appName.lowercase() }.map { BlockItem.App(it) }
+            Triple(sorted, groupRows, blocks to blockedNow(rules, groups, minutesOfDay, today))
         },
         _permissions,
         settingsRepository.blockerEnabled,
         _isLoadingApps,
         _message,
-    ) { (rows, groups), perms, blockerEnabled, loading, message ->
+    ) { (rows, groups, more), perms, blockerEnabled, loading, message ->
         BlockerListUiState(
+            blocks = more.first,
+            blockedNow = more.second,
             rows = rows,
             searchQuery = _searchQuery.value,
             groups = groups,
@@ -183,6 +226,75 @@ class BlockerViewModel @Inject constructor(
 
     private fun todayCode(): String =
         dayCodeFor(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))
+
+    /** What is blocked at this very moment by limits, schedules and plain blocks. */
+    private fun blockedNow(
+        rules: List<BlockedAppEntity>,
+        groups: List<BlockerGroupEntity>,
+        minutesOfDay: Int,
+        today: String,
+    ): List<BlockedNow> {
+        val now = System.currentTimeMillis()
+        val byName = groups.associateBy { it.name }
+        val usedByGroup = rules.filter { it.groupName != null }
+            .groupBy { it.groupName!! }
+            .mapValues { (_, members) -> members.sumOf { it.usedTodayMinutes } }
+        return rules.mapNotNull { rule ->
+            val group = rule.groupName?.let { byName[it] }
+            val used = group?.let { usedByGroup[it.name] } ?: 0
+            val limitReached = group?.sharedDailyLimitMinutes?.let { used >= it } == true
+            val windowActive = group != null && isGroupScheduleActive(group, minutesOfDay, today)
+            val reason = com.focusforceplus.app.compliance.evaluateBlock(
+                app = rule,
+                nowMillis = now,
+                minutesOfDay = minutesOfDay,
+                routineBlocking = false,
+                focusBlocking = false,
+                inGroup = group != null,
+                groupLimitReached = limitReached,
+                groupWindowActive = windowActive,
+                groupAlwaysBlocks = group?.alwaysBlock == true,
+            ) ?: return@mapNotNull null
+            val why = when (reason) {
+                com.focusforceplus.app.compliance.BlockReason.DAILY_LIMIT -> "Limit used \u00B7 free again at midnight"
+                com.focusforceplus.app.compliance.BlockReason.GROUP_LIMIT -> "Limit of ${group?.name} used \u00B7 free again at midnight"
+                com.focusforceplus.app.compliance.BlockReason.GROUP_WINDOW ->
+                    "Schedule \u00B7 free again at ${formatMinutes(group?.windowEndMinutes ?: 0)}"
+                com.focusforceplus.app.compliance.BlockReason.TIME_WINDOW ->
+                    "Schedule \u00B7 free again at ${formatMinutes(rule.windowEndMinutes ?: 0)}"
+                com.focusforceplus.app.compliance.BlockReason.GROUP_ALWAYS -> "Always, by ${group?.name}"
+                else -> "Blocked"
+            }
+            BlockedNow(rule.packageName, rule.appName, why)
+        }.sortedBy { it.appName.lowercase() }
+    }
+
+    /**
+     * The master switch. Turning blocking OFF follows the same rules as everywhere:
+     * refused while an invincible rule is actively blocking, and gated by Tamper
+     * Protection while invincible rules exist at all (Golden Rule #11).
+     */
+    fun setBlockerEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            if (!enabled) {
+                val rules = repository.getAllAppsOnce()
+                val locked = rules.count { isRuleLocked(it, minutesOfDay()) }
+                if (locked > 0) {
+                    _message.value = "Blocking cannot be paused: $locked rule(s) are locked by " +
+                        "Invincible Mode right now."
+                    return@launch
+                }
+                if (rules.any { it.invincibleMode && it.isBlocked }) {
+                    val verdict = tamperGuard.checkProtectedChange()
+                    if (!verdict.allowed) {
+                        _message.value = verdict.message
+                        return@launch
+                    }
+                }
+            }
+            settingsRepository.saveBlockerEnabled(enabled)
+        }
+    }
 
     private fun lockedMessage() =
         "This rule is locked by Invincible Mode while it is active. It unlocks at its " +
@@ -294,7 +406,7 @@ class BlockerViewModel @Inject constructor(
      * governed. Removing an app from the group clears its groupName. While the
      * existing group is invincible-locked, membership/limit weakening is gated.
      */
-    fun saveGroup(originalName: String?, form: GroupEditorResult) {
+    fun saveGroup(originalName: String?, form: GroupEditorResult, onSaved: () -> Unit = {}) {
         viewModelScope.launch {
             val trimmed = form.name.trim()
             if (trimmed.isBlank()) {
@@ -322,6 +434,8 @@ class BlockerViewModel @Inject constructor(
                 windowDaysCsv = form.windowDaysCsv,
                 blockDuringRoutines = form.blockDuringRoutines,
                 blockDuringFocus = form.blockDuringFocus,
+                iconKey = form.iconKey,
+                alwaysBlock = form.alwaysBlock,
             )
 
             // Weakening an invincible group (limit up/removed, invincible off,
@@ -387,10 +501,11 @@ class BlockerViewModel @Inject constructor(
                     repository.setAppGroup(pkg, trimmed)
                 }
             }
+            onSaved()
         }
     }
 
-    fun deleteGroup(groupRow: BlockerGroupRow) {
+    fun deleteGroup(groupRow: BlockerGroupRow, onDeleted: () -> Unit = {}) {
         viewModelScope.launch {
             if (groupRow.locked) {
                 val verdict = tamperGuard.checkProtectedChange()
@@ -401,6 +516,7 @@ class BlockerViewModel @Inject constructor(
             }
             repository.deleteGroup(groupRow.group)
             if (_selectedGroup.value == groupRow.group.name) _selectedGroup.value = null
+            onDeleted()
         }
     }
 

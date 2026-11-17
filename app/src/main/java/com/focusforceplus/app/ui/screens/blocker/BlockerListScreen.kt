@@ -1,93 +1,78 @@
 package com.focusforceplus.app.ui.screens.blocker
 
-import android.graphics.drawable.Drawable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.focusforceplus.app.data.db.entity.BlockedAppEntity
-import com.focusforceplus.app.ui.common.FeatureHelpAction
-import com.focusforceplus.app.ui.common.FeatureHelpContent
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.focusforceplus.app.compliance.Guard
+import com.focusforceplus.app.compliance.GuardSlot
+import com.focusforceplus.app.ui.common.RoutineIcons
+import com.focusforceplus.app.ui.common.routineDaysSummary
+import com.focusforceplus.app.ui.components.FfCard
+import com.focusforceplus.app.ui.components.FfSwitch
+import com.focusforceplus.app.ui.components.IconCircle
+import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.components.SectionHeader
+import com.focusforceplus.app.ui.components.TextAction
+import com.focusforceplus.app.ui.guards.GuardCopy
+import com.focusforceplus.app.ui.guards.GuardDialog
+import com.focusforceplus.app.ui.theme.FfTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The blocker, built around blocks: one switch for all of it, what is blocked
+ * right now and why, and the blocks themselves (a group of apps with its rules,
+ * or a single app's own rule). Editing a block opens a full screen.
+ */
 @Composable
 fun BlockerListScreen(
     onOpenSettings: () -> Unit,
     onOpenDisclosure: (String) -> Unit,
+    onNewBlock: () -> Unit = {},
+    onEditBlock: (String) -> Unit = {},
     viewModel: BlockerViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var configRow by remember { mutableStateOf<BlockerAppRow?>(null) }
-    // Group editor: holds the row being edited, or a "new group" sentinel.
-    var groupEditorFor by remember { mutableStateOf<GroupEditorTarget?>(null) }
-    var editorInstalledApps by remember { mutableStateOf<List<com.focusforceplus.app.util.InstalledApp>>(emptyList()) }
-    var editorMembers by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val state by viewModel.uiState.collectAsState()
+    val guards by viewModel.guards.collectAsState()
+    val colors = FfTheme.colors
+    val snackbar = remember { SnackbarHostState() }
+    var editingApp by remember { mutableStateOf<BlockerAppRow?>(null) }
+    // What waits behind the pause speed bump: null, the whole blocker, or a block.
+    var pausing by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    // Permission states can change in system settings — refresh whenever we return.
+    // Permissions change in system settings; recheck on every return.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -96,430 +81,267 @@ fun BlockerListScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-
-    LaunchedEffect(uiState.message) {
-        uiState.message?.let {
-            snackbarHostState.showSnackbar(it)
+    LaunchedEffect(state.message) {
+        state.message?.let {
+            snackbar.showSnackbar(it)
             viewModel.clearMessage()
         }
     }
 
+    val pauseGuard: Guard = guards[GuardSlot.BLOCKER_PAUSE]
+    fun pause(action: () -> Unit) {
+        if (pauseGuard.isNone) action() else pausing = action
+    }
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = colors.background,
+        snackbarHost = { SnackbarHost(snackbar) },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onNewBlock,
+                containerColor = colors.primary,
+                contentColor = colors.onPrimary,
+                shape = MaterialTheme.shapes.large,
+            ) { Icon(Icons.Filled.Add, contentDescription = "New block") }
+        },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // ── Status row (title + guide live in the app bar) ─────────────────
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        if (uiState.blockerEnabled) "Blocking is on" else "Blocking is paused",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (uiState.blockerEnabled) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
+            // ── The switch for all of it ──────────────────────────────────────
+            item(key = "status") {
+                FfCard {
+                    ListRow(
+                        title = if (state.blockerEnabled) "Blocking is on" else "Blocking is paused",
+                        subtitle = when {
+                            !state.accessibilityEnabled -> "Needs the blocker service, see below"
+                            !state.blockerEnabled -> "Nothing is blocked until you switch it on"
+                            state.blockedNow.isEmpty() -> "Nothing is blocked right now"
+                            state.blockedNow.size == 1 -> "1 app is blocked right now"
+                            else -> "${state.blockedNow.size} apps are blocked right now"
+                        },
+                        onClick = {
+                            if (state.blockerEnabled) pause { viewModel.setBlockerEnabled(false) }
+                            else viewModel.setBlockerEnabled(true)
+                        },
+                        trailing = { FfSwitch(checked = state.blockerEnabled, onCheckedChange = null) },
                     )
-                    if (!uiState.blockerEnabled) {
-                        TextButton(onClick = viewModel::enableBlocking) { Text("Turn on") }
+                }
+            }
+
+            // ── What it still needs ───────────────────────────────────────────
+            if (!state.accessibilityEnabled) {
+                item(key = "a11y") {
+                    FfCard {
+                        ListRow(
+                            title = "Turn on the blocker service",
+                            subtitle = "Without it nothing can be blocked. It only notices which app " +
+                                "is opened and reads nothing on the screen.",
+                            subtitleMaxLines = 3,
+                            onClick = { onOpenDisclosure("accessibility") },
+                            trailing = { TextAction("Set up", onClick = { onOpenDisclosure("accessibility") }) },
+                        )
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            Icons.Filled.Settings,
-                            contentDescription = "Blocker settings",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                }
+            }
+            val usesLimits = state.blocks.any { item ->
+                when (item) {
+                    is BlockItem.Group -> item.row.group.sharedDailyLimitMinutes != null
+                    is BlockItem.App -> item.rule.dailyLimitMinutes != null
+                }
+            }
+            if (usesLimits && !state.usageAccessGranted) {
+                item(key = "usage") {
+                    FfCard {
+                        ListRow(
+                            title = "Allow usage access",
+                            subtitle = "Daily limits count your app time with it.",
+                            onClick = { onOpenDisclosure("usage") },
+                            trailing = { TextAction("Allow", onClick = { onOpenDisclosure("usage") }) },
                         )
                     }
                 }
             }
 
-            // ── Permission setup cards ────────────────────────────────────────
-            if (!uiState.accessibilityEnabled) {
-                item {
-                    PermissionSetupCard(
-                        title = "Enable the blocking service",
-                        text = "Blocking needs the accessibility service so FocusForce+ can " +
-                            "see which app you open. It reads no screen content.",
-                        buttonLabel = "Set up",
-                        onClick = { onOpenDisclosure(DisclosureType.ACCESSIBILITY) },
-                    )
-                }
-            }
-            if (!uiState.usageAccessGranted) {
-                item {
-                    PermissionSetupCard(
-                        title = "Allow usage access for daily limits",
-                        text = "Daily time limits need usage access to measure how long you " +
-                            "used each app today. Without it, only manual and window blocking work.",
-                        buttonLabel = "Set up",
-                        onClick = { onOpenDisclosure(DisclosureType.USAGE_ACCESS) },
-                    )
-                }
-            }
-
-            // ── Search ────────────────────────────────────────────────────────
-            item {
-                OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = viewModel::setSearchQuery,
-                    placeholder = { Text("Search apps") },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (uiState.searchQuery.isNotBlank()) {
-                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Clear search")
+            // ── Blocked right now ─────────────────────────────────────────────
+            if (state.blockerEnabled && state.blockedNow.isNotEmpty()) {
+                item(key = "now") {
+                    Column {
+                        SectionHeader("Blocked right now")
+                        FfCard {
+                            state.blockedNow.forEachIndexed { index, blocked ->
+                                if (index > 0) RowDivider()
+                                ListRow(
+                                    title = blocked.appName,
+                                    subtitle = blocked.why,
+                                    leading = {
+                                        InstalledAppIcon(
+                                            blocked.packageName,
+                                            blocked.appName,
+                                            loadIcon = { viewModel.loadIcon(blocked.packageName) },
+                                        )
+                                    },
+                                )
                             }
                         }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            // ── Groups section (prominent) ─────────────────────────────────────
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Groups",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = {
-                        scope.launch {
-                            editorInstalledApps = viewModel.installedAppsSnapshot()
-                            editorMembers = emptySet()
-                            groupEditorFor = GroupEditorTarget.New
-                        }
-                    }) {
-                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("New group")
                     }
                 }
             }
-            if (uiState.groups.isEmpty()) {
-                item {
-                    Text(
-                        "Bundle apps (like all your social media) into a group with one shared " +
-                            "daily limit, and select whole groups to block in focus sessions.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                    )
+
+            // ── Your blocks ───────────────────────────────────────────────────
+            item(key = "blocks-header") {
+                SectionHeader("Your blocks", actionLabel = "New block", onAction = onNewBlock)
+            }
+            if (state.blocks.isEmpty()) {
+                item(key = "blocks-empty") {
+                    FfCard {
+                        ListRow(
+                            title = "No blocks yet",
+                            subtitle = "A block is a few apps with a daily limit, a schedule, or both. " +
+                                "Social media is a good first one.",
+                            subtitleMaxLines = 3,
+                            onClick = onNewBlock,
+                            leading = { IconCircle(icon = Icons.Filled.Block) },
+                        )
+                    }
                 }
-            } else {
-                items(uiState.groups, key = { it.group.id }) { groupRow ->
-                    GroupCard(
-                        groupRow = groupRow,
-                        selected = uiState.selectedGroup == groupRow.group.name,
-                        onFilter = {
-                            viewModel.selectGroup(
-                                if (uiState.selectedGroup == groupRow.group.name) null else groupRow.group.name
-                            )
-                        },
-                        onEdit = {
-                            scope.launch {
-                                editorInstalledApps = viewModel.installedAppsSnapshot()
-                                editorMembers = uiState.rows
-                                    .filter { it.rule?.groupName == groupRow.group.name }
-                                    .map { it.packageName }.toSet()
-                                groupEditorFor = GroupEditorTarget.Existing(groupRow)
-                            }
-                        },
-                        onBlockAll = { viewModel.setGroupBlocked(groupRow.group.name, true) },
-                        onUnblockAll = { viewModel.setGroupBlocked(groupRow.group.name, false) },
-                    )
+            }
+            state.blocks.forEach { block ->
+                item(key = block.key) {
+                    when (block) {
+                        is BlockItem.Group -> GroupBlockCard(
+                            block = block,
+                            onOpen = { onEditBlock(block.row.group.name) },
+                            onToggle = {
+                                if (block.active) pause { viewModel.setGroupBlocked(block.row.group.name, false) }
+                                else viewModel.setGroupBlocked(block.row.group.name, true)
+                            },
+                        )
+                        is BlockItem.App -> AppBlockCard(
+                            block = block,
+                            loadIcon = { viewModel.loadIcon(block.rule.packageName) },
+                            onOpen = { editingApp = BlockerAppRow(block.rule.packageName, block.rule.appName, block.rule) },
+                            onToggle = {
+                                val row = BlockerAppRow(block.rule.packageName, block.rule.appName, block.rule)
+                                if (block.rule.isBlocked) pause { viewModel.toggleBlock(row) } else viewModel.toggleBlock(row)
+                            },
+                        )
+                    }
                 }
             }
 
-            // ── App list ──────────────────────────────────────────────────────
-            if (uiState.isLoadingApps) {
-                item {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 40.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { CircularProgressIndicator() }
-                }
-            } else {
-                items(uiState.rows, key = { it.packageName }) { row ->
-                    BlockerAppRowItem(
-                        row = row,
-                        loadIcon = { viewModel.loadIcon(row.packageName) },
-                        onToggle = { viewModel.toggleBlock(row) },
-                        onClick = { configRow = row },
-                    )
-                }
+            item(key = "settings") {
+                TextAction(
+                    "Blocker settings",
+                    onClick = onOpenSettings,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
-
-            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 
-    configRow?.let { row ->
+    pausing?.let { action ->
+        GuardDialog(
+            guard = pauseGuard,
+            copy = GuardCopy.BLOCKER_PAUSE,
+            onPassed = {
+                pausing = null
+                action()
+            },
+            onDismiss = { pausing = null },
+        )
+    }
+
+    editingApp?.let { row ->
         AppRuleConfigDialog(
             row = row,
-            existingGroups = uiState.groupNames,
+            existingGroups = state.groupNames,
             onSave = { rule ->
                 viewModel.saveRule(rule)
-                configRow = null
+                editingApp = null
             },
             onDelete = { rule ->
                 viewModel.deleteRule(rule)
-                configRow = null
+                editingApp = null
             },
-            onDismiss = { configRow = null },
+            onDismiss = { editingApp = null },
         )
     }
-
-    groupEditorFor?.let { target ->
-        val existing = (target as? GroupEditorTarget.Existing)?.row
-        GroupEditorDialog(
-            existing = existing,
-            installedApps = editorInstalledApps,
-            currentMemberPackages = editorMembers,
-            onSave = { result ->
-                viewModel.saveGroup(existing?.group?.name, result)
-                groupEditorFor = null
-            },
-            onDelete = existing?.let {
-                {
-                    viewModel.deleteGroup(it)
-                    groupEditorFor = null
-                }
-            },
-            onDismiss = { groupEditorFor = null },
-        )
-    }
-}
-
-/** What the group editor is editing. */
-private sealed interface GroupEditorTarget {
-    data object New : GroupEditorTarget
-    data class Existing(val row: BlockerGroupRow) : GroupEditorTarget
 }
 
 @Composable
-private fun GroupCard(
-    groupRow: BlockerGroupRow,
-    selected: Boolean,
-    onFilter: () -> Unit,
-    onEdit: () -> Unit,
-    onBlockAll: () -> Unit,
-    onUnblockAll: () -> Unit,
-) {
-    val group = groupRow.group
-    androidx.compose.material3.Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = androidx.compose.material3.CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-                             else MaterialTheme.colorScheme.surface,
-        ),
-        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            group.name,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        if (group.invincibleMode) {
-                            Icon(
-                                Icons.Filled.Lock,
-                                contentDescription = "Invincible",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(13.dp),
-                            )
-                        }
-                    }
-                    val limitText = group.sharedDailyLimitMinutes?.let { limit ->
-                        "${groupRow.usedTodayMinutes}/${limit} min today · ${groupRow.memberCount} apps"
-                    } ?: "${groupRow.memberCount} apps · no shared limit"
-                    Text(
-                        limitText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (groupRow.locked) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                TextButton(onClick = onEdit) { Text("Edit") }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(
-                    selected = selected,
-                    onClick = onFilter,
-                    label = { Text(if (selected) "Showing this group" else "Show only") },
+private fun GroupBlockCard(block: BlockItem.Group, onOpen: () -> Unit, onToggle: () -> Unit) {
+    val colors = FfTheme.colors
+    val group = block.row.group
+    val limit = group.sharedDailyLimitMinutes
+    val parts = buildList {
+        add(if (block.members.size == 1) "1 app" else "${block.members.size} apps")
+        if (limit != null) add("${block.row.usedTodayMinutes} of $limit min")
+        if (group.windowStartMinutes != null && group.windowEndMinutes != null) {
+            val days = group.windowDaysCsv?.takeIf { it.isNotBlank() }?.let { routineDaysSummary(it) } ?: "Every day"
+            add("$days ${formatMinutes(group.windowStartMinutes)} to ${formatMinutes(group.windowEndMinutes)}")
+        }
+        if (group.alwaysBlock) add("always")
+        if (block.row.locked) add("locked") else if (group.invincibleMode) add("invincible")
+    }
+    FfCard {
+        ListRow(
+            title = group.name,
+            subtitle = parts.joinToString(" · "),
+            subtitleMaxLines = 3,
+            onClick = onOpen,
+            leading = { IconCircle(icon = RoutineIcons.find(group.iconKey)?.vector ?: Icons.Filled.Block) },
+            trailing = { FfSwitch(checked = block.active, onCheckedChange = { onToggle() }) },
+        )
+        if (limit != null && limit > 0 && block.active) {
+            val fraction = (block.row.usedTodayMinutes.toFloat() / limit).coerceIn(0f, 1f)
+            Box(
+                Modifier
+                    .padding(start = 66.dp, end = 16.dp, bottom = 12.dp)
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(colors.surfaceHigh),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(fraction)
+                        .background(if (fraction >= 1f) colors.error else colors.accent),
                 )
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onBlockAll) { Text("Block all") }
-                TextButton(onClick = onUnblockAll) { Text("Unblock") }
             }
         }
     }
 }
 
-// ── Row ───────────────────────────────────────────────────────────────────────
-
 @Composable
-private fun BlockerAppRowItem(
-    row: BlockerAppRow,
-    loadIcon: suspend () -> Drawable?,
+private fun AppBlockCard(
+    block: BlockItem.App,
+    loadIcon: suspend () -> android.graphics.drawable.Drawable?,
+    onOpen: () -> Unit,
     onToggle: () -> Unit,
-    onClick: () -> Unit,
 ) {
-    val borderColor = if (row.isBlocked) MaterialTheme.colorScheme.primary
-                      else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(if (row.isBlocked) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(12.dp))
-            .background(
-                if (row.isBlocked) MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
-                else Color.Transparent,
-                RoundedCornerShape(12.dp),
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AppIcon(packageName = row.packageName, loadIcon = loadIcon)
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = row.appName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (row.rule?.invincibleMode == true) {
-                    Icon(
-                        Icons.Filled.Lock,
-                        contentDescription = "Invincible mode",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(13.dp),
-                    )
-                }
-            }
-            val subtitle = ruleSummary(row.rule)
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+    val rule = block.rule
+    val parts = buildList {
+        rule.dailyLimitMinutes?.let { add("${rule.usedTodayMinutes} of $it min") }
+        if (rule.windowStartMinutes != null && rule.windowEndMinutes != null) {
+            add("${formatMinutes(rule.windowStartMinutes)} to ${formatMinutes(rule.windowEndMinutes)}")
         }
-
-        Switch(
-            checked = row.isBlocked,
-            onCheckedChange = { onToggle() },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        )
+        if (isEmpty()) add("Always")
+        if (rule.invincibleMode) add("invincible")
     }
-}
-
-private fun ruleSummary(rule: BlockedAppEntity?): String? {
-    if (rule == null || !rule.isBlocked) return null
-    val parts = mutableListOf<String>()
-    rule.dailyLimitMinutes?.let { parts += "${rule.usedTodayMinutes}/$it min today" }
-    if (rule.windowStartMinutes != null && rule.windowEndMinutes != null) {
-        parts += "blocked ${formatMinutes(rule.windowStartMinutes)}-${formatMinutes(rule.windowEndMinutes)}"
-    }
-    if (parts.isEmpty()) parts += "always blocked"
-    rule.groupName?.let { parts += it }
-    return parts.joinToString(" · ")
-}
-
-internal fun formatMinutes(minutesOfDay: Int): String =
-    "%02d:%02d".format(minutesOfDay / 60, minutesOfDay % 60)
-
-@Composable
-internal fun AppIcon(packageName: String, loadIcon: suspend () -> Drawable?, size: Int = 40) {
-    val drawable by produceState<Drawable?>(initialValue = null, packageName) {
-        value = loadIcon()
-    }
-    val bitmap = drawable?.toBitmap(96, 96)
-    if (bitmap != null) {
-        Icon(
-            painter = BitmapPainter(bitmap.asImageBitmap()),
-            contentDescription = null,
-            tint = Color.Unspecified,
-            modifier = Modifier.size(size.dp),
+    FfCard {
+        ListRow(
+            title = rule.appName,
+            subtitle = parts.joinToString(" · "),
+            onClick = onOpen,
+            leading = { InstalledAppIcon(rule.packageName, rule.appName, loadIcon = loadIcon) },
+            trailing = { FfSwitch(checked = rule.isBlocked, onCheckedChange = { onToggle() }) },
         )
-    } else {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-            Icon(
-                Icons.Filled.Android,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(size.dp)
-                    .padding(8.dp),
-            )
-        }
-    }
-}
-
-// ── Permission setup card ─────────────────────────────────────────────────────
-
-@Composable
-private fun PermissionSetupCard(
-    title: String,
-    text: String,
-    buttonLabel: String,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onClick) { Text(buttonLabel) }
-        }
     }
 }

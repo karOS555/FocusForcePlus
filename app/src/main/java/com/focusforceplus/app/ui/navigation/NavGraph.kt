@@ -145,6 +145,24 @@ fun NavGraph(
             BlockerListScreen(
                 onOpenSettings   = { navController.navigate(BlockerRoutes.SETTINGS) },
                 onOpenDisclosure = { type -> navController.navigate(BlockerRoutes.disclosure(type)) },
+                onNewBlock       = { navController.navigate(BlockerRoutes.block()) },
+                onEditBlock      = { name -> navController.navigate(BlockerRoutes.block(name)) },
+            )
+        }
+
+        composable(
+            route = BlockerRoutes.BLOCK,
+            arguments = listOf(
+                navArgument("name") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { backStackEntry ->
+            com.focusforceplus.app.ui.screens.blocker.BlockEditorScreen(
+                groupName = backStackEntry.arguments?.getString("name"),
+                onBack = { navController.popBackStack() },
             )
         }
 
