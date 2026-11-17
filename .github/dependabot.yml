@@ -1,0 +1,24 @@
+# Dependabot watches the Gradle dependencies (gradle/libs.versions.toml) and the
+# actions the workflows use. Version updates come once a month, grouped into one
+# pull request per ecosystem so they can be reviewed together; the "Build and
+# test" workflow builds and tests each of them. Security fixes do not wait for
+# the schedule: switch on "Dependabot security updates" in the repository
+# settings to get those as soon as they are known.
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      gradle:
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
