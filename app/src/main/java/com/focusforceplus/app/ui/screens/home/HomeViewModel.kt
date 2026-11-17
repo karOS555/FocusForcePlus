@@ -35,6 +35,9 @@ import javax.inject.Inject
 data class TodayRoutine(
     val routine: RoutineEntity,
     val status: RoutineTodayStatus,
+    /** When today's run was finished, if it was. */
+    val doneAt: Long? = null,
+    val totalMinutes: Int = 0,
 )
 
 enum class RoutineTodayStatus { RUNNING, DONE_TODAY, UPCOMING, EARLIER_TODAY }
@@ -61,7 +64,14 @@ data class HomeUiState(
     val sleep: SleepSchedule = SleepSchedule(),
     val sleepWindowActive: Boolean = false,
     val message: String? = null,
-)
+    // Added with the reworked dashboard
+    val focusedMinutesToday: Int = 0,
+    val lists: List<com.focusforceplus.app.ui.screens.lists.ListRowState> = emptyList(),
+    val nav: com.focusforceplus.app.ui.navigation.NavConfig = com.focusforceplus.app.ui.navigation.NavConfig(),
+    val guards: com.focusforceplus.app.compliance.GuardSettings = com.focusforceplus.app.compliance.GuardSettings(),
+) {
+    fun isOn(module: com.focusforceplus.app.ui.navigation.AppModule): Boolean = nav.isOn(module)
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -77,6 +87,9 @@ class HomeViewModel @Inject constructor(
     private val todoReminders: TodoReminderEngine,
     private val sleepAlarmHelper: com.focusforceplus.app.util.SleepAlarmHelper,
     private val tamperGuard: com.focusforceplus.app.compliance.TamperProtectionGuard,
+    focusRepository: com.focusforceplus.app.data.repository.FocusRepository,
+    listRepository: com.focusforceplus.app.data.repository.ListRepository,
+    navRepository: com.focusforceplus.app.data.repository.NavRepository,
 ) : ViewModel() {
 
     private val _usage = MutableStateFlow(UsageStats())
@@ -90,17 +103,46 @@ class HomeViewModel @Inject constructor(
         val enabled: Boolean,
     )
 
-    val uiState: StateFlow<HomeUiState> = combine(
+    /** What the reworked dashboard shows on top of the original state. */
+    private data class Extras(
+        val focusedMinutes: Int,
+        val lists: List<com.focusforceplus.app.ui.screens.lists.ListRowState>,
+        val nav: com.focusforceplus.app.ui.navigation.NavConfig,
+        val guards: com.focusforceplus.app.compliance.GuardSettings,
+    )
+
+    private val extras = combine(
+        focusRepository.getCompletionsSince(startOfTodayMillis()),
+        listRepository.getLists(),
+        listRepository.getCounts(),
+        navRepository.config,
+        settingsRepository.guardSettings,
+    ) { completions, lists, counts, nav, guards ->
+        val byList = counts.associateBy { it.listId }
+        Extras(
+            focusedMinutes = completions.filter { it.completedAt >= startOfTodayMillis() }.sumOf { it.focusedMinutes },
+            lists = lists.map { list ->
+                val c = byList[list.id]
+                com.focusforceplus.app.ui.screens.lists.ListRowState(list, c?.openCount ?: 0, c?.totalCount ?: 0)
+            },
+            nav = nav,
+            guards = guards,
+        )
+    }
+
+    private val base: kotlinx.coroutines.flow.Flow<HomeUiState> = combine(
         combine(
             routineRepository.getAllRoutines(),
             routineRegistry.activeRoutineId,
             routineRepository.getCompletionsSince(startOfTodayMillis()),
-        ) { routines, activeId, completions ->
-            val doneToday = completions
+            routineRepository.getAllTasks(),
+        ) { routines, activeId, completions, tasks ->
+            val doneAt = completions
                 .filter { it.completedAt >= startOfTodayMillis() }
-                .map { it.routineId }
-                .toSet()
-            buildTodayRoutines(routines, activeId, doneToday) to activeId
+                .groupBy { it.routineId }
+                .mapValues { (_, list) -> list.maxOf { it.completedAt } }
+            val minutes = tasks.groupBy { it.routineId }.mapValues { (_, list) -> list.sumOf { it.durationMinutes } }
+            buildTodayRoutines(routines, activeId, doneAt, minutes) to activeId
         },
         combine(todoRepository.getUncompletedTodos(), focusRegistry.activeSession, ::Pair),
         combine(
@@ -128,6 +170,15 @@ class HomeViewModel @Inject constructor(
             sleep = sleep,
             sleepWindowActive = sleepWindowActive(sleep),
             message = message,
+        )
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(base, extras) { state, more ->
+        state.copy(
+            focusedMinutesToday = more.focusedMinutes,
+            lists = more.lists,
+            nav = more.nav,
+            guards = more.guards,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -251,7 +302,8 @@ class HomeViewModel @Inject constructor(
     private fun buildTodayRoutines(
         routines: List<RoutineEntity>,
         activeId: Long?,
-        doneTodayIds: Set<Long>,
+        doneAt: Map<Long, Long>,
+        minutes: Map<Long, Int>,
     ): List<TodayRoutine> {
         val todayKey = todayRoutineKey()
         val now = Calendar.getInstance()
@@ -262,11 +314,11 @@ class HomeViewModel @Inject constructor(
                 val startMinutes = routine.startTimeHour * 60 + routine.startTimeMinute
                 val status = when {
                     routine.id == activeId -> RoutineTodayStatus.RUNNING
-                    routine.id in doneTodayIds -> RoutineTodayStatus.DONE_TODAY
+                    routine.id in doneAt -> RoutineTodayStatus.DONE_TODAY
                     startMinutes >= nowMinutes -> RoutineTodayStatus.UPCOMING
                     else -> RoutineTodayStatus.EARLIER_TODAY
                 }
-                TodayRoutine(routine, status)
+                TodayRoutine(routine, status, doneAt[routine.id], minutes[routine.id] ?: 0)
             }
             .sortedWith(
                 compareBy(

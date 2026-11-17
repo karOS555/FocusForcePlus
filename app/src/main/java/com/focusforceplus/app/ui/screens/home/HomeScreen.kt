@@ -1,10 +1,6 @@
 package com.focusforceplus.app.ui.screens.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,68 +8,68 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.ViewDay
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.focusforceplus.app.compliance.GuardAction
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.ui.common.RoutineIcons
-import com.focusforceplus.app.ui.theme.Blue900
-import com.focusforceplus.app.ui.theme.Error
-import com.focusforceplus.app.ui.theme.Warning
-import java.text.SimpleDateFormat
+import com.focusforceplus.app.ui.components.CompletionRing
+import com.focusforceplus.app.ui.components.FfCard
+import com.focusforceplus.app.ui.components.FfPaddedCard
+import com.focusforceplus.app.ui.components.FfSwitch
+import com.focusforceplus.app.ui.components.IconCircle
+import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.PrimaryButton
+import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.components.SectionHeader
+import com.focusforceplus.app.ui.components.TonalButton
+import com.focusforceplus.app.ui.guards.GuardCopy
+import com.focusforceplus.app.ui.guards.GuardFlow
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.theme.FfTheme
+import com.focusforceplus.app.ui.theme.FfType
+import com.focusforceplus.app.util.TimeFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onStartRoutine: (Long) -> Unit,
@@ -86,11 +82,18 @@ fun HomeScreen(
     onNewTodo: () -> Unit,
     onNewRoutine: () -> Unit,
     onOpenStats: () -> Unit = {},
+    onGoToLists: () -> Unit = {},
+    onOpenList: (Long) -> Unit = {},
+    onGoToSleep: () -> Unit = {},
+    onEditTodo: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val s by viewModel.uiState.collectAsState()
+    val colors = FfTheme.colors
+    val snackbar = remember { SnackbarHostState() }
+    var finishing by remember { mutableStateOf<TodoEntity?>(null) }
 
-    // Screen time changes constantly — refresh whenever the dashboard comes back.
+    // Screen time and permissions change all the time; refresh on every return.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -99,614 +102,381 @@ fun HomeScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-
-    val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(s.message) {
         s.message?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbar.showSnackbar(it)
             viewModel.clearMessage()
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        // ── Greeting ─────────────────────────────────────────────────────────
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = greeting(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text(
-                        text = todayLine(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = onOpenStats) {
-                    Icon(
-                        Icons.Filled.BarChart,
-                        contentDescription = "Statistics",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-
-        // ── Live session banner ──────────────────────────────────────────────
-        val activeFocus = s.activeFocusSession
-        val runningRoutine = s.todayRoutines.firstOrNull { it.status == RoutineTodayStatus.RUNNING }
-        if (activeFocus != null) {
-            item {
-                LiveSessionBanner(
-                    icon = Icons.Filled.SelfImprovement,
-                    title = "Focus running: ${activeFocus.name}",
-                    subtitle = if (activeFocus.pausedRemainingSeconds != null) "Paused - tap to open"
-                               else "Tap to open the timer",
-                    onClick = { onOpenActiveFocus(activeFocus.sessionId) },
-                )
-            }
-        } else if (runningRoutine != null) {
-            item {
-                LiveSessionBanner(
-                    icon = Icons.Filled.Timer,
-                    title = "Routine running: ${runningRoutine.routine.name}",
-                    subtitle = "Tap to jump back in",
-                    onClick = { onOpenActiveRoutine(runningRoutine.routine.id) },
-                )
-            }
-        } else if (s.sleepWindowActive) {
-            item {
-                LiveSessionBanner(
-                    icon = Icons.Filled.Bedtime,
-                    title = "Sleep mode is running",
-                    subtitle = "Until ${formatClockMinutes(s.sleep.wakeMinutes)} - tap to manage",
-                    onClick = onGoToFocus,
-                )
-            }
-        }
-
-        // ── Today stats ──────────────────────────────────────────────────────
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Screen time",
-                    value = if (s.usage.permissionGranted) formatHoursMinutes(s.usage.totalScreenTimeMinutes)
-                            else "—",
-                    hint = if (s.usage.permissionGranted) "today" else "needs usage access",
-                    onClick = onGoToBlocker,
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Open todos",
-                    value = "${s.openTodoCount}",
-                    hint = if (s.openTodoCount == 0) "all clear" else "open",
-                    onClick = onGoToTodos,
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Blocked apps",
-                    value = "${s.blockedAppCount}",
-                    hint = if (s.blockerEnabled) "on" else "paused",
-                    onClick = onGoToBlocker,
-                )
-            }
-        }
-
-        if (s.usage.permissionGranted && s.usage.topBlockedAppName != null) {
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Block,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "Most used blocked app today: ${s.usage.topBlockedAppName} " +
-                            "(${formatHoursMinutes(s.usage.topBlockedAppMinutes)})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-
-        // ── Modes: blocker and sleep, switchable without leaving the dashboard ──
-        //
-        // Both are schedules that run in the background, so the thing the user
-        // actually wants from the home screen is "is it on, and what is it doing
-        // right now" — plus the switch, without a detour through two tabs.
-        item {
-            SectionHeader(
-                title = "Modes",
-                actionLabel = "Focus & Sleep",
-                onAction = onGoToFocus,
-            )
-        }
-
-        item {
-            ModeCard(
-                icon = Icons.Filled.Block,
-                title = "App Blocker",
-                status = blockerStatus(s),
-                highlighted = s.blockerEnabled && s.blockedAppCount > 0,
-                checked = s.blockerEnabled,
-                onCheckedChange = viewModel::setBlockerEnabled,
-                onClick = onGoToBlocker,
-            )
-        }
-
-        item {
-            ModeCard(
-                icon = Icons.Filled.Bedtime,
-                title = "Sleep mode",
-                status = sleepStatus(s),
-                highlighted = s.sleepWindowActive,
-                checked = s.sleep.enabled,
-                onCheckedChange = viewModel::setSleepEnabled,
-                onClick = onGoToFocus,
-            )
-        }
-
-        // ── Quick actions ────────────────────────────────────────────────────
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = onGoToFocus,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Icon(Icons.Filled.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Start focus")
-                }
-                FilledTonalButton(
-                    onClick = onNewTodo,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("New todo")
-                }
-            }
-        }
-
-        // ── Today's routines ─────────────────────────────────────────────────
-        item {
-            SectionHeader(
-                title = "Today's routines",
-                actionLabel = "Manage",
-                onAction = onGoToRoutines,
-            )
-        }
-        if (s.todayRoutines.isEmpty()) {
-            item {
-                EmptyHintCard(
-                    text = "No routines scheduled for today.",
-                    actionLabel = "Create routine",
-                    onAction = onNewRoutine,
-                )
-            }
-        } else {
-            items(s.todayRoutines.size) { index ->
-                val item = s.todayRoutines[index]
-                TodayRoutineRow(
-                    item = item,
-                    onStart = {
-                        if (item.status == RoutineTodayStatus.RUNNING) {
-                            onOpenActiveRoutine(item.routine.id)
-                        } else {
-                            onStartRoutine(item.routine.id)
-                        }
-                    },
-                )
-            }
-        }
-
-        // ── Urgent todos ─────────────────────────────────────────────────────
-        item {
-            SectionHeader(
-                title = "Next todos",
-                actionLabel = "View all",
-                onAction = onGoToTodos,
-            )
-        }
-        if (s.urgentTodos.isEmpty()) {
-            item {
-                EmptyHintCard(
-                    text = "Nothing open. Enjoy the calm - or plan ahead.",
-                    actionLabel = "New todo",
-                    onAction = onNewTodo,
-                )
-            }
-        } else {
-            items(s.urgentTodos.size) { index ->
-                val todo = s.urgentTodos[index]
-                UrgentTodoRow(
-                    todo = todo,
-                    onComplete = { viewModel.completeTodo(todo) },
-                    onClick = onGoToTodos,
-                )
-            }
-        }
-
-        item { Spacer(Modifier.height(24.dp)) }
+    fun tickOff(todo: TodoEntity) {
+        if (s.guards.forTodo(todo, GuardAction.DONE).isNone) viewModel.completeTodo(todo) else finishing = todo
     }
+
+    val activeFocus = s.activeFocusSession
+    val runningRoutine = s.todayRoutines.firstOrNull { it.status == RoutineTodayStatus.RUNNING }
+
+    Scaffold(
+        containerColor = colors.background,
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // ── Hello ─────────────────────────────────────────────────────────
+            item(key = "hello") {
+                Column(Modifier.padding(horizontal = 2.dp)) {
+                    Text(greeting(), style = MaterialTheme.typography.headlineMedium, color = colors.text)
+                    Text(todayLine(), style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                }
+            }
+
+            // ── Going on right now ────────────────────────────────────────────
+            if (activeFocus != null || runningRoutine != null || s.sleepWindowActive) {
+                item(key = "now") {
+                    FfCard {
+                        var first = true
+                        if (activeFocus != null) {
+                            ListRow(
+                                title = activeFocus.name,
+                                subtitle = if (activeFocus.pausedRemainingSeconds != null) "Focus · paused" else "Focus · running",
+                                subtitleColor = colors.accent,
+                                leading = { IconCircle(icon = Icons.Filled.SelfImprovement) },
+                                onClick = { onOpenActiveFocus(activeFocus.sessionId) },
+                            )
+                            first = false
+                        }
+                        if (runningRoutine != null) {
+                            if (!first) RowDivider()
+                            ListRow(
+                                title = runningRoutine.routine.name,
+                                subtitle = "Routine · running",
+                                subtitleColor = colors.accent,
+                                leading = {
+                                    IconCircle(icon = RoutineIcons.find(runningRoutine.routine.iconKey)?.vector ?: Icons.Filled.ViewDay)
+                                },
+                                onClick = { onOpenActiveRoutine(runningRoutine.routine.id) },
+                            )
+                            first = false
+                        }
+                        if (s.sleepWindowActive) {
+                            if (!first) RowDivider()
+                            ListRow(
+                                title = "Sleep",
+                                subtitle = "Until ${TimeFormat.clock(s.sleep.wakeMinutes)}",
+                                subtitleColor = colors.accent,
+                                leading = { IconCircle(icon = Icons.Filled.Bedtime) },
+                                onClick = onGoToSleep,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Three numbers ─────────────────────────────────────────────────
+            item(key = "numbers") {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    NumberTile(
+                        value = if (s.usage.permissionGranted) TimeFormat.duration(s.usage.totalScreenTimeMinutes) else "–",
+                        label = "Screen time",
+                        onClick = onOpenStats,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (s.isOn(AppModule.TODOS)) {
+                        NumberTile(
+                            value = "${s.openTodoCount}",
+                            label = "Open todos",
+                            onClick = onGoToTodos,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (s.isOn(AppModule.FOCUS)) {
+                        NumberTile(
+                            value = if (s.focusedMinutesToday > 0) TimeFormat.duration(s.focusedMinutesToday) else "0",
+                            label = "Focused",
+                            onClick = onGoToFocus,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+
+            // ── Two buttons ───────────────────────────────────────────────────
+            if (s.isOn(AppModule.FOCUS) || s.isOn(AppModule.TODOS)) {
+                item(key = "actions") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (s.isOn(AppModule.FOCUS)) {
+                            PrimaryButton(
+                                text = "Start focus",
+                                icon = Icons.Filled.Bolt,
+                                onClick = onGoToFocus,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (s.isOn(AppModule.TODOS)) {
+                            TonalButton(
+                                text = "New todo",
+                                icon = Icons.Filled.Add,
+                                onClick = onNewTodo,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Today's routines ──────────────────────────────────────────────
+            if (s.isOn(AppModule.ROUTINES)) {
+                item(key = "routines") {
+                    Column {
+                        SectionHeader("Today's routines", actionLabel = "Manage", onAction = onGoToRoutines)
+                        if (s.todayRoutines.isEmpty()) {
+                            FfCard {
+                                ListRow(
+                                    title = "Nothing planned for today",
+                                    subtitle = "Create a routine",
+                                    subtitleColor = colors.accent,
+                                    onClick = onNewRoutine,
+                                    leading = { IconCircle(icon = Icons.Filled.ViewDay) },
+                                )
+                            }
+                        } else {
+                            FfCard {
+                                s.todayRoutines.forEachIndexed { index, today ->
+                                    if (index > 0) RowDivider()
+                                    RoutineRow(
+                                        today = today,
+                                        onOpen = {
+                                            if (today.status == RoutineTodayStatus.RUNNING) {
+                                                onOpenActiveRoutine(today.routine.id)
+                                            } else {
+                                                onStartRoutine(today.routine.id)
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Next todos ────────────────────────────────────────────────────
+            if (s.isOn(AppModule.TODOS)) {
+                item(key = "todos") {
+                    Column {
+                        SectionHeader("Next todos", actionLabel = "View all", onAction = onGoToTodos)
+                        FfCard {
+                            if (s.urgentTodos.isEmpty()) {
+                                ListRow(
+                                    title = "Nothing open",
+                                    subtitle = "Add a todo",
+                                    subtitleColor = colors.accent,
+                                    onClick = onNewTodo,
+                                    leading = { IconCircle(icon = Icons.Filled.TaskAlt) },
+                                )
+                            }
+                            s.urgentTodos.take(4).forEachIndexed { index, todo ->
+                                if (index > 0) RowDivider()
+                                TodoRow(todo = todo, onOpen = { onEditTodo(todo.id) }, onTick = { tickOff(todo) })
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Lists with something on them ──────────────────────────────────
+            val openLists = s.lists.filter { it.open > 0 }
+            if (s.isOn(AppModule.LISTS) && openLists.isNotEmpty()) {
+                item(key = "lists") {
+                    Column {
+                        SectionHeader("Lists", actionLabel = "All lists", onAction = onGoToLists)
+                        FfCard {
+                            openLists.take(3).forEachIndexed { index, row ->
+                                if (index > 0) RowDivider()
+                                ListRow(
+                                    title = row.list.name,
+                                    subtitle = "${row.open} to go",
+                                    onClick = { onOpenList(row.list.id) },
+                                    leading = {
+                                        IconCircle(
+                                            icon = RoutineIcons.find(row.list.iconKey)?.vector
+                                                ?: Icons.AutoMirrored.Filled.FormatListBulleted,
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Blocker and sleep, switchable from here ───────────────────────
+            if (s.isOn(AppModule.BLOCKER) || s.isOn(AppModule.SLEEP)) {
+                item(key = "modes") {
+                    Column {
+                        SectionHeader("Running in the background")
+                        FfCard {
+                            if (s.isOn(AppModule.BLOCKER)) {
+                                ListRow(
+                                    title = "App blocker",
+                                    subtitle = blockerStatus(s),
+                                    subtitleColor = if (!s.blockerReady && s.blockerEnabled) colors.warning else colors.textMuted,
+                                    onClick = onGoToBlocker,
+                                    leading = { IconCircle(icon = Icons.Filled.Block) },
+                                    trailing = {
+                                        FfSwitch(checked = s.blockerEnabled, onCheckedChange = viewModel::setBlockerEnabled)
+                                    },
+                                )
+                            }
+                            if (s.isOn(AppModule.BLOCKER) && s.isOn(AppModule.SLEEP)) RowDivider()
+                            if (s.isOn(AppModule.SLEEP)) {
+                                ListRow(
+                                    title = "Sleep",
+                                    subtitle = sleepStatus(s),
+                                    onClick = onGoToSleep,
+                                    leading = { IconCircle(icon = Icons.Filled.Bedtime) },
+                                    trailing = {
+                                        FfSwitch(checked = s.sleep.enabled, onCheckedChange = viewModel::setSleepEnabled)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Ticking off from here goes through the same speed bump as everywhere else.
+    finishing?.let { todo ->
+        ModalBottomSheet(
+            onDismissRequest = { finishing = null },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = colors.background,
+            sheetGesturesEnabled = false,
+        ) {
+            Column(
+                Modifier
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 20.dp),
+            ) {
+                Text(todo.title, style = MaterialTheme.typography.headlineSmall, color = colors.text)
+                Spacer(Modifier.height(16.dp))
+                GuardFlow(
+                    guard = s.guards.forTodo(todo, GuardAction.DONE),
+                    copy = GuardCopy.DONE,
+                    onPassed = {
+                        viewModel.completeTodo(todo)
+                        finishing = null
+                    },
+                    onCancel = { finishing = null },
+                )
+            }
+        }
     }
 }
 
 // ── Pieces ────────────────────────────────────────────────────────────────────
 
-/**
- * A background mode (app blocker, sleep) as one row: what it is, what it is doing
- * right now, and a switch. Tapping the row opens the module for the details.
- */
 @Composable
-private fun ModeCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    status: String,
-    highlighted: Boolean,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    onClick: () -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (highlighted) MaterialTheme.colorScheme.primaryContainer
-                             else MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = if (checked) MaterialTheme.colorScheme.primary
-                       else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    status,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                ),
-            )
-        }
+private fun NumberTile(value: String, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = FfTheme.colors
+    FfPaddedCard(modifier = modifier, spacing = 2.dp, onClick = onClick) {
+        Text(
+            value,
+            style = FfType.number.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize),
+            color = colors.text,
+            maxLines = 1,
+        )
+        Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 2)
     }
 }
+
+@Composable
+private fun RoutineRow(today: TodayRoutine, onOpen: () -> Unit) {
+    val colors = FfTheme.colors
+    val routine = today.routine
+    val start = TimeFormat.clock(routine.startTimeHour * 60 + routine.startTimeMinute)
+    val detail = when (today.status) {
+        RoutineTodayStatus.RUNNING -> "Running now"
+        RoutineTodayStatus.DONE_TODAY -> today.doneAt?.let { "Done at ${TimeFormat.clock(it)}" } ?: "Done today"
+        RoutineTodayStatus.UPCOMING -> buildString {
+            append("Starts at $start")
+            if (today.totalMinutes > 0) append(" · ${TimeFormat.duration(today.totalMinutes)}")
+        }
+        RoutineTodayStatus.EARLIER_TODAY -> "Was due at $start"
+    }
+    ListRow(
+        title = routine.name,
+        subtitle = detail,
+        subtitleColor = when (today.status) {
+            RoutineTodayStatus.RUNNING -> colors.accent
+            RoutineTodayStatus.EARLIER_TODAY -> colors.warning
+            else -> colors.textMuted
+        },
+        titleColor = if (today.status == RoutineTodayStatus.DONE_TODAY) colors.textSecondary else colors.text,
+        onClick = onOpen,
+        leading = { IconCircle(icon = RoutineIcons.find(routine.iconKey)?.vector ?: Icons.Filled.ViewDay) },
+        trailing = {
+            if (today.status != RoutineTodayStatus.DONE_TODAY) {
+                IconButton(onClick = onOpen) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Start ${routine.name}", tint = colors.accent)
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun TodoRow(todo: TodoEntity, onOpen: () -> Unit, onTick: () -> Unit) {
+    val colors = FfTheme.colors
+    val now = System.currentTimeMillis()
+    val due = todo.dueDateTime
+    val overdue = due != null && due < now
+    ListRow(
+        title = todo.title,
+        subtitle = when {
+            due == null -> "No date"
+            overdue -> "Overdue since ${TimeFormat.dayAndClock(due)}"
+            else -> TimeFormat.dayAndClock(due)
+        },
+        subtitleColor = if (overdue) colors.error else colors.textMuted,
+        onClick = onOpen,
+        leading = { IconCircle(icon = RoutineIcons.find(todo.iconKey)?.vector ?: Icons.Filled.TaskAlt) },
+        trailing = {
+            CompletionRing(
+                checked = false,
+                onClick = onTick,
+                color = colors.priority(todo.priority),
+                contentDescription = "Mark ${todo.title} as done",
+            )
+        },
+    )
+}
+
+// ── Words ─────────────────────────────────────────────────────────────────────
 
 private fun blockerStatus(s: HomeUiState): String = when {
-    s.blockedAppCount == 0 ->
-        "No apps picked yet - tap to choose which ones to block"
-    !s.blockerReady ->
-        "Needs the accessibility service - tap to finish setup"
-    !s.blockerEnabled ->
-        "Paused - ${s.blockedAppCount} app(s) configured"
-    s.blockerGroupCount > 0 ->
-        "On - ${s.blockedAppCount} app(s) in ${s.blockerGroupCount} group(s)"
-    else ->
-        "On - ${s.blockedAppCount} app(s) covered"
-}
-
-private fun sleepStatus(s: HomeUiState): String {
-    val window = "${formatClockMinutes(s.sleep.bedtimeMinutes)} - " +
-        formatClockMinutes(s.sleep.wakeMinutes)
-    return when {
-        s.sleepWindowActive -> "Running until ${formatClockMinutes(s.sleep.wakeMinutes)}"
-        s.sleep.enabled -> "Tonight $window"
-        else -> "Off - tap to set a bedtime and wake-up"
+    !s.blockerEnabled -> "Paused"
+    !s.blockerReady -> "Needs the accessibility service to work"
+    s.blockedAppCount == 0 -> "On, but nothing to block yet"
+    else -> buildString {
+        append("On · ${s.blockedAppCount} apps")
+        if (s.blockerGroupCount > 0) append(" in ${s.blockerGroupCount} groups")
     }
 }
 
-@Composable
-private fun LiveSessionBanner(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.horizontalGradient(
-                    listOf(MaterialTheme.colorScheme.primary, Blue900)
-                ),
-                RoundedCornerShape(14.dp),
-            )
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, contentDescription = null, tint = Color.White)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.8f),
-            )
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.8f),
-        )
-    }
+private fun sleepStatus(s: HomeUiState): String = when {
+    !s.sleep.enabled -> "Off"
+    s.sleepWindowActive -> "On now, until ${TimeFormat.clock(s.sleep.wakeMinutes)}"
+    else -> "${TimeFormat.clock(s.sleep.bedtimeMinutes)} to ${TimeFormat.clock(s.sleep.wakeMinutes)}"
 }
-
-@Composable
-private fun StatCard(
-    modifier: Modifier = Modifier,
-    label: String,
-    value: String,
-    hint: String,
-    onClick: () -> Unit,
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
-            Text(
-                value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                hint,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, actionLabel: String, onAction: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onAction) { Text(actionLabel) }
-    }
-}
-
-@Composable
-private fun TodayRoutineRow(
-    item: TodayRoutine,
-    onStart: () -> Unit,
-) {
-    val routine = item.routine
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onStart),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val icon = RoutineIcons.find(routine.iconKey)?.vector ?: Icons.Filled.Schedule
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .padding(8.dp),
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    routine.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val statusText = when (item.status) {
-                    RoutineTodayStatus.RUNNING -> "Running now"
-                    RoutineTodayStatus.DONE_TODAY -> "Completed today ✓"
-                    RoutineTodayStatus.UPCOMING ->
-                        "Scheduled at %02d:%02d".format(routine.startTimeHour, routine.startTimeMinute)
-                    RoutineTodayStatus.EARLIER_TODAY ->
-                        "Was scheduled at %02d:%02d".format(routine.startTimeHour, routine.startTimeMinute)
-                }
-                Text(
-                    statusText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when (item.status) {
-                        RoutineTodayStatus.RUNNING -> MaterialTheme.colorScheme.primary
-                        RoutineTodayStatus.DONE_TODAY -> Color(0xFF34d399)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
-            IconButton(onClick = onStart) {
-                Icon(
-                    Icons.Filled.PlayArrow,
-                    contentDescription = "Start routine",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun UrgentTodoRow(
-    todo: TodoEntity,
-    onComplete: () -> Unit,
-    onClick: () -> Unit,
-) {
-    val now = System.currentTimeMillis()
-    val overdue = todo.dueDateTime != null && todo.dueDateTime < now
-    val priorityColor = when (todo.priority) {
-        2 -> Error
-        1 -> Warning
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                1.dp,
-                if (overdue) Error.copy(alpha = 0.5f)
-                else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                RoundedCornerShape(12.dp),
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = false,
-            onCheckedChange = { onComplete() },
-            colors = CheckboxDefaults.colors(
-                uncheckedColor = priorityColor,
-                checkedColor = MaterialTheme.colorScheme.primary,
-            ),
-        )
-        Column(Modifier.weight(1f)) {
-            Text(
-                todo.title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val dueLabel = when {
-                todo.dueDateTime == null -> null
-                overdue -> "Overdue - ${formatDue(todo.dueDateTime)}"
-                else -> "Due ${formatDue(todo.dueDateTime)}"
-            }
-            if (dueLabel != null) {
-                Text(
-                    dueLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (overdue) Error else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Icon(
-            Icons.Filled.CheckCircle,
-            contentDescription = null,
-            tint = priorityColor.copy(alpha = 0.35f),
-            modifier = Modifier
-                .padding(end = 6.dp)
-                .size(14.dp),
-        )
-    }
-}
-
-@Composable
-private fun EmptyHintCard(text: String, actionLabel: String, onAction: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onAction) { Text(actionLabel) }
-        }
-    }
-}
-
-// ── Formatting ────────────────────────────────────────────────────────────────
 
 private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
     in 5..11 -> "Good morning"
@@ -716,19 +486,4 @@ private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_
 }
 
 private fun todayLine(): String =
-    SimpleDateFormat("EEEE, MMM d", Locale.ENGLISH).format(Date())
-
-private fun formatHoursMinutes(totalMinutes: Int): String {
-    val h = totalMinutes / 60
-    val m = totalMinutes % 60
-    return when {
-        h > 0 -> "${h}h ${m}m"
-        else -> "${m}m"
-    }
-}
-
-private fun formatDue(millis: Long): String =
-    SimpleDateFormat("MMM d, HH:mm", Locale.ENGLISH).format(Date(millis))
-
-private fun formatClockMinutes(minutes: Int): String =
-    "%02d:%02d".format(minutes / 60, minutes % 60)
+    LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.ENGLISH))

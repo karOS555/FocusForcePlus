@@ -57,6 +57,10 @@ fun NavGraph(
                 onNewTodo            = { navController.navigate(TodoRoutes.CREATE) },
                 onNewRoutine         = { navController.navigate(RoutineRoutes.CREATE) },
                 onOpenStats          = { navController.navigate(StatsRoutes.STATS) },
+                onGoToLists          = { goToTab(ListRoutes.LIST) },
+                onOpenList           = { id -> navController.navigate(ListRoutes.detail(id)) },
+                onGoToSleep          = { goToTab(SleepRoutes.SLEEP) },
+                onEditTodo           = { id -> navController.navigate(TodoRoutes.edit(id)) },
             )
         }
 
