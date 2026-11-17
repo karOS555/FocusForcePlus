@@ -94,6 +94,7 @@ fun SettingsScreen(
     onOpenTrash: () -> Unit = {},
     onOpenIntegrations: () -> Unit = {},
     onOpenAutoBackup: () -> Unit = {},
+    onOpenAppearance: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     navViewModel: NavViewModel = hiltViewModel(),
 ) {
@@ -271,6 +272,16 @@ fun SettingsScreen(
                             value = autoTrashLabel(state.autoDeleteDays),
                             onClick = { dialog = SettingsDialog.AUTO_TRASH },
                         )
+                    }
+                }
+            }
+
+            // ── Look ──────────────────────────────────────────────────────────
+            item {
+                val theme by com.focusforceplus.app.ui.theme.ThemeStore.spec.collectAsState()
+                FormSection(title = "Look") {
+                    FfCard {
+                        LinkRow(title = "Theme", subtitle = theme.name, onClick = onOpenAppearance)
                     }
                 }
             }

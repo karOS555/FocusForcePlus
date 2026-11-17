@@ -35,6 +35,7 @@ class SettingsRepository @Inject constructor(
         private val BLOCKER_ENABLED_KEY            = booleanPreferencesKey("blocker_enabled")
         private val SHORTS_INSTAGRAM_KEY           = booleanPreferencesKey("shorts_block_instagram")
         private val EXTERNAL_STARTS_KEY            = booleanPreferencesKey("external_starts")
+        private val THEME_KEY                      = stringPreferencesKey("theme")
         private val SHORTS_YOUTUBE_KEY             = booleanPreferencesKey("shorts_block_youtube")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
         private val BLOCK_DURING_FOCUS_KEY         = booleanPreferencesKey("blocker_during_focus")
@@ -143,6 +144,15 @@ class SettingsRepository @Inject constructor(
     val blockerEnabled: Flow<Boolean> = dataStore.data
         .catch { emit(emptyPreferences()) }
         .map { prefs -> prefs[BLOCKER_ENABLED_KEY] ?: false }
+
+    /** The picked theme as JSON (see ui.theme.ThemeSpec); null = the default look. */
+    val themeJson: Flow<String?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[THEME_KEY] }
+
+    suspend fun saveThemeJson(json: String?) {
+        dataStore.edit { prefs -> if (json == null) prefs.remove(THEME_KEY) else prefs[THEME_KEY] = json }
+    }
 
     /** Whether start links from other apps, automation and NFC tags may run. Off by default. */
     val externalStartsAllowed: Flow<Boolean> = dataStore.data

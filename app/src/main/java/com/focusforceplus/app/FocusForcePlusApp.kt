@@ -1,5 +1,8 @@
 package com.focusforceplus.app
 
+import com.focusforceplus.app.ui.theme.ThemePresets
+import com.focusforceplus.app.ui.theme.ThemeSpec
+import com.focusforceplus.app.ui.theme.ThemeStore
 import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -57,6 +60,13 @@ class FocusForcePlusApp : Application() {
         // with what is stored. Phones that kill the app overnight would otherwise
         // leave a todo without its next reminder until someone opened the app.
         appScope.launch { alarmRearmer.rearmAll() }
+
+        // The picked theme, for every activity.
+        appScope.launch {
+            settingsRepository.themeJson.collect { json ->
+                ThemeStore.apply(json?.let(ThemeSpec::fromJson) ?: ThemePresets.MIDNIGHT)
+            }
+        }
 
         // Keep the synchronous alarm sound/vibration snapshot in sync with settings.
         appScope.launch {

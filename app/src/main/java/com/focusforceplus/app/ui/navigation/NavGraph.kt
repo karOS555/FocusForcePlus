@@ -277,6 +277,13 @@ fun NavGraph(
                 onOpenTrash = { navController.navigate(TrashRoutes.TRASH) },
                 onOpenIntegrations = { navController.navigate(SettingsRoutes.INTEGRATIONS) },
                 onOpenAutoBackup = { navController.navigate(SettingsRoutes.AUTO_BACKUP) },
+                onOpenAppearance = { navController.navigate(SettingsRoutes.APPEARANCE) },
+            )
+        }
+
+        composable(SettingsRoutes.APPEARANCE) {
+            com.focusforceplus.app.ui.screens.settings.AppearanceScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 
