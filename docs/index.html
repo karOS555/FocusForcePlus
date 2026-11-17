@@ -3,26 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FocusForce+ — offline routines and app blocker for Android</title>
-<meta name="description" content="Open source ADHD app for Android: strict routines, to-dos, an app blocker, focus and sleep mode. Fully offline, with no account and no internet permission.">
+<title>FocusForce+: offline routines, todos and app blocker for Android</title>
+<meta name="description" content="Open source ADHD-friendly app for Android: routines with alarms, todos that keep coming back, lists, an app blocker that can skip just Reels and Shorts, focus and sleep mode. No account, no internet permission.">
 <meta name="theme-color" content="#050508">
 <link rel="canonical" href="https://karos555.github.io/FocusForcePlus/">
 <link rel="icon" href="logo-192.png" type="image/png">
 <link rel="apple-touch-icon" href="logo-192.png">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="FocusForce+ — offline routines and app blocker for Android">
-<meta property="og:description" content="Routines, to-dos, app blocking, focus and sleep mode in one Android app, with reminders that are hard to ignore. Fully offline.">
+<meta property="og:title" content="FocusForce+: offline routines, todos and app blocker for Android">
+<meta property="og:description" content="Routines, todos, lists, an app blocker, focus and sleep mode in one Android app, with reminders you can't just swipe away. No internet permission.">
 <meta property="og:url" content="https://karos555.github.io/FocusForcePlus/">
 <meta property="og:image" content="https://karos555.github.io/FocusForcePlus/social-preview.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
-<meta property="og:image:alt" content="FocusForce+ — built for brains that need structure">
+<meta property="og:image:alt" content="FocusForce+: reminders you can't ignore">
 <meta property="og:locale" content="en_US">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="FocusForce+ — offline routines and app blocker for Android">
-<meta name="twitter:description" content="Routines, to-dos, app blocking, focus and sleep mode in one Android app, with reminders that are hard to ignore. Fully offline.">
+<meta name="twitter:title" content="FocusForce+: offline routines, todos and app blocker for Android">
+<meta name="twitter:description" content="Routines, todos, lists, an app blocker, focus and sleep mode in one Android app, with reminders you can't just swipe away. No internet permission.">
 <meta name="twitter:image" content="https://karos555.github.io/FocusForcePlus/social-preview.png">
 
 <script type="application/ld+json">
@@ -32,20 +32,23 @@
   "name": "FocusForce+",
   "operatingSystem": "Android 8.0+",
   "applicationCategory": "UtilitiesApplication",
-  "softwareVersion": "0.9.4-beta",
+  "softwareVersion": "0.10.0-beta",
   "isAccessibleForFree": true,
   "license": "https://spdx.org/licenses/GPL-3.0-only.html",
   "downloadUrl": "https://github.com/karOS555/FocusForcePlus/releases/latest",
   "url": "https://karos555.github.io/FocusForcePlus/",
-  "description": "Strict routines, a nagging to-do planner, an app blocker, a focus mode and a sleep mode in one Android app. Everything stays on the device; the app has no internet permission.",
+  "description": "Routines with alarms, todos that keep coming back, lists, an app blocker, a focus mode and a sleep mode in one Android app. Everything stays on the device; the app has no internet permission.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
   "screenshot": [
     "https://karos555.github.io/FocusForcePlus/screenshots/home.png",
-    "https://karos555.github.io/FocusForcePlus/screenshots/routine.png",
+    "https://karos555.github.io/FocusForcePlus/screenshots/alarm.png",
     "https://karos555.github.io/FocusForcePlus/screenshots/todos.png",
+    "https://karos555.github.io/FocusForcePlus/screenshots/routine.png",
     "https://karos555.github.io/FocusForcePlus/screenshots/blocker.png",
     "https://karos555.github.io/FocusForcePlus/screenshots/focus.png",
-    "https://karos555.github.io/FocusForcePlus/screenshots/sleep.png"
+    "https://karos555.github.io/FocusForcePlus/screenshots/sleep.png",
+    "https://karos555.github.io/FocusForcePlus/screenshots/lists.png",
+    "https://karos555.github.io/FocusForcePlus/screenshots/theme.png"
   ]
 }
 </script>
@@ -62,13 +65,18 @@
     },
     {
       "@type": "Question",
+      "name": "Can it block only Reels or YouTube Shorts?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. An optional service leaves Instagram Reels and YouTube Shorts as soon as they open, and the rest of both apps keeps working." }
+    },
+    {
+      "@type": "Question",
       "name": "Is it really free?",
       "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is free software under the GNU General Public License v3.0. There is nothing to buy, no subscription, no ads and no tracking." }
     },
     {
       "@type": "Question",
       "name": "Why is it not on the Play Store?",
-      "acceptedAnswer": { "@type": "Answer", "text": "It is still in public beta and ships as a signed APK attached to each GitHub release. A Play Store submission is planned after a wider testing round." }
+      "acceptedAnswer": { "@type": "Answer", "text": "It is still in public beta and ships as a signed APK with each GitHub release. Store listings come after 1.0." }
     },
     {
       "@type": "Question",
@@ -337,7 +345,7 @@
       <h1>FocusForce+</h1>
 
       <div class="overtime">
-        <p class="ot-head"><span class="ot-dot" aria-hidden="true"></span>Morning workout &middot; step 3 of 5</p>
+        <p class="ot-head"><span class="ot-dot" aria-hidden="true"></span>Morning routine &middot; step 3 of 5</p>
         <p class="ot-clock" id="clock">-04:17</p>
         <p class="ot-label">Over time, and still counting.</p>
         <div class="ot-bar" aria-hidden="true">
@@ -346,9 +354,8 @@
       </div>
 
       <p class="tagline">
-        Routines, to-dos, app blocking, focus and sleep mode in one Android app,
-        with reminders that are hard to ignore. When a step runs out, the timer
-        does not stop. It keeps counting, and so do the reminders.
+        Routines, todos, lists, an app blocker, focus and sleep mode in one Android app.
+        When a step's time runs out, the timer keeps counting, and so do the reminders.
       </p>
 
       <div class="actions">
@@ -365,210 +372,252 @@
     </div>
   </header>
 
-  <!-- 2. Screenshots -->
-  <section id="screenshots">
-    <div class="wrap">
-      <h2>What it looks like</h2>
-      <p class="section-intro">Dark by default, built around the thing you are supposed to be doing right now.</p>
-
-      <!-- WebP at display size with the full PNG as fallback: the PNGs are
-           1005x2048 and were shown at about a third of that, which cost 2.7 MB. -->
-      <ul class="shots">
-        <li><figure>
-          <picture>
-            <source srcset="screenshots/home.webp" type="image/webp">
-            <img src="screenshots/home.png" alt="The home dashboard with today's routines, the next to-dos and screen time" width="1005" height="2048" loading="lazy" decoding="async">
-          </picture>
-          <figcaption>Your day at a glance, plus quick actions.</figcaption>
-        </figure></li>
-        <li><figure>
-          <picture>
-            <source srcset="screenshots/routine.webp" type="image/webp">
-            <img src="screenshots/routine.png" alt="An active routine counting down its current step" width="1005" height="2048" loading="lazy" decoding="async">
-          </picture>
-          <figcaption>Multi-step timers that keep counting.</figcaption>
-        </figure></li>
-        <li><figure>
-          <picture>
-            <source srcset="screenshots/todos.webp" type="image/webp">
-            <img src="screenshots/todos.png" alt="The to-do list with priority filters" width="1005" height="2048" loading="lazy" decoding="async">
-          </picture>
-          <figcaption>Priority sets how loud the reminder gets.</figcaption>
-        </figure></li>
-        <li><figure>
-          <picture>
-            <source srcset="screenshots/blocker.webp" type="image/webp">
-            <img src="screenshots/blocker.png" alt="The app blocker with its blocked apps and daily limits" width="1005" height="2048" loading="lazy" decoding="async">
-          </picture>
-          <figcaption>Daily limits, windows and app groups.</figcaption>
-        </figure></li>
-        <li><figure>
-          <picture>
-            <source srcset="screenshots/focus.webp" type="image/webp">
-            <img src="screenshots/focus.png" alt="A focus session in progress" width="1005" height="2048" loading="lazy" decoding="async">
-          </picture>
-          <figcaption>One timed session, Do Not Disturb on.</figcaption>
-        </figure></li>
-        <li><figure>
-          <picture>
-            <source srcset="screenshots/sleep.webp" type="image/webp">
-            <img src="screenshots/sleep.png" alt="Sleep mode settings with bedtime and wake-up" width="1005" height="2048" loading="lazy" decoding="async">
-          </picture>
-          <figcaption>Wind-down, night blocking and wake-up.</figcaption>
-        </figure></li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- 3. Why it exists -->
-  <section id="why">
-    <div class="wrap">
-      <h2>Why it exists</h2>
-      <p>
-        I built it for myself first, and I use it every day. Nothing I tried before held up once
-        the motivation was gone: everything was a suggestion you could swipe away. So I wrote the
-        thing I actually wanted, where a routine keeps counting past zero, a to-do doesn't quietly
-        disappear, and "just five more minutes" has to get past something first.
-      </p>
-      <p>
-        Putting it on GitHub came later, but if your brain works anything like mine, it might fit
-        you too. What came out of it is an open source ADHD app for Android, free under the GPL,
-        with no account to make, nothing to buy, and no data leaving your phone.
-      </p>
-    </div>
-  </section>
-
-  <!-- 4. What's inside -->
+  <!-- 2. What it does -->
   <section id="features">
     <div class="wrap">
-      <h2>What's inside</h2>
-      <p class="section-intro">Five things that usually live in five separate apps, plus the two views that tie them together.</p>
+      <h2>What it does</h2>
 
       <ul class="cards">
         <li>
           <h3>Routines</h3>
           <p>
-            Multi-step routines with a real alarm at the start time, a countdown for every step,
-            and a heads-up before each one ends. Run over time and the timer keeps going into the
-            negative and keeps reminding you. The session runs in the background, so leaving the
-            app doesn't quietly freeze it.
+            A real alarm at the start time, then a timer for every step. Run over and the timer
+            keeps counting into the negative and reminds you. Snoozes and reschedules are limited
+            per routine, and a routine can be duplicated or borrow steps from another.
           </p>
         </li>
         <li>
-          <h3>To-dos</h3>
+          <h3>Todos</h3>
           <p>
-            A planner that won't let things quietly slip. Timed to-dos alarm you like a routine
-            does. Loose ones resurface a few times a day. Overdue ones stay pinned until you deal
-            with them, and every item carries a priority that decides how insistent it gets.
+            Priority decides how pushy a todo is. Low is one notification. Medium comes up on screen
+            and comes back a couple of times. High rings, and rings again every few minutes. Todos
+            without a date come back at set times each day. Checklists, repeating todos and a trash.
           </p>
         </li>
         <li>
-          <h3>App blocker</h3>
+          <h3>Lists</h3>
           <p>
-            An app blocker without internet permission: blocking happens entirely on the device.
-            Block by a daily time limit, a fixed time window (overnight works too), or automatically
-            during routines and focus sessions. Bundle apps into groups that share one limit and one
-            schedule.
+            Shopping and packing lists. Type several items at once, separated by commas. Earlier
+            items come back as suggestions, and shopping mode keeps the screen on in the shop.
           </p>
         </li>
         <li>
-          <h3>Focus mode</h3>
+          <h3>Blocker</h3>
           <p>
-            One session that turns on Do Not Disturb, silences notifications, and blocks the apps or
-            groups you pick, for a set stretch of time. Start one on the spot or schedule it. An
-            offline focus app that needs no account and no sign-up of any kind.
+            Close apps always, after a daily limit, or on a schedule, overnight included, and during
+            routines and focus sessions. Several apps can share one limit. An optional service keeps
+            Instagram and YouTube usable but leaves Reels and Shorts as soon as they open.
           </p>
         </li>
         <li>
-          <h3>Sleep mode</h3>
+          <h3>Focus</h3>
           <p>
-            One nightly schedule: a wind-down reminder, Do Not Disturb, and your distracting apps
-            out of reach until morning. Bedtime and wake-up can each kick off a routine, and it can
-            put backup alarms in your phone's own clock app, so waking up never depends on this one.
+            A timed session that switches on Do Not Disturb and blocks the apps you pick. Start one
+            on the spot or save sessions with reminders. Ending early asks first and then makes you wait.
           </p>
         </li>
         <li>
-          <h3>Dashboard and statistics</h3>
+          <h3>Sleep</h3>
           <p>
-            Your day at a glance: today's routines and their status, the to-dos that need you next,
-            screen time, and quick actions. Plus a weekly view of routines completed and focus
-            minutes logged.
+            A wind-down reminder, a quiet night, apps closed until morning, and a routine at bedtime
+            and at wake-up. Backup alarms go into your phone's own clock app, so waking up never
+            depends on this one.
           </p>
         </li>
       </ul>
     </div>
   </section>
 
-  <!-- 5. What makes it different -->
+  <!-- 3. Screenshots -->
+  <section id="screenshots">
+    <div class="wrap">
+      <h2>What it looks like</h2>
+
+      <!-- WebP at display size with the full PNG as fallback. -->
+      <ul class="shots">
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/home.webp" type="image/webp">
+            <img src="screenshots/home.png" alt="The home screen with today's routines, the next todos and screen time" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Today on one screen.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/alarm.webp" type="image/webp">
+            <img src="screenshots/alarm.png" alt="A high-priority todo alarm asking for a swipe along a path" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Important todos ring until you answer.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/todos.webp" type="image/webp">
+            <img src="screenshots/todos.png" alt="The todo list grouped into today, later and no date" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Dated todos ring like an alarm.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/routine.webp" type="image/webp">
+            <img src="screenshots/routine.png" alt="A routine step counting down" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Every routine step has its own timer.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/blocker.webp" type="image/webp">
+            <img src="screenshots/blocker.png" alt="The blocker with two blocks and the Reels and Shorts switches" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Block apps, or just Reels and Shorts.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/focus.webp" type="image/webp">
+            <img src="screenshots/focus.png" alt="Ending a focus session early, with a countdown first" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Ending focus early means waiting first.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/sleep.webp" type="image/webp">
+            <img src="screenshots/sleep.png" alt="Sleep mode with bedtime, wake-up and linked routines" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Wind-down, a quiet night, routines at both ends.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/lists.webp" type="image/webp">
+            <img src="screenshots/lists.png" alt="A grocery list with two ticked items" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Lists for shopping and packing.</figcaption>
+        </figure></li>
+        <li><figure>
+          <picture>
+            <source srcset="screenshots/theme.webp" type="image/webp">
+            <img src="screenshots/theme.png" alt="The theme page with six themes and your own colours" width="1080" height="2400" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Six themes, or your own colours.</figcaption>
+        </figure></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4. How it holds you to it -->
   <section id="different">
     <div class="wrap">
-      <h2>What makes it different</h2>
-      <p class="section-intro">Four decisions that separate this from the usual blocking app.</p>
+      <h2>How it holds you to it</h2>
 
       <ul class="cards">
         <li>
-          <h3>Invincible Mode is per feature</h3>
+          <h3>Speed bumps</h3>
           <p>
-            Most blocking apps give you a single lockdown toggle. Here you turn it on for the
-            individual routine, focus session or blocking rule you actually want to commit to. Lock
-            in the morning workout while leaving everything else flexible. While an invincible thing
-            is active you can't impulsively cancel or weaken it until it reaches its natural end.
+            Before you tick off a todo, snooze it, push a routine back, end focus early or pause a
+            block, the app can ask again, make you wait, or give you a small task: hold a button,
+            drag a slider or a path, or solve a sum. You pick the mix for each of these, and one
+            switch turns them all off.
           </p>
         </li>
         <li>
-          <h3>It's friction, not a trap</h3>
+          <h3>Invincible mode, one item at a time</h3>
           <p>
-            You can always uninstall the app from Android settings, and a factory reset always
-            works. The goal isn't to lock you out of your own phone. It's to make bypassing annoying
-            enough that a bad-day version of you doesn't do it for a dumb reason. The app is upfront
-            about this everywhere it matters.
+            Lock a single routine, focus session or block instead of the whole phone. Until it ends
+            on its own, it can't be cancelled or weakened. Everything else stays flexible.
           </p>
         </li>
         <li>
-          <h3>Tamper Protection for the settings</h3>
+          <h3>Friction, not a trap</h3>
           <p>
-            An optional second layer. When it's on, loosening your own lock settings only works
-            inside a short daily window you choose, so you can't panic-disable everything in a weak
-            moment.
+            The wait in a speed bump is a minute at most, a reminder never rings forever, and you
+            can always uninstall the app from Android settings. The point is to stop the reflex,
+            not to lock you out of your phone.
           </p>
         </li>
         <li>
-          <h3>No internet access at all</h3>
+          <h3>Tamper Protection</h3>
           <p>
-            The app has no internet permission, so your data can't leave the device: there is simply
-            no way for it to be sent. No account, no cloud, no ads, no analytics, no crash reporting.
-            You can export and import everything as a plain JSON file whenever you want.
+            If you turn it on, loosening your own lock settings only works in a short daily window
+            you choose, not in the moment you want to give up.
           </p>
         </li>
       </ul>
     </div>
   </section>
 
-  <!-- 6. Install -->
+  <!-- 5. Make it yours -->
+  <section id="yours">
+    <div class="wrap">
+      <h2>Make it yours</h2>
+      <ul class="cards">
+        <li>
+          <h3>Your bar, your colours</h3>
+          <p>
+            Pick which modules appear in the bottom bar and in which order, or switch one off
+            completely. Six themes, two of them light, or your own five colours, shared as a few
+            lines of text.
+          </p>
+        </li>
+        <li>
+          <h3>Works with other apps</h3>
+          <p>
+            Share text to FocusForce+ to make a todo or list items. Start a focus session or a
+            routine from Tasker, a home-screen shortcut or an NFC tag. Links are off until you
+            switch them on, and they can only start things, never stop them.
+          </p>
+        </li>
+        <li>
+          <h3>Backups you control</h3>
+          <p>
+            A backup file every night into a folder you choose, for example one that Syncthing or
+            Nextcloud keeps in sync, or a single export by hand. Nothing goes anywhere else.
+          </p>
+        </li>
+        <li>
+          <h3>No internet at all</h3>
+          <p>
+            The app has no internet permission, so your data can't leave the phone. No account, no
+            cloud, no ads, no analytics, no crash reporting.
+          </p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6. Why it exists -->
+  <section id="why">
+    <div class="wrap">
+      <h2>Why it exists</h2>
+      <p>
+        I built it for myself. Every routine app, todo app and blocker I tried stopped working for
+        me the moment motivation dipped, because everything could be swiped away. FocusForce+ is the
+        app I wanted instead, and I use it every day. If your brain works anything like mine, it
+        might fit you too.
+      </p>
+    </div>
+  </section>
+
+  <!-- 7. Install -->
   <section id="install">
     <div class="wrap">
       <h2>Install</h2>
-      <p class="section-intro">FocusForce+ isn't on the Play Store yet, so you install the APK directly.</p>
+      <p class="section-intro">FocusForce+ isn't in an app store yet, so you install the APK directly.</p>
       <ol>
         <li>
           Open <a href="https://github.com/karOS555/FocusForcePlus/releases/latest">the latest release</a>
           and download the <code>.apk</code> file.
         </li>
-        <li>Open it on your phone. Android will ask permission to install from this source the first time. Allow it.</li>
-        <li>Follow the in-app setup guide. It walks you through the permissions each feature needs and explains what every one is for.</li>
+        <li>Open it on your phone. The first time, Android asks whether to allow installs from this source. Allow it.</li>
+        <li>The setup guide walks you through the permissions each part needs and explains what each one is for.</li>
       </ol>
-      <p>Minimum Android version is 8.0 (API 26).</p>
+      <p>FocusForce+ needs Android 8.0 or newer.</p>
       <p class="note">
-        Because the app has no internet access, it can't check for updates itself. If you want that
-        handled automatically, install it through
-        <a href="https://github.com/ImranR98/Obtainium">Obtainium</a>, which watches GitHub releases
-        and updates sideloaded apps for you. Point it at the repository once and it handles the rest:
-        the app stays offline, Obtainium does the checking.
+        The app has no internet access, so it can't check for updates itself.
+        <a href="https://github.com/ImranR98/Obtainium">Obtainium</a> can do that for you: point it at
+        the repository once and it installs new versions as they come out.
       </p>
     </div>
   </section>
 
-  <!-- 7. FAQ -->
+  <!-- 8. FAQ -->
   <section id="faq">
     <div class="wrap">
       <h2>Questions</h2>
@@ -576,43 +625,43 @@
         <dt>Does it need an internet connection?</dt>
         <dd>No. The app has no internet permission at all, so it cannot send or receive anything. Every feature works offline.</dd>
 
+        <dt>Can it block only Reels or YouTube Shorts?</dt>
+        <dd>Yes. An optional service leaves Instagram Reels and YouTube Shorts as soon as they open, and the rest of both apps keeps working.</dd>
+
         <dt>Is it really free?</dt>
         <dd>Yes. It is free software under the GNU General Public License v3.0. Nothing to buy, no subscription, no ads, no tracking.</dd>
 
         <dt>Why isn't it on the Play Store?</dt>
-        <dd>It is still in public beta and ships as a signed APK attached to each GitHub release. A Play Store submission is planned after a wider testing round.</dd>
-
-        <dt>Which Android versions work?</dt>
-        <dd>Android 8.0 (API 26) and newer.</dd>
+        <dd>It is still in public beta and ships as a signed APK with each GitHub release. Store listings come after 1.0.</dd>
 
         <dt>What happens to my data if I switch phones?</dt>
-        <dd>You can export everything to a plain JSON file and import it again on the new device. Nothing is stored anywhere but on your phone.</dd>
+        <dd>Export everything to one file and import it on the new phone, or point the nightly backup at a folder that syncs. Nothing is stored anywhere but on your phone.</dd>
       </dl>
     </div>
   </section>
 
-  <!-- 8. Privacy -->
+  <!-- 9. Privacy -->
   <section id="privacy">
     <div class="wrap">
       <h2>Privacy</h2>
       <p>
-        FocusForce+ collects nothing, sends nothing, and shares nothing. Everything you put into it
-        stays on your phone. There are no accounts, no cloud sync, no analytics, no crash reporting,
-        and no advertising. Each permission powers one feature and nothing else.
+        FocusForce+ collects nothing and sends nothing. There are no accounts, no cloud sync, no
+        analytics, no crash reporting and no advertising, and each permission belongs to one feature.
+        The blocking service only learns which app you opened and reads nothing on the screen.
       </p>
       <p>
-        Full details are in
+        All details are in
         <a href="https://github.com/karOS555/FocusForcePlus/blob/main/PRIVACY.md">PRIVACY.md</a>.
       </p>
     </div>
   </section>
 
-  <!-- 9. Closing call to action -->
+  <!-- 10. Closing call to action -->
   <section id="get">
     <div class="wrap cta">
       <picture>
         <source srcset="feature-graphic.webp" type="image/webp">
-        <img src="feature-graphic.png" alt="Routines, to-dos, app blocking and focus in one fully offline app" width="1024" height="500" loading="lazy" decoding="async">
+        <img src="feature-graphic.png" alt="Reminders you can't ignore: routines, todos, app blocking and focus in one app" width="1024" height="500" loading="lazy" decoding="async">
       </picture>
       <div class="actions">
         <a class="btn btn-primary" href="https://github.com/karOS555/FocusForcePlus/releases/latest">Download the APK</a>
@@ -621,16 +670,15 @@
     </div>
   </section>
 
-  <!-- 10. Health disclaimer -->
+  <!-- 11. Health disclaimer -->
   <section id="health">
     <div class="wrap">
       <div class="panel">
         <h2>A note on health</h2>
         <p>
-          FocusForce+ is a self-help tool for building focus and habits. It is not a medical device
-          and does not diagnose, treat, cure, or prevent ADHD or any other condition, and it is not
-          a substitute for professional care. If you're struggling, please talk to a qualified
-          healthcare professional.
+          FocusForce+ is a self-help tool for focus and habits. It is not a medical device, does not
+          diagnose, treat, cure or prevent ADHD or any other condition, and does not replace
+          professional care. If you're struggling, please talk to a qualified healthcare professional.
         </p>
       </div>
     </div>
@@ -638,7 +686,6 @@
 
 </main>
 
-<!-- 10. Footer -->
 <footer>
   <div class="wrap">
     <ul>
@@ -647,10 +694,7 @@
       <li><a href="https://github.com/karOS555/FocusForcePlus/blob/main/CHANGELOG.md">Changelog</a></li>
       <li><a href="https://github.com/karOS555/FocusForcePlus/blob/main/LICENSE">GPLv3</a></li>
     </ul>
-    <p>
-      FocusForce+ is free software under the GNU General Public License v3.0. Built with care for
-      minds that need a little extra structure.
-    </p>
+    <p>FocusForce+ is free software under the GNU General Public License v3.0.</p>
   </div>
 </footer>
 
@@ -685,6 +729,5 @@
     requestAnimationFrame(frame);
   })();
 </script>
-
 </body>
 </html>

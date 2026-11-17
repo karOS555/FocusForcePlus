@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-11-18_
 
 FocusForce+ is built to keep your data on your device. This policy explains what that means in plain terms.
 
@@ -12,10 +12,11 @@ FocusForce+ collects nothing, sends nothing, and shares nothing. Everything you 
 
 All of it lives locally in the app's own storage on your device:
 
-- Your routines, to-dos, focus sessions, and app-blocking rules
+- Your routines, todos, lists, focus sessions, and blocks
 - App usage time, used only for the daily limits and the stats shown to you
 - Your settings and preferences
-- A local history of completed routines and focus sessions, for the statistics screen
+- A local history of completed routines, focus sessions and todos, for the statistics screen
+- Items you deleted, in the app's trash, until you empty it or the retention time runs out
 
 If you uninstall the app, this data is removed with it (unless you exported a backup yourself).
 
@@ -26,9 +27,11 @@ Each permission powers one feature and nothing else. You can skip any of them, a
 - **Notifications**: to show routine alarms and to-do reminders.
 - **Alarms and reminders (exact alarms)**: so reminders fire on time.
 - **Display over other apps**: so an alarm screen can appear over whatever you're doing.
-- **Accessibility service**: to detect which app you just opened, so a blocked app can be covered. It cannot and does not read your screen content. This is switched off in the service configuration.
+- **Accessibility service (blocker)**: to detect which app you just opened, so a blocked app can be covered. It cannot and does not read your screen content. This is switched off in the service configuration.
+- **Accessibility service (Reels and Shorts, optional and off by default)**: if you switch Reels or Shorts off, a second, separate service watches only Instagram and YouTube for their short-video player and presses Back when it opens. It is limited to those two apps in its configuration, looks only at the screen ids of the player, reads no text, and stores and sends nothing.
 - **Usage access**: to measure how long you used an app, for daily time limits and the screen-time numbers you see.
-- **Do Not Disturb access**: so a focus session can silence interruptions and turn that back off when it ends.
+- **Do Not Disturb access**: so a focus session or the night in sleep mode can silence interruptions, and turn that back off when it ends.
+- **Set alarms**: optional, for backup alarms in your phone's own clock app in sleep mode.
 - **Battery (unrestricted)**: optional, so reminders stay reliable on aggressive battery savers.
 
 None of this information leaves your device.
@@ -37,7 +40,12 @@ None of this information leaves your device.
 
 Android may include the app in a device backup you have enabled in your system settings. That backup is handled by Google and your device, not by FocusForce+, and follows your own backup settings. The app's setup state is excluded from backup on purpose, so a fresh install always walks you through setup again.
 
-You can also export all your data to a plain JSON file yourself, from Settings. That file goes wherever you choose to save it, and it's your responsibility from that point on.
+You can also export all your data to a plain JSON file yourself, from Settings, or let the app write one every night into a folder you choose. Those files go wherever you choose to save them, and they are your responsibility from that point on. If that folder is synced by another app, that app decides where the files go.
+
+## Other apps
+
+- **Sharing**: when you share text to FocusForce+, it is turned into a todo or list items on your phone. Nothing else happens with it.
+- **Start links**: `focusforceplus://` links from other apps or NFC tags only work if you switch them on in Settings, and they can only start or add things inside the app. The app never sends anything back.
 
 ## Children
 
