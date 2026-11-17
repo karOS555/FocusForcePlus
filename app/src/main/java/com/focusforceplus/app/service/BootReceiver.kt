@@ -27,6 +27,8 @@ class BootReceiver : BroadcastReceiver() {
 
     @Inject lateinit var alarmRearmer: AlarmRearmer
     @Inject lateinit var routineSessionStore: RoutineSessionStore
+    @Inject lateinit var focusSessionStore: FocusSessionStore
+    @Inject lateinit var focusRecovery: FocusSessionRecovery
     @Inject lateinit var notificationHelper: NotificationHelper
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -40,6 +42,8 @@ class BootReceiver : BroadcastReceiver() {
 
                 when (action) {
                     Intent.ACTION_BOOT_COMPLETED -> {
+                        // A focus session cannot outlive a restart; Do Not Disturb can.
+                        focusRecovery.resolveIfOrphaned()
                         routineSessionStore.load()?.let { interrupted ->
                             routineSessionStore.clear()
                             runCatching {
@@ -53,6 +57,11 @@ class BootReceiver : BroadcastReceiver() {
                         }
                     }
                     Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                        // An update stops a running focus session; pick it up again.
+                        if (focusSessionStore.load() != null) {
+                            runCatching { FocusForegroundService.restore(context) }
+                                .onFailure { focusRecovery.resolveIfOrphaned() }
+                        }
                         if (routineSessionStore.load() != null) {
                             runCatching {
                                 context.startForegroundService(

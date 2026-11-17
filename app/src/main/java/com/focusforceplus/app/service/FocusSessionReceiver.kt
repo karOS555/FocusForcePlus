@@ -13,25 +13,38 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Handles focus notification actions: "End session" from the ongoing notification
- * and "Start now" from a scheduled-session reminder.
+ * "Start now" from a scheduled-session reminder, and the alarm at the end of a
+ * running session that makes sure it ends on time even if the phone was asleep
+ * or the app was killed.
  */
 @AndroidEntryPoint
 class FocusSessionReceiver : BroadcastReceiver() {
 
     companion object {
-        const val ACTION_END_SESSION = "com.focusforceplus.app.FOCUS_END_SESSION"
+        const val ACTION_SAFETY_CHECK = "com.focusforceplus.app.FOCUS_SAFETY_CHECK"
         const val ACTION_START_SCHEDULED = "com.focusforceplus.app.FOCUS_START_SCHEDULED"
     }
 
     @Inject lateinit var focusRepository: FocusRepository
     @Inject lateinit var registry: FocusSessionRegistry
+    @Inject lateinit var recovery: FocusSessionRecovery
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            ACTION_END_SESSION -> {
-                // The service refuses this for invincible sessions on its own.
-                FocusForegroundService.end(context)
+            ACTION_SAFETY_CHECK -> {
+                if (registry.activeSession.value != null) {
+                    // Alive: let the service see that its time is up.
+                    runCatching { FocusForegroundService.check(context) }
+                } else {
+                    val pendingResult = goAsync()
+                    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                        try {
+                            recovery.resolveIfOrphaned()
+                        } finally {
+                            pendingResult.finish()
+                        }
+                    }
+                }
             }
             ACTION_START_SCHEDULED -> {
                 val sessionId = intent.getLongExtra("sessionId", 0L).takeIf { it > 0L } ?: return

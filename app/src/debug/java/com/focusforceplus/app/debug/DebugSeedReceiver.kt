@@ -1,5 +1,7 @@
 package com.focusforceplus.app.debug
 
+import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
+import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -246,6 +248,40 @@ class DebugSeedReceiver : BroadcastReceiver() {
         engine.complete(doneId)
         val binId = engine.save(TodoEntity(title = "Old shopping note", priority = 0, createdAt = now))
         engine.moveToTrash(binId)
+
+        // A week of history, so the home screen and the statistics have something to show.
+        db.routineCompletionDao().deleteAll()
+        db.focusCompletionDao().deleteAll()
+        val morningId = db.routineDao().getAllOnce().first { it.name == "Morning routine" }.id
+        val eveningId = db.routineDao().getAllOnce().first { it.name == "Evening routine" }.id
+        val focusMinutes = listOf(50, 95, 0, 45, 140, 25, 70)
+        for (daysAgo in 6 downTo 0) {
+            fun at(hour: Int, minute: Int) = today(hour, minute) - daysAgo * day
+            if (daysAgo != 2) {
+                db.routineCompletionDao().insert(
+                    RoutineCompletionEntity(
+                        routineId = morningId, routineName = "Morning routine", completedAt = at(7, 38),
+                        scheduledMinutes = 33, overtimeMinutes = if (daysAgo == 4) 6 else 0, tasksCompleted = 4,
+                    )
+                )
+            }
+            if (daysAgo in 1..5) {
+                db.routineCompletionDao().insert(
+                    RoutineCompletionEntity(
+                        routineId = eveningId, routineName = "Evening routine", completedAt = at(22, 5),
+                        scheduledMinutes = 30, overtimeMinutes = 0, tasksCompleted = 3,
+                    )
+                )
+            }
+            focusMinutes[6 - daysAgo].takeIf { it > 0 }?.let { minutes ->
+                db.focusCompletionDao().insert(
+                    FocusCompletionEntity(
+                        sessionId = 0L, name = "Deep work", type = "WORK", focusedMinutes = minutes,
+                        completedAt = at(15, 0), endedEarly = false,
+                    )
+                )
+            }
+        }
 
         val lists = ep.lists()
         val groceries = lists.createList("Groceries", "shopping_cart")

@@ -265,8 +265,8 @@ fun BlockerListScreen(
                             RowDivider()
                         }
                         ListRow(
-                            title = "Instagram Reels",
-                            subtitle = if (shorts.instagram) "Off" else "Allowed",
+                            title = "Skip Instagram Reels",
+                            subtitle = if (shorts.instagram) "Reels close as soon as they open" else "Reels are allowed",
                             onClick = { shortsToggle(!shorts.instagram) { viewModel.setShortsBlock(instagram = it) } },
                             trailing = {
                                 FfSwitch(checked = shorts.instagram, onCheckedChange = { on ->
@@ -276,8 +276,8 @@ fun BlockerListScreen(
                         )
                         RowDivider()
                         ListRow(
-                            title = "YouTube Shorts",
-                            subtitle = if (shorts.youtube) "Off" else "Allowed",
+                            title = "Skip YouTube Shorts",
+                            subtitle = if (shorts.youtube) "Shorts close as soon as they open" else "Shorts are allowed",
                             onClick = { shortsToggle(!shorts.youtube) { viewModel.setShortsBlock(youtube = it) } },
                             trailing = {
                                 FfSwitch(checked = shorts.youtube, onCheckedChange = { on ->

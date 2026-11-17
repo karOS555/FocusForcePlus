@@ -127,7 +127,10 @@ class FocusNotificationHelper @Inject constructor(
         NotificationCompat.Builder(context, CHANNEL_FOCUS)
             .applyBrand(context, AppModule.FOCUS, MODULE, icon)
             .setContentTitle("Focus session complete")
-            .setContentText("$focusedMinutes minutes of \"$sessionName\" are done.")
+            .setContentText(
+                if (focusedMinutes == 1) "1 minute of \"$sessionName\" is done."
+                else "$focusedMinutes minutes of \"$sessionName\" are done."
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setContentIntent(mainActivityIntent(RC_FOCUS_DONE_TAP))

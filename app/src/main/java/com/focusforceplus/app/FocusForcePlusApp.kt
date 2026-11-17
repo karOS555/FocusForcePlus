@@ -43,6 +43,7 @@ class FocusForcePlusApp : Application() {
     @Inject lateinit var sleepAlarmHelper: SleepAlarmHelper
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var sleepRepository: SleepRepository
+    @Inject lateinit var focusRecovery: com.focusforceplus.app.service.FocusSessionRecovery
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -60,6 +61,14 @@ class FocusForcePlusApp : Application() {
         // with what is stored. Phones that kill the app overnight would otherwise
         // leave a todo without its next reminder until someone opened the app.
         appScope.launch { alarmRearmer.rearmAll() }
+
+        // A focus session whose process was killed without coming back (force stop,
+        // a crash) still holds Do Not Disturb. A system restart of the service
+        // happens within moments of the process start, so wait for that first.
+        appScope.launch {
+            kotlinx.coroutines.delay(10_000L)
+            focusRecovery.resolveIfOrphaned()
+        }
 
         // The picked theme, for every activity.
         appScope.launch {
