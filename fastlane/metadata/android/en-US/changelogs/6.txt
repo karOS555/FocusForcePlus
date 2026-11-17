@@ -1,0 +1,10 @@
+- New look, logo, and a bottom bar you arrange yourself
+- Speed bumps before done, snooze and ending focus early
+- Lists for shopping and packing
+- Skip Instagram Reels and YouTube Shorts, keep the apps
+- Blocks: several apps, one limit or schedule
+- Themes, two of them light, or your own colours
+- Share text in; start links for Tasker and NFC
+- Nightly backups to a folder, and a trash
+- Fixed: focus ran long with the screen off
+- Fixed: Do Not Disturb could stay on after a crash

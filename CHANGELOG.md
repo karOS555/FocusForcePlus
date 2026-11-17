@@ -2,6 +2,47 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.10.0-beta] - 2026-11-18
+
+The last big update before 1.0: a new look, speed bumps, lists, and a blocker that can skip just Reels and Shorts. 0.9.4-beta was never released as an APK, so its changes arrive with this version as well.
+
+### Added
+- **Speed bumps.** Before you tick off a todo, snooze, reschedule, end focus early or pause a block, the app can ask again, make you wait (a minute at most) and give you a small task: hold a button, drag a slider or a path, or solve a sum. The parts add up. Defaults per action live in Settings > Speed bumps, a todo or routine can have its own, and one switch turns them all off
+- **The todo alarm goes step by step:** Done first, then high priority asks whether it is really done, then the slider finishes it
+- **Lists** for shopping and packing: several items at once with commas, suggestions from earlier items, and a shopping mode that keeps the screen on
+- **Skip Reels and Shorts (#2).** A separate, optional service leaves Instagram Reels and YouTube Shorts when they open and keeps the rest of both apps usable. It is off by default and explains itself before the system setting
+- **Blocks.** The blocker is built around blocks: a set of apps, or a single app, with one rule. Always, a shared daily limit or a schedule, plus routines and focus sessions
+- **Your own bar (#3).** Choose which modules appear in the bottom bar and in which order, or switch a module off completely. The setup guide asks once at the end
+- **Duplicate routines and reuse steps (#4).** Long-press a routine to duplicate it, copy steps from another routine, or start from a few common ones
+- **A trash** for deleted todos, routines, focus sessions and lists, kept for as long as you choose
+- **Themes:** six ready-made ones, two of them light, or your own five colours. Copy, send or paste a theme as text
+- **Sharing and start links.** Share text from any app to make a todo or list items. `focusforceplus://` links start focus or a routine, or add a todo or list items, from Tasker, shortcuts or NFC tags. They are off until you switch them on and can only start and add
+- **Nightly backups** into a folder you choose, keeping the newest 3 to 30 files
+- Icons for todos, focus sessions, lists and blocks, shown in their notifications too. Every module has its own status-bar glyph
+- Statistics: screen time per day, today's most used apps, todos done per day
+- Help pages for every module, rewritten for how things work now
+
+### Changed
+- **A new look:** flat cards, one row style, the Inter typeface and a new logo
+- **Navigation:** the bottom bar scrolls sideways and has an Edit entry. Settings and Statistics can be added to it
+- Every form keeps its Save button in view and shows when there is more below
+- Home shows what is running, today's routines, the next todos, your lists, and switches for the blocker and sleep mode
+- Focus: quick focus at the top, saved sessions below. The running notification opens the session instead of ending it
+- Screen time comes from Android's usage events, so a day starts at midnight and the home screen does not count as use
+- Todo reminders run through one engine. Low is one notification, medium comes back a couple of times, high rings again every few minutes, all within set limits
+- Backups include lists, speed bumps, themes and the new settings (backup format 3; older files still import)
+- Deleting anything asks first
+
+### Fixed
+- **A snooze could be spent twice** when the alarm screen and the notification acted on the same alarm
+- **Done todos vanished** from the list
+- **Focus sessions ran long with the screen off,** because the countdown stopped while the phone slept
+- **Do Not Disturb could stay on** after Android killed the app during a focus session. Sessions now pick up where they were, and Do Not Disturb is put back when they can't
+- Saving a paused routine switched it back on, and editing a focus session lost its icon
+- Snoozing a routine before it started did nothing
+
+[0.10.0-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.10.0-beta
+
 ## [0.9.4-beta] - 2026-08-08
 
 A notification rework, more room on every screen, and a handful of fixes.
