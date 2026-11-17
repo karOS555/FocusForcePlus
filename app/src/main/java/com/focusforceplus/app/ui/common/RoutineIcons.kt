@@ -16,6 +16,51 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.ChildCare
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.FamilyRestroom
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Handyman
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.LocalFlorist
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalGroceryStore
+import androidx.compose.material.icons.filled.LocalMall
+import androidx.compose.material.icons.filled.LocalMovies
+import androidx.compose.material.icons.filled.LocalPharmacy
+import androidx.compose.material.icons.filled.LocalPostOffice
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Luggage
+import androidx.compose.material.icons.filled.Mail
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Park
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Recycling
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Water
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
@@ -199,7 +244,64 @@ object RoutineIcons {
             AppIcon("language",          Icons.Filled.Language,             "Language"),
             AppIcon("music_note",        Icons.Filled.MusicNote,            "Music"),
         )),
+        IconCategory("Errands & Shopping", listOf(
+            AppIcon("local_grocery_store", Icons.Filled.LocalGroceryStore,  "Groceries"),
+            AppIcon("local_pharmacy",    Icons.Filled.LocalPharmacy,        "Pharmacy"),
+            AppIcon("local_mall",        Icons.Filled.LocalMall,            "Shopping bag"),
+            AppIcon("card_giftcard",     Icons.Filled.CardGiftcard,         "Gift"),
+            AppIcon("handyman",          Icons.Filled.Handyman,             "Repairs"),
+            AppIcon("local_post_office", Icons.Filled.LocalPostOffice,      "Post office"),
+            AppIcon("local_gas_station", Icons.Filled.LocalGasStation,      "Fuel"),
+            AppIcon("receipt",           Icons.Filled.Receipt,              "Receipt"),
+        )),
+        IconCategory("Money", listOf(
+            AppIcon("savings",           Icons.Filled.Savings,              "Savings"),
+            AppIcon("payments",          Icons.Filled.Payments,             "Payments"),
+            AppIcon("account_balance",   Icons.Filled.AccountBalance,       "Bank"),
+            AppIcon("credit_card",       Icons.Filled.CreditCard,           "Card"),
+        )),
+        IconCategory("Travel", listOf(
+            AppIcon("flight",            Icons.Filled.Flight,               "Flight"),
+            AppIcon("luggage",           Icons.Filled.Luggage,              "Luggage"),
+            AppIcon("map",               Icons.Filled.Map,                  "Map"),
+            AppIcon("beach_access",      Icons.Filled.BeachAccess,          "Beach"),
+            AppIcon("directions_bus",    Icons.Filled.DirectionsBus,        "Bus"),
+        )),
+        IconCategory("People & Family", listOf(
+            AppIcon("family_restroom",   Icons.Filled.FamilyRestroom,       "Family"),
+            AppIcon("child_care",        Icons.Filled.ChildCare,            "Kids"),
+            AppIcon("pets",              Icons.Filled.Pets,                 "Pets"),
+            AppIcon("celebration",       Icons.Filled.Celebration,          "Party"),
+            AppIcon("cake",              Icons.Filled.Cake,                 "Birthday"),
+            AppIcon("forum",             Icons.Filled.Forum,                "Chat"),
+            AppIcon("mail",              Icons.Filled.Mail,                 "Mail"),
+            AppIcon("call",              Icons.Filled.Call,                 "Call"),
+            AppIcon("event",             Icons.Filled.Event,                "Appointment"),
+        )),
+        IconCategory("Screens & Free time", listOf(
+            AppIcon("smartphone",        Icons.Filled.Smartphone,           "Phone"),
+            AppIcon("sports_esports",    Icons.Filled.SportsEsports,        "Games"),
+            AppIcon("tv",                Icons.Filled.Tv,                   "TV"),
+            AppIcon("headphones",        Icons.Filled.Headphones,           "Headphones"),
+            AppIcon("photo_camera",      Icons.Filled.PhotoCamera,          "Camera"),
+            AppIcon("brush",             Icons.Filled.Brush,                "Art"),
+            AppIcon("palette",           Icons.Filled.Palette,              "Creative"),
+            AppIcon("local_movies",      Icons.Filled.LocalMovies,          "Movies"),
+        )),
+        IconCategory("Nature", listOf(
+            AppIcon("local_florist",     Icons.Filled.LocalFlorist,         "Flowers"),
+            AppIcon("park",              Icons.Filled.Park,                 "Park"),
+            AppIcon("eco",               Icons.Filled.Eco,                  "Leaf"),
+            AppIcon("recycling",         Icons.Filled.Recycling,            "Recycling"),
+            AppIcon("water",             Icons.Filled.Water,                "Water"),
+        )),
         IconCategory("Other", listOf(
+            AppIcon("block",             Icons.Filled.Block,                "Block"),
+            AppIcon("lock",              Icons.Filled.Lock,                 "Lock"),
+            AppIcon("flag",              Icons.Filled.Flag,                 "Flag"),
+            AppIcon("push_pin",          Icons.Filled.PushPin,              "Pin"),
+            AppIcon("emoji_events",      Icons.Filled.EmojiEvents,          "Goal"),
+            AppIcon("local_fire_department", Icons.Filled.LocalFireDepartment, "Fire"),
             AppIcon("star",              Icons.Filled.Star,                 "Star"),
             AppIcon("bolt",              Icons.Filled.Bolt,                 "Energy"),
             AppIcon("people",            Icons.Filled.People,               "Social"),
@@ -231,6 +333,7 @@ fun IconPickerButton(
     size: Dp = 48.dp,
     onSelect: (String?) -> Unit,
 ) {
+    val colors = com.focusforceplus.app.ui.theme.FfTheme.colors
     var showPicker by remember { mutableStateOf(false) }
     val appIcon = RoutineIcons.find(selectedKey)
     val hasIcon = appIcon != null
@@ -239,18 +342,14 @@ fun IconPickerButton(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (hasIcon) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-            )
+            .background(if (hasIcon) colors.container else colors.surfaceHigh)
             .clickable { showPicker = true },
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = appIcon?.vector ?: Icons.Filled.Add,
-            contentDescription = if (hasIcon) appIcon!!.label else "Add icon",
-            tint = if (hasIcon) MaterialTheme.colorScheme.onPrimaryContainer
-                   else MaterialTheme.colorScheme.onSurfaceVariant,
+            contentDescription = if (hasIcon) "Icon: ${appIcon!!.label}. Change it" else "Add an icon",
+            tint = if (hasIcon) colors.onContainer else colors.textMuted,
             modifier = Modifier.size(size * 0.5f),
         )
     }
@@ -258,16 +357,15 @@ fun IconPickerButton(
     if (showPicker) {
         IconPickerDialog(
             selectedKey = selectedKey,
-            onSelect    = { key -> onSelect(key); showPicker = false },
-            onDismiss   = { showPicker = false },
+            onSelect = { key -> onSelect(key); showPicker = false },
+            onDismiss = { showPicker = false },
         )
     }
 }
 
 /**
- * Full-screen scrollable dialog showing all icon categories as a grid.
- * Tapping an icon selects it and closes the dialog.
- * A "Remove icon" option appears at the top when an icon is already selected.
+ * Every icon, grouped, with a search over names and groups. Tapping one picks it
+ * and closes the dialog; "Remove icon" appears when one is already set.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -276,69 +374,87 @@ fun IconPickerDialog(
     onSelect: (String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val colors = com.focusforceplus.app.ui.theme.FfTheme.colors
+    var query by remember { mutableStateOf("") }
+    val q = query.trim().lowercase()
+    val shown = RoutineIcons.categories.mapNotNull { category ->
+        if (q.isEmpty() || category.label.lowercase().contains(q)) {
+            category
+        } else {
+            val icons = category.icons.filter { it.label.lowercase().contains(q) || it.key.replace('_', ' ').contains(q) }
+            if (icons.isEmpty()) null else category.copy(icons = icons)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose an icon") },
+        containerColor = colors.surfaceVariant,
+        title = { Text("Choose an icon", style = MaterialTheme.typography.titleLarge, color = colors.text) },
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                if (selectedKey != null) {
-                    TextButton(
-                        onClick  = { onSelect(null) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+            Column(Modifier.fillMaxWidth()) {
+                com.focusforceplus.app.ui.components.SearchField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = "Search icons",
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (shown.isEmpty()) {
                         Text(
-                            "Remove icon",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
+                            "Nothing called \"$query\".",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textMuted,
+                            modifier = Modifier.padding(top = 16.dp),
                         )
                     }
-                }
-
-                RoutineIcons.categories.forEach { category ->
-                    Text(
-                        text     = category.label,
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement   = Arrangement.spacedBy(8.dp),
-                    ) {
-                        category.icons.forEach { appIcon ->
-                            val isSelected = appIcon.key == selectedKey
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surfaceVariant,
+                    shown.forEach { category ->
+                        Text(
+                            text = category.label,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.textMuted,
+                            modifier = Modifier.padding(top = 14.dp, bottom = 6.dp),
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            category.icons.forEach { appIcon ->
+                                val isSelected = appIcon.key == selectedKey
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) colors.primary else colors.surface)
+                                        .clickable { onSelect(appIcon.key) },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = appIcon.vector,
+                                        contentDescription = appIcon.label,
+                                        tint = if (isSelected) colors.onPrimary else colors.textSecondary,
+                                        modifier = Modifier.size(22.dp),
                                     )
-                                    .clickable { onSelect(appIcon.key) },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector     = appIcon.vector,
-                                    contentDescription = appIcon.label,
-                                    tint            = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                                      else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier        = Modifier.size(22.dp),
-                                )
+                                }
                             }
                         }
                     }
-                    Spacer(Modifier.height(4.dp))
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            if (selectedKey != null) {
+                TextButton(onClick = { onSelect(null) }) {
+                    Text("Remove icon", style = MaterialTheme.typography.labelLarge, color = colors.error)
+                }
+            }
         },
-        dismissButton = null,
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            }
+        },
     )
 }

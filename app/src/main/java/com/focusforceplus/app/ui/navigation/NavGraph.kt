@@ -225,7 +225,18 @@ fun NavGraph(
 
         // ── Lists ─────────────────────────────────────────────────────────────
         composable(ListRoutes.LIST) {
-            com.focusforceplus.app.ui.screens.lists.ListsScreen()
+            com.focusforceplus.app.ui.screens.lists.ListsScreen(
+                onOpenList = { id -> navController.navigate(ListRoutes.detail(id)) },
+            )
+        }
+
+        composable(
+            route = ListRoutes.DETAIL,
+            arguments = listOf(navArgument("listId") { type = NavType.LongType }),
+        ) {
+            com.focusforceplus.app.ui.screens.lists.ListDetailScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
 
         // ── Settings ──────────────────────────────────────────────────────────

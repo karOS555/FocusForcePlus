@@ -88,5 +88,7 @@ fun isFocusedRoute(route: String?): Boolean {
         route == FocusRoutes.CREATE || route.startsWith("focus/edit") ||
         // Running sessions get the whole screen too: the timer, nothing else.
         route.startsWith("routine/active") || route.startsWith("focus/active") ||
+        // A list is typed into; the keyboard needs the room the bar would take.
+        route.startsWith("list/") ||
         route.startsWith("sleep/routine/create")
 }
