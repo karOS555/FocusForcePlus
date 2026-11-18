@@ -22,21 +22,29 @@ import java.util.TimeZone
 enum class TaskApp(
     val label: String,
     val authority: String,
+    /** The app the provider must belong to; null for this app itself (the debug test provider). */
+    private val owner: String?,
     val readPermission: String,
     val writePermission: String,
     /** Route value of its disclosure screen. */
     val disclosureType: String,
 ) {
-    OPENTASKS("OpenTasks", "org.dmfs.tasks", "org.dmfs.permission.READ_TASKS", "org.dmfs.permission.WRITE_TASKS", "opentasks"),
-    TASKS_ORG("Tasks.org", "org.tasks.opentasks", "org.tasks.permission.READ_TASKS", "org.tasks.permission.WRITE_TASKS", "tasksorg"),
+    OPENTASKS("OpenTasks", "org.dmfs.tasks", "org.dmfs.tasks", "org.dmfs.permission.READ_TASKS", "org.dmfs.permission.WRITE_TASKS", "opentasks"),
+    TASKS_ORG("Tasks.org", "org.tasks.opentasks", "org.tasks", "org.tasks.permission.READ_TASKS", "org.tasks.permission.WRITE_TASKS", "tasksorg"),
 
     /** Debug builds only (app/src/debug FakeTaskProvider); release builds never find it. */
-    TEST("Test tasks", "com.focusforceplus.app.debug.tasks", "", "", "testtasks");
+    TEST("Test tasks", "com.focusforceplus.app.debug.tasks", null, "", "", "testtasks");
 
     val permissions: Array<String> get() = arrayOf(readPermission, writePermission).filter { it.isNotEmpty() }.toTypedArray()
 
-    fun isInstalled(context: Context): Boolean =
-        runCatching { context.packageManager.resolveContentProvider(authority, 0) != null }.getOrDefault(false)
+    /**
+     * Installed, and the provider really is that app's: when the real app is missing,
+     * any other app could claim the same authority and would then be sent the todos.
+     */
+    fun isInstalled(context: Context): Boolean = runCatching {
+        val provider = context.packageManager.resolveContentProvider(authority, 0)
+        provider != null && provider.packageName == (owner ?: context.packageName)
+    }.getOrDefault(false)
 
     fun isGranted(context: Context): Boolean = permissions.all {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
