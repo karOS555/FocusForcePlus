@@ -1,10 +1,6 @@
 package com.focusforceplus.app.ui.components
 
-import com.focusforceplus.app.ui.theme.GlassEdge
-import com.focusforceplus.app.ui.theme.GlassSheen
-import com.focusforceplus.app.ui.theme.GlassShadow
-import androidx.compose.foundation.border
-import androidx.compose.ui.draw.shadow
+import com.focusforceplus.app.ui.theme.aeroGlass
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -60,16 +56,10 @@ fun FfCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (glass) Modifier.shadow(5.dp, FfShapes.card, ambientColor = GlassShadow, spotColor = GlassShadow)
-                else Modifier
-            )
+            // Aero: frosted glass over the photo, lightly tinted with the card colour.
+            .then(if (glass) Modifier.aeroGlass(FfShapes.card, tint = color.copy(alpha = color.alpha * 0.42f)) else Modifier)
             .clip(FfShapes.card)
-            .background(if (glass) color.copy(alpha = color.alpha * 0.64f) else color)
-            .then(
-                if (glass) Modifier.background(GlassSheen).border(1.dp, GlassEdge, FfShapes.card)
-                else Modifier
-            )
+            .then(if (glass) Modifier else Modifier.background(color))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         content = content,
     )
@@ -161,9 +151,22 @@ fun ListRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            // Aero: a stack of rows is one piece of glass, lit at the top.
+            .then(
+                when {
+                    position == RowPosition.InCard -> Modifier
+                    colors.isAero -> Modifier.aeroGlass(
+                        shape,
+                        tint = colors.surface.copy(alpha = colors.surface.alpha * 0.42f),
+                        sheen = position == RowPosition.First || position == RowPosition.Single,
+                        edge = position == RowPosition.Single,
+                    )
+                    else -> Modifier
+                }
+            )
             .clip(shape)
             .then(
-                if (position == RowPosition.InCard) Modifier else Modifier.background(colors.surface)
+                if (position == RowPosition.InCard || colors.isAero) Modifier else Modifier.background(colors.surface)
             )
             .then(
                 when {

@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.navigation
 
+import androidx.compose.ui.graphics.RectangleShape
+import com.focusforceplus.app.ui.theme.aeroGlass
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -106,7 +108,7 @@ fun Dock(
         modifier = modifier
             .fillMaxWidth()
             .height(DOCK_HEIGHT)
-            .background(colors.dock),
+            .then(if (colors.isAero) Modifier.aeroGlass(RectangleShape, tint = colors.surface.copy(alpha = 0.50f)) else Modifier.background(colors.dock)),
     ) {
         val scrolls = itemCount > 5
         val itemWidth: Dp = if (scrolls) maxWidth / VISIBLE_WHEN_SCROLLING else maxWidth / itemCount
@@ -291,7 +293,7 @@ fun DockFooter(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.dock)
+            .then(if (colors.isAero) Modifier.aeroGlass(RectangleShape, tint = colors.surface.copy(alpha = 0.50f)) else Modifier.background(colors.dock))
             .windowInsetsPadding(WindowInsets.navigationBars)
             .height(20.dp),
         horizontalArrangement = Arrangement.Center,

@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.components
 
+import com.focusforceplus.app.ui.theme.aeroGlass
 import com.focusforceplus.app.ui.theme.glossyFill
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -79,6 +80,8 @@ fun PrimaryButton(
         onClick = onClick,
         modifier = modifier
             .height(FfDimens.buttonHeight)
+            // Aero: coloured glass, the frosted backdrop showing through the colour.
+            .then(if (gloss) Modifier.aeroGlass(FfShapes.button, tint = Color.Transparent, sheen = false) else Modifier)
             .glossyFill(containerColor, FfShapes.button, gloss),
         enabled = enabled && !loading,
         shape = FfShapes.button,
@@ -110,13 +113,16 @@ fun TonalButton(
     icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
+    val glass = FfTheme.colors.isAero && enabled
     Button(
         onClick = onClick,
-        modifier = modifier.height(FfDimens.buttonHeight),
+        modifier = modifier
+            .height(FfDimens.buttonHeight)
+            .then(if (glass) Modifier.aeroGlass(FfShapes.button, tint = FfTheme.colors.surface.copy(alpha = 0.40f)) else Modifier),
         enabled = enabled,
         shape = FfShapes.button,
         colors = ButtonDefaults.buttonColors(
-            containerColor = FfTheme.colors.container,
+            containerColor = if (glass) Color.Transparent else FfTheme.colors.container,
             contentColor = FfTheme.colors.onContainer,
             disabledContainerColor = FfTheme.colors.surfaceVariant,
             disabledContentColor = FfTheme.colors.textFaint,
@@ -134,16 +140,19 @@ fun OutlineButton(
     enabled: Boolean = true,
     contentColor: Color = FfTheme.colors.text,
 ) {
+    val glass = FfTheme.colors.isAero && enabled
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.height(FfDimens.buttonHeight),
+        modifier = modifier
+            .height(FfDimens.buttonHeight)
+            .then(if (glass) Modifier.aeroGlass(FfShapes.button, tint = FfTheme.colors.surface.copy(alpha = 0.22f)) else Modifier),
         enabled = enabled,
         shape = FfShapes.button,
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = contentColor,
             disabledContentColor = FfTheme.colors.textFaint,
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, FfTheme.colors.outline),
+        border = if (glass) null else androidx.compose.foundation.BorderStroke(1.dp, FfTheme.colors.outline),
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) { ButtonContent(text, icon) }
 }
@@ -156,7 +165,8 @@ private fun ButtonContent(text: String, icon: ImageVector?) {
     }
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge,
+        // No Aero glow on a button: the label sits on the button, not on the photo.
+        style = MaterialTheme.typography.labelLarge.copy(shadow = null),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )

@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import com.focusforceplus.app.ui.theme.AeroPhoto
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -501,6 +502,12 @@ fun SettingsScreen(
                             title = "Source code",
                             subtitle = "Free and open source, GPLv3",
                             onClick = { openUrl(context, REPO_URL) },
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Photo in the Aero style",
+                            subtitle = "${AeroPhoto.TITLE}, ${AeroPhoto.LICENSE}, cropped",
+                            onClick = { openUrl(context, AeroPhoto.SOURCE) },
                         )
                         RowDivider()
                         // No internet access by design, so the app cannot look for

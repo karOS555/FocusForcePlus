@@ -1,5 +1,10 @@
 package com.focusforceplus.app.ui.theme
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -77,11 +82,29 @@ fun FocusForceTheme(
     CompositionLocalProvider(LocalAppColors provides colors) {
         MaterialTheme(
             colorScheme = colors.toColorScheme(),
-            typography = Typography,
+            typography = if (colors.isAero) remember(colors.isDark) { Typography.glowing(colors.isDark) } else Typography,
             shapes = AppShapes,
             content = content,
         )
     }
+}
+
+/**
+ * Aero: every text style with the soft glow Aero gave text on glass, a halo in the
+ * light of the day (or the dark of a dark theme) behind the letters. Over the photo
+ * it is what keeps text readable on cloud, sky and grass alike; on a plain surface
+ * it does not show.
+ */
+private fun androidx.compose.material3.Typography.glowing(dark: Boolean): androidx.compose.material3.Typography {
+    val glow = Shadow(color = if (dark) Color.Black.copy(alpha = 0.9f) else Color.White, offset = Offset.Zero, blurRadius = 10f)
+    fun TextStyle.lit() = copy(shadow = glow)
+    return copy(
+        displayLarge = displayLarge.lit(), displayMedium = displayMedium.lit(), displaySmall = displaySmall.lit(),
+        headlineLarge = headlineLarge.lit(), headlineMedium = headlineMedium.lit(), headlineSmall = headlineSmall.lit(),
+        titleLarge = titleLarge.lit(), titleMedium = titleMedium.lit(), titleSmall = titleSmall.lit(),
+        bodyLarge = bodyLarge.lit(), bodyMedium = bodyMedium.lit(), bodySmall = bodySmall.lit(),
+        labelLarge = labelLarge.lit(), labelMedium = labelMedium.lit(), labelSmall = labelSmall.lit(),
+    )
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {

@@ -23,7 +23,7 @@ data class ThemeSpec(
     /** Links and active icons. */
     val accent: Color,
     val text: Color,
-    /** FLAT, or AERO: glass cards, glossy buttons and a drawn sky behind everything. */
+    /** FLAT, or AERO: glass cards, glossy buttons and a summer photo behind everything. */
     val style: ThemeStyle = ThemeStyle.FLAT,
 ) {
     val isDark: Boolean get() = background.luminance() < 0.4f
@@ -31,6 +31,8 @@ data class ThemeSpec(
     fun toAppColors(): AppColors {
         if (sameColorsAs(ThemePresets.MIDNIGHT)) return DefaultAppColors
         val dark = isDark
+        // Over a photo, quiet text needs to be a step less quiet.
+        val aero = style == ThemeStyle.AERO
         fun mix(a: Color, b: Color, t: Float) = lerp(a, b, t)
         return AppColors(
             isDark = dark,
@@ -40,8 +42,8 @@ data class ThemeSpec(
             surfaceHigh = mix(surface, text, if (dark) 0.085f else 0.09f),
             text = text,
             textSecondary = mix(text, background, 0.14f),
-            textMuted = mix(text, background, if (dark) 0.40f else 0.36f),
-            textFaint = mix(text, background, if (dark) 0.58f else 0.54f),
+            textMuted = mix(text, background, if (aero) (if (dark) 0.30f else 0.24f) else if (dark) 0.40f else 0.36f),
+            textFaint = mix(text, background, if (aero) (if (dark) 0.46f else 0.40f) else if (dark) 0.58f else 0.54f),
             outline = mix(surface, text, if (dark) 0.20f else 0.24f),
             divider = mix(surface, text, if (dark) 0.07f else 0.09f),
             primary = primary,

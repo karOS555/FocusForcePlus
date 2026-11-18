@@ -1,8 +1,10 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import com.focusforceplus.app.ui.theme.AeroPhoto
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import com.focusforceplus.app.ui.theme.ffBackdrop
+import com.focusforceplus.app.ui.theme.aeroGlass
 import com.focusforceplus.app.ui.theme.ThemeStyle
 import com.focusforceplus.app.ui.components.SwitchRow
 import kotlinx.coroutines.flow.stateIn
@@ -224,7 +226,7 @@ fun AppearanceScreen(
                     RowDivider()
                     SwitchRow(
                         title = "Aero style",
-                        subtitle = "Glass cards, glossy buttons and a sky with bubbles behind everything.",
+                        subtitle = "Glass cards, glossy buttons and a summer photo with bubbles behind everything.",
                         checked = spec.style == ThemeStyle.AERO,
                         onCheckedChange = { on ->
                             viewModel.use(spec.copy(style = if (on) ThemeStyle.AERO else ThemeStyle.FLAT).named(spec.name))
@@ -250,6 +252,17 @@ fun AppearanceScreen(
             FormSection(title = "Preview") {
                 FocusForceTheme(colors = spec.toAppColors()) {
                     PreviewCard()
+                }
+                if (spec.style == ThemeStyle.AERO) {
+                    // The licence of the photo asks for this credit.
+                    Text(
+                        AeroPhoto.CREDIT,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .clickable { openPhotoSource(context) },
+                    )
                 }
             }
 
@@ -398,6 +411,7 @@ private fun ThemeTile(
     val colors = FfTheme.colors
     Column(
         modifier = modifier
+            .aeroGlass(RoundedCornerShape(14.dp), tint = colors.surface.copy(alpha = 0.42f))
             .clip(RoundedCornerShape(14.dp))
             .border(
                 width = if (selected) 2.dp else 1.dp,
@@ -580,4 +594,13 @@ private fun copy(context: Context, text: String) {
 private fun paste(context: Context): String? {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     return clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+}
+
+/** The photo's page on Wikimedia Commons, with its licence. */
+private fun openPhotoSource(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, android.net.Uri.parse(AeroPhoto.SOURCE)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
 }
