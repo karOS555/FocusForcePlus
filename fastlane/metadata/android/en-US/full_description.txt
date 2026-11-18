@@ -2,19 +2,21 @@ FocusForce+ puts routines, todos, lists, an app blocker, focus and sleep mode in
 
 WHAT IT DOES
 
-Routines start with a real alarm and give every step its own timer. Run over and the timer keeps counting and reminds you. Snoozes and reschedules are limited per routine, and routines can be duplicated or borrow steps from each other.
+The home screen shows your day in one list: how much is done, what is up next with Start or Done right there, then routines, todos and calendar events by time.
+
+Routines start with a real alarm and give every step its own timer. Run over and the timer keeps counting and reminds you. Snoozes, reschedules and the heads-up before the start are set per routine, and routines can be duplicated or borrow steps from each other.
 
 Todos get pushier with their priority. Low is one notification. Medium comes up on screen and comes back a couple of times. High rings, and rings again every few minutes; ticking it off takes a confirmation and a swipe along a path. Todos without a date come back at set times each day. Checklists, repeating todos and a trash.
 
-Lists for shopping and packing. Type several items at once, separated by commas. Earlier items come back as suggestions, and shopping mode keeps the screen on.
+Lists for shopping and packing. Type several items at once, with amounts, sorted into sections in the order of your shop. A todo or a routine step can carry a list, so the packing list shows up while you pack.
 
-The blocker closes apps always, after a daily limit, or on a schedule, overnight included, and during routines and focus sessions. Several apps can share one limit. An optional service keeps Instagram and YouTube usable but leaves Reels and Shorts as soon as they open.
+The blocker closes apps always, after a daily limit, or on a schedule, overnight included, and during routines, focus sessions and calendar events. Several apps can share one limit. An optional service keeps Instagram and YouTube usable but leaves Reels and Shorts as soon as they open.
 
 Focus silences the phone and blocks the apps you pick for a set time. Ending early asks first and then makes you wait.
 
 Sleep reminds you to wind down, keeps the night quiet, closes apps until morning, and can start a routine at bedtime and at wake-up. Backup alarms go into your phone's own clock app.
 
-The home screen shows today's routines, the next todos and your screen time. Statistics show seven days of screen time, focus, routines and todos.
+Statistics compare the last seven days with the seven before: focus, routines, todos and screen time, with streaks. Widgets put today, quick focus and a list on your home screen.
 
 HOW IT HOLDS YOU TO IT
 
@@ -28,7 +30,7 @@ Tamper Protection: if you turn it on, loosening your own lock settings only work
 
 MAKE IT YOURS
 
-Choose which modules appear in the bottom bar and in which order. Six themes, two of them light, or your own colours. Share text from other apps to make todos or list items. Start focus or a routine from Tasker, a shortcut or an NFC tag (off until you switch it on). Back up everything into a folder every night.
+Choose which modules appear in the bottom bar and in which order. Six themes, two of them light, or your own colours, including a real Frutiger Aero style with glass and bubbles. Optional: your calendar, and two-way sync with OpenTasks or Tasks.org, which reaches CalDAV servers through DAVx5. Share text from other apps to make todos or list items. Start focus or a routine from Tasker, a shortcut or an NFC tag (off until you switch it on). Back up everything into a folder every night.
 
 A NOTE ON HEALTH
 

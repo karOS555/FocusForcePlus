@@ -1,10 +1,10 @@
-- New look, logo, and a bottom bar you arrange yourself
-- Speed bumps before done, snooze and ending focus early
-- Lists for shopping and packing
-- Skip Instagram Reels and YouTube Shorts, keep the apps
-- Blocks: several apps, one limit or schedule
-- Themes, two of them light, or your own colours
-- Share text in; start links for Tasker and NFC
-- Nightly backups to a folder, and a trash
-- Fixed: focus ran long with the screen off
-- Fixed: Do Not Disturb could stay on after a crash
+- Home shows your day in one list, with what is up next
+- Lists with sections and amounts, inside todos and routines
+- Calendar: events on Home, todos in it, blocks during events
+- Sync with OpenTasks or Tasks.org (CalDAV via DAVx5)
+- Widgets: Today, Quick focus, a list
+- Speed bumps before done, snooze and stopping early
+- Skip Reels and Shorts, keep the apps
+- Frutiger Aero style and saved themes
+- Nightly backups and an import you can undo
+- Fixed: Do Not Disturb could stay on

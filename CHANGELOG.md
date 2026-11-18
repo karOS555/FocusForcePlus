@@ -4,22 +4,26 @@ All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD)
 
 ## [0.9.5-beta] - 2026-11-18
 
-The last big update before 1.0: a new look, speed bumps, lists, and a blocker that can skip just Reels and Shorts. 0.9.4-beta was never released as an APK, so its changes arrive with this version as well.
+The last big update before 1.0: a new look, a home screen that shows your day in one list, speed bumps, lists that work with todos and routines, your calendar and tasks apps, widgets, and a blocker that can skip just Reels and Shorts. 0.9.4-beta was never released as an APK, so its changes arrive with this version as well.
 
 ### Added
-- **Speed bumps.** Before you tick off a todo, snooze, reschedule, end focus early or pause a block, the app can ask again, make you wait (a minute at most) and give you a small task: hold a button, drag a slider or a path, or solve a sum. The parts add up. Defaults per action live in Settings > Speed bumps, a todo or routine can have its own, and one switch turns them all off
+- **Speed bumps.** Before you tick off a todo, snooze, reschedule, stop a routine or end focus early, or pause a block, the app can ask again, make you wait (a minute at most) and give you a small task: hold a button, drag a slider or a path with two bends, or solve a sum. The parts add up. Defaults per action live in Settings > Speed bumps, a todo or routine can have its own, and one switch turns them all off
 - **The todo alarm goes step by step:** Done first, then high priority asks whether it is really done, then the slider finishes it
-- **Lists** for shopping and packing: several items at once with commas, suggestions from earlier items, and a shopping mode that keeps the screen on
+- **Lists** for shopping and packing: several items at once with commas, amounts typed with the item ("2 milk", "flour 500 g"), sections that follow your way through the shop, suggestions from earlier items, sharing as text, duplicating, and a shopping mode that keeps the screen on
+- **Lists work with todos and routines.** "Remind me" makes a todo for a list, and its alarm shows the open items to tick off. A routine step can carry a list, like a packing list for "Pack the bag", with "Start fresh" to untick it
+- **Your calendar (optional).** Today's events on Home, todos with a date as events in a calendar you pick, and block groups that block while an event is on. Nothing from the calendar leaves the phone through the app
+- **Tasks apps (optional).** Two-way sync with one list in OpenTasks or Tasks.org: titles, dates, priority, notes and done. With DAVx5 there, your todos reach Nextcloud and other CalDAV servers while FocusForce+ itself stays offline
+- **Widgets:** Today (what is left, by time), Quick focus (one tap starts 15, 25 or 50 minutes) and a list to tick off from the home screen. Settings > Widgets places one
 - **Skip Reels and Shorts (#2).** A separate, optional service leaves Instagram Reels and YouTube Shorts when they open and keeps the rest of both apps usable. It is off by default and explains itself before the system setting
-- **Blocks.** The blocker is built around blocks: a set of apps, or a single app, with one rule. Always, a shared daily limit or a schedule, plus routines and focus sessions
+- **Blocks.** The blocker is built around blocks: a set of apps, or a single app, with one rule. Always, a shared daily limit or a schedule, plus routines, focus sessions and calendar events
 - **Your own bar (#3).** Choose which modules appear in the bottom bar and in which order, or switch a module off completely. The setup guide asks once at the end
-- **Duplicate routines and reuse steps (#4).** Long-press a routine to duplicate it, copy steps from another routine, or start from a few common ones
+- **Duplicate routines and reuse steps (#4).** Long-press a routine to duplicate it, copy steps from another routine, or start from a few common ones. Todos, focus sessions and lists can be duplicated too
+- **Routines** set their own heads-up time (or none), can switch on Do Not Disturb, and can block only some groups, like focus sessions
 - **A trash** for deleted todos, routines, focus sessions and lists, kept for as long as you choose
-- **Themes:** six ready-made ones, two of them light, or your own five colours. Copy, send or paste a theme as text
+- **Themes:** six ready-made ones, two of them light, or your own five colours, saved under a name. **Aero** is a real Frutiger Aero style: glass cards, glossy buttons, and a sky with bubbles and green hills drawn by the app itself. Copy, send or paste a theme as text
 - **Sharing and start links.** Share text from any app to make a todo or list items. `focusforceplus://` links start focus or a routine, or add a todo or list items, from Tasker, shortcuts or NFC tags. They are off until you switch them on and can only start and add
-- **Nightly backups** into a folder you choose, keeping the newest 3 to 30 files
+- **Nightly backups** into a folder you choose, keeping the newest 3 to 30 files. An import can be undone: what was in the app before is kept
 - Icons for todos, focus sessions, lists and blocks, shown in their notifications too. Every module has its own status-bar glyph
-- Statistics: screen time per day, today's most used apps, todos done per day
 - Help pages for every module, rewritten for how things work now
 - Long-press the app icon for New todo, Focus and Lists
 - A todo search that finds nothing offers to add what you typed as a todo
@@ -27,17 +31,20 @@ The last big update before 1.0: a new look, speed bumps, lists, and a blocker th
 
 ### Changed
 - **A new look:** flat cards, one row style, the Inter typeface and a new logo
+- **Home shows your day in one list:** how much of today is done, what is up next with Start or Done right there, then routines, todos and calendar events by time, and todos without a date
+- **Statistics** compare the last seven days with the seven before, show streaks, and let you tap a day; a dashed line marks the average
 - **Navigation:** the bottom bar scrolls sideways and has an Edit entry. Settings and Statistics can be added to it
 - Every form keeps its Save button in view and shows when there is more below
-- Home shows what is running, today's routines, the next todos, your lists, and switches for the blocker and sleep mode
 - Focus: quick focus at the top, saved sessions below. The running notification opens the session instead of ending it
 - Screen time comes from Android's usage events, so a day starts at midnight and the home screen does not count as use
 - Todo reminders run through one engine. Low is one notification, medium comes back a couple of times, high rings again every few minutes, all within set limits
 - Backups include lists, speed bumps, themes and the new settings (backup format 3; older files still import)
 - Deleting anything asks first
-- Focus and sleep mode only switch Do Not Disturb back if it is still what they set, so a change you made by hand stays
+- Focus, sleep mode and routines share Do Not Disturb: it stays on while any of them needs it, and a change you made by hand stays
 
 ### Fixed
+- **A tap on a tab could do nothing** when Settings or Statistics had been opened over it
+- **Do Not Disturb could stay on for good on Android 15 and later,** where the app's own Do Not Disturb mode was set back instead of switched off. A mode left on that way is now switched off at app start
 - **A snooze could be spent twice** when the alarm screen and the notification acted on the same alarm
 - **Done todos vanished** from the list
 - **Focus sessions ran long with the screen off,** because the countdown stopped while the phone slept
