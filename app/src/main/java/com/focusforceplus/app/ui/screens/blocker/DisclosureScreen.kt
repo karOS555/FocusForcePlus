@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.blocker
 
+import androidx.compose.material.icons.filled.TaskAlt
+import com.focusforceplus.app.data.tasks.TaskApp
 import androidx.compose.material.icons.filled.CalendarMonth
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -63,7 +65,23 @@ private data class Disclosure(
     val restricted: Boolean,
 )
 
-private fun disclosureFor(type: String): Disclosure = when (type) {
+private fun disclosureFor(type: String): Disclosure = TaskApp.ofDisclosure(type)?.let { app ->
+    Disclosure(
+        title = app.label,
+        heading = "Your tasks in ${app.label}",
+        icon = Icons.Filled.TaskAlt,
+        does = "It lets an app read the tasks in ${app.label} and add, change and delete them.",
+        usedFor = "Keeping your todos and the one list you pick there in step: new todos show up " +
+            "there, tasks you add there show up here, and titles, dates, priority, notes and done " +
+            "follow both ways.",
+        doesNot = "It only touches the list you pick. Nothing leaves your phone through FocusForce+: " +
+            "the app has no internet access. If ${app.label} syncs that list with a server, for " +
+            "example with DAVx5, that sync happens in those apps.",
+        turnOff = "Any time: \"Stop syncing\" in Settings > Tasks app, or take the permission away in " +
+            "Android Settings > Apps > FocusForce+ > Permissions. Your todos stay as they are.",
+        restricted = false,
+    )
+} ?: when (type) {
     DisclosureType.CALENDAR -> Disclosure(
         title = "Calendar",
         heading = "Your calendar",
@@ -140,7 +158,8 @@ fun DisclosureScreen(
     val colors = FfTheme.colors
     val content = disclosureFor(type)
 
-    fun isGranted(): Boolean = when (type) {
+    val taskApp = TaskApp.ofDisclosure(type)
+    fun isGranted(): Boolean = if (taskApp != null) taskApp.isGranted(context) else when (type) {
         DisclosureType.CALENDAR -> CALENDAR_PERMISSIONS.all {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
@@ -214,7 +233,7 @@ fun DisclosureScreen(
                     FfPaddedCard(spacing = 6.dp) {
                         Text(
                             "Android did not ask, or the answer was no. You can allow it in the app info, " +
-                                "under Permissions > Calendar.",
+                                "under Permissions.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textMuted,
                         )
@@ -222,11 +241,12 @@ fun DisclosureScreen(
                     }
                 }
                 PrimaryButton(
-                    text = if (type == DisclosureType.CALENDAR) "Got it, allow access" else "Got it, open Android settings",
+                    text = if (type == DisclosureType.CALENDAR || taskApp != null) "Got it, allow access" else "Got it, open Android settings",
                     onClick = {
-                        when (type) {
-                            DisclosureType.CALENDAR -> askCalendar.launch(CALENDAR_PERMISSIONS)
-                            DisclosureType.USAGE_ACCESS -> PermissionHelper.openUsageAccessSettings(context)
+                        when {
+                            taskApp != null -> askCalendar.launch(taskApp.permissions)
+                            type == DisclosureType.CALENDAR -> askCalendar.launch(CALENDAR_PERMISSIONS)
+                            type == DisclosureType.USAGE_ACCESS -> PermissionHelper.openUsageAccessSettings(context)
                             else -> PermissionHelper.openAccessibilitySettings(context)
                         }
                     },

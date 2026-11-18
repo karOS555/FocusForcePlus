@@ -96,6 +96,7 @@ fun SettingsScreen(
     onOpenAutoBackup: () -> Unit = {},
     onOpenAppearance: () -> Unit = {},
     onOpenCalendar: () -> Unit = {},
+    onOpenTaskSync: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     navViewModel: NavViewModel = hiltViewModel(),
 ) {
@@ -446,6 +447,12 @@ fun SettingsScreen(
                             title = "Calendar",
                             subtitle = "Today's events on Home, todos in a calendar, blocking during events",
                             onClick = onOpenCalendar,
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Tasks app",
+                            subtitle = "Sync todos with OpenTasks or Tasks.org, and with DAVx5 beyond",
+                            onClick = onOpenTaskSync,
                         )
                         RowDivider()
                         LinkRow(

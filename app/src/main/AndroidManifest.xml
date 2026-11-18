@@ -53,6 +53,14 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
+    <!-- Tasks app sync (optional, asked after an in-app disclosure): one list of
+         OpenTasks or Tasks.org is kept in step with the todos. Both apps define
+         these permissions; Tasks.org ships the OpenTasks provider under its own name. -->
+    <uses-permission android:name="org.dmfs.permission.READ_TASKS" />
+    <uses-permission android:name="org.dmfs.permission.WRITE_TASKS" />
+    <uses-permission android:name="org.tasks.permission.READ_TASKS" />
+    <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
+
     <!-- App blocker: measure per-app usage for daily limits. Special-access permission,
          granted by the user in system settings after an in-app prominent disclosure. -->
     <uses-permission
@@ -63,6 +71,9 @@
          Deliberately NOT QUERY_ALL_PACKAGES — see .claude/PLAY_STORE_COMPLIANCE.md,
          Golden Rule #6. -->
     <queries>
+        <!-- The two task providers the task sync can talk to, nothing else. -->
+        <provider android:authorities="org.dmfs.tasks" />
+        <provider android:authorities="org.tasks.opentasks" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

@@ -63,6 +63,16 @@ interface TodoDao {
     @Query("UPDATE todos SET calendarEventId = :eventId WHERE id = :id")
     suspend fun setCalendarEventId(id: Long, eventId: Long?)
 
+    /** Every todo, done and in the trash too: what the task sync compares. */
+    @Query("SELECT * FROM todos")
+    fun observeEverything(): Flow<List<TodoEntity>>
+
+    @Query("UPDATE todos SET taskSyncId = :remoteId, taskSyncHash = :hash WHERE id = :id")
+    suspend fun setTaskSync(id: Long, remoteId: Long?, hash: String?)
+
+    @Query("UPDATE todos SET taskSyncId = NULL, taskSyncHash = NULL")
+    suspend fun clearTaskSync()
+
     @Query("SELECT * FROM todos WHERE id = :id")
     fun observeById(id: Long): Flow<TodoEntity?>
 

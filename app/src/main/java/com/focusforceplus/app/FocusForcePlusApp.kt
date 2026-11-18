@@ -45,6 +45,7 @@ class FocusForcePlusApp : Application() {
     @Inject lateinit var sleepRepository: SleepRepository
     @Inject lateinit var focusRecovery: com.focusforceplus.app.service.FocusSessionRecovery
     @Inject lateinit var calendarTodoMirror: com.focusforceplus.app.data.calendar.CalendarTodoMirror
+    @Inject lateinit var taskSync: com.focusforceplus.app.data.tasks.TaskSync
     @Inject lateinit var routineSessionStore: com.focusforceplus.app.service.RoutineSessionStore
     @Inject lateinit var activeRoutineRegistry: com.focusforceplus.app.service.ActiveRoutineRegistry
 
@@ -67,6 +68,8 @@ class FocusForcePlusApp : Application() {
 
         // Todos with a date, mirrored into the calendar the user picked (if any).
         calendarTodoMirror.start(appScope)
+        // Todos and a list of a tasks app, kept in step both ways (if set up).
+        taskSync.start(appScope)
 
         // A focus session whose process was killed without coming back (force stop,
         // a crash) still holds Do Not Disturb. A system restart of the service
@@ -119,6 +122,13 @@ class FocusForcePlusApp : Application() {
             PeriodicWorkRequestBuilder<DailyResetWorker>(24, TimeUnit.HOURS)
                 .setInitialDelay(DailyResetWorker.initialDelayMillis(), TimeUnit.MILLISECONDS)
                 .build(),
+        )
+
+        // Changes made in a tasks app while FocusForce+ was not running.
+        workManager.enqueueUniquePeriodicWork(
+            com.focusforceplus.app.worker.TaskSyncWorker.UNIQUE_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<com.focusforceplus.app.worker.TaskSyncWorker>(1, TimeUnit.HOURS).build(),
         )
 
         // Keep per-app usage numbers fresh for limits and the blocker UI.

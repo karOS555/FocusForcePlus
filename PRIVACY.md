@@ -32,6 +32,7 @@ Each permission powers one feature and nothing else. You can skip any of them, a
 - **Usage access**: to measure how long you used an app, for daily time limits and the screen-time numbers you see.
 - **Do Not Disturb access**: so a focus session or the night in sleep mode can silence interruptions, and turn that back off when it ends.
 - **Calendar**: optional, asked only from Settings > Calendar, after a screen that explains it. FocusForce+ reads your events to show today's on Home and to block the groups you pick while an event is on, and adds todos with a date to the one calendar you choose. It never changes or deletes events it did not make. If that calendar syncs with an account, the account syncs those events like any other; FocusForce+ itself has no internet access.
+- **Tasks (OpenTasks or Tasks.org)**: optional, asked only from Settings > Tasks app, after a screen that explains it. FocusForce+ keeps your todos and the one task list you pick in step, on your phone. If that tasks app syncs the list with a server (for example with DAVx5), that happens in those apps; FocusForce+ itself has no internet access.
 - **Set alarms**: optional, for backup alarms in your phone's own clock app in sleep mode.
 - **Battery (unrestricted)**: optional, so reminders stay reliable on aggressive battery savers.
 

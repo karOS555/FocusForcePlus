@@ -143,7 +143,7 @@ class TodoReminderEngine @Inject constructor(
         val pattern = todo.recurringPattern
         val due = todo.dueDateTime
         if (todo.isRecurring && pattern != null && due != null) {
-            val next = todo.copy(
+            val next = todo.unlinked().copy(
                 id = 0L,
                 dueDateTime = nextOccurrenceMillis(due, pattern),
                 isCompleted = false,

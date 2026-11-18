@@ -46,8 +46,19 @@ data class TodoEntity(
     val listId: Long? = null,
     /** Its event in the calendar the user picked; -1 = removed there, leave it out. */
     val calendarEventId: Long? = null,
+    /** Its task in the tasks app FocusForce+ syncs with (OpenTasks, Tasks.org). */
+    val taskSyncId: Long? = null,
+    /** What both sides agreed on at the last sync (see TaskSyncPlanner). */
+    val taskSyncHash: String? = null,
 ) {
     val isInTrash: Boolean get() = deletedAt != null
+
+    /**
+     * For a new row made from this one (a copy, the next round of a repeating
+     * todo): without the links to this row's calendar event and synced task, which
+     * belong to this row alone.
+     */
+    fun unlinked(): TodoEntity = copy(calendarEventId = null, taskSyncId = null, taskSyncHash = null)
 
     companion object {
         const val NAG_DISMISSED = -1

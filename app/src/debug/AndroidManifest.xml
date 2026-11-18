@@ -16,6 +16,12 @@
                 <action android:name="com.focusforceplus.app.DEBUG_DUE" />
             </intent-filter>
         </receiver>
+        <!-- Debug builds only: a stand-in for the OpenTasks provider, to try the task
+             sync on an emulator. Exported so adb can change tasks "from outside". -->
+        <provider
+            android:name=".debug.FakeTaskProvider"
+            android:authorities="com.focusforceplus.app.debug.tasks"
+            android:exported="true" />
     </application>
 
 </manifest>

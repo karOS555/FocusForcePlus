@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 12,
-    "identityHash": "5fd3fbaf3646bc5d34dba8e11191bf07",
+    "identityHash": "307752b2647b316ac1e6d8bad7e62c86",
     "entities": [
       {
         "tableName": "routines",
@@ -214,7 +214,7 @@
       },
       {
         "tableName": "todos",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `dueDateTime` INTEGER, `priority` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `isRecurring` INTEGER NOT NULL, `recurringPattern` TEXT, `snoozeCount` INTEGER NOT NULL, `maxSnoozeCount` INTEGER NOT NULL, `rescheduleCount` INTEGER NOT NULL, `maxRescheduleCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER, `postponedTo` INTEGER, `checklistJson` TEXT, `iconKey` TEXT, `deletedAt` INTEGER, `guards` TEXT, `snoozedUntil` INTEGER, `nagCount` INTEGER NOT NULL, `lastAlarmAt` INTEGER, `listId` INTEGER, `calendarEventId` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `dueDateTime` INTEGER, `priority` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `isRecurring` INTEGER NOT NULL, `recurringPattern` TEXT, `snoozeCount` INTEGER NOT NULL, `maxSnoozeCount` INTEGER NOT NULL, `rescheduleCount` INTEGER NOT NULL, `maxRescheduleCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER, `postponedTo` INTEGER, `checklistJson` TEXT, `iconKey` TEXT, `deletedAt` INTEGER, `guards` TEXT, `snoozedUntil` INTEGER, `nagCount` INTEGER NOT NULL, `lastAlarmAt` INTEGER, `listId` INTEGER, `calendarEventId` INTEGER, `taskSyncId` INTEGER, `taskSyncHash` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -346,6 +346,16 @@
             "fieldPath": "calendarEventId",
             "columnName": "calendarEventId",
             "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "taskSyncId",
+            "columnName": "taskSyncId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "taskSyncHash",
+            "columnName": "taskSyncHash",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -983,7 +993,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5fd3fbaf3646bc5d34dba8e11191bf07')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '307752b2647b316ac1e6d8bad7e62c86')"
     ]
   }
 }

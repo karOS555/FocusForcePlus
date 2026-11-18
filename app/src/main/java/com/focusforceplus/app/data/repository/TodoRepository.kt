@@ -32,6 +32,14 @@ class TodoRepository @Inject constructor(
 
     suspend fun setCalendarEventId(id: Long, eventId: Long?) = todoDao.setCalendarEventId(id, eventId)
 
+    fun observeEverything(): Flow<List<TodoEntity>> = todoDao.observeEverything()
+
+    suspend fun getAllOnce(): List<TodoEntity> = todoDao.getAllOnce()
+
+    suspend fun setTaskSync(id: Long, remoteId: Long?, hash: String?) = todoDao.setTaskSync(id, remoteId, hash)
+
+    suspend fun clearTaskSync() = todoDao.clearTaskSync()
+
     fun getTrashedTodos(): Flow<List<TodoEntity>> = todoDao.getTrashed()
 
     fun observeTodo(id: Long): Flow<TodoEntity?> = todoDao.observeById(id)

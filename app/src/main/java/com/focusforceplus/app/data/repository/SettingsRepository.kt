@@ -1,5 +1,6 @@
 package com.focusforceplus.app.data.repository
 
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -41,6 +42,9 @@ class SettingsRepository @Inject constructor(
         private val CALENDAR_IDS_KEY               = stringPreferencesKey("calendar_ids")
         private val CALENDAR_TODO_TARGET_KEY       = longPreferencesKey("calendar_todo_target")
         private val CALENDAR_BLOCK_GROUPS_KEY      = stringPreferencesKey("calendar_block_groups")
+        private val TASK_SYNC_AUTHORITY_KEY        = stringPreferencesKey("task_sync_authority")
+        private val TASK_SYNC_LIST_KEY             = longPreferencesKey("task_sync_list")
+        private val TASK_SYNC_SEEN_KEY             = stringPreferencesKey("task_sync_seen")
         private val SHORTS_YOUTUBE_KEY             = booleanPreferencesKey("shorts_block_youtube")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
         private val BLOCK_DURING_FOCUS_KEY         = booleanPreferencesKey("blocker_during_focus")
@@ -201,6 +205,41 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { prefs ->
             if (groups.isEmpty()) prefs.remove(CALENDAR_BLOCK_GROUPS_KEY)
             else prefs[CALENDAR_BLOCK_GROUPS_KEY] = groups.joinToString("|")
+        }
+    }
+
+    // ── Tasks app ─────────────────────────────────────────────────────────────
+
+    /** The tasks app and list todos are synced with; null = no sync. */
+    val taskSyncTarget: Flow<TaskSyncTarget?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            val authority = prefs[TASK_SYNC_AUTHORITY_KEY]
+            val list = prefs[TASK_SYNC_LIST_KEY]
+            if (authority != null && list != null) TaskSyncTarget(authority, list) else null
+        }
+        .distinctUntilChanged()
+
+    suspend fun saveTaskSyncTarget(target: TaskSyncTarget?) {
+        dataStore.edit { prefs ->
+            if (target == null) {
+                prefs.remove(TASK_SYNC_AUTHORITY_KEY)
+                prefs.remove(TASK_SYNC_LIST_KEY)
+            } else {
+                prefs[TASK_SYNC_AUTHORITY_KEY] = target.authority
+                prefs[TASK_SYNC_LIST_KEY] = target.listId
+            }
+        }
+    }
+
+    /** Task ids the last sync saw in the list; a task not among them is new. */
+    val taskSyncSeen: Flow<Set<Long>> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs -> prefs[TASK_SYNC_SEEN_KEY]?.split(',')?.mapNotNull { it.toLongOrNull() }?.toSet().orEmpty() }
+
+    suspend fun saveTaskSyncSeen(ids: Set<Long>) {
+        dataStore.edit { prefs ->
+            if (ids.isEmpty()) prefs.remove(TASK_SYNC_SEEN_KEY) else prefs[TASK_SYNC_SEEN_KEY] = ids.joinToString(",")
         }
     }
 
@@ -514,3 +553,6 @@ class SettingsRepository @Inject constructor(
         }
     }
 }
+
+/** A tasks app (by its provider authority) and one of its lists. */
+data class TaskSyncTarget(val authority: String, val listId: Long)

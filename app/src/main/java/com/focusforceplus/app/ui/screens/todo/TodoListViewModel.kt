@@ -185,7 +185,7 @@ class TodoListViewModel @Inject constructor(
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val id = engine.save(
-                todo.copy(
+                todo.unlinked().copy(
                     id = 0L,
                     title = "${todo.title} (copy)".take(200),
                     isCompleted = false,

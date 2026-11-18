@@ -290,6 +290,14 @@ fun NavGraph(
                 onOpenAutoBackup = { navController.navigate(SettingsRoutes.AUTO_BACKUP) },
                 onOpenAppearance = { navController.navigate(SettingsRoutes.APPEARANCE) },
                 onOpenCalendar = { navController.navigate(SettingsRoutes.CALENDAR) },
+                onOpenTaskSync = { navController.navigate(SettingsRoutes.TASK_SYNC) },
+            )
+        }
+
+        composable(SettingsRoutes.TASK_SYNC) {
+            com.focusforceplus.app.ui.screens.settings.TaskSyncScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenDisclosure = { type -> navController.navigate(BlockerRoutes.disclosure(type)) },
             )
         }
 
