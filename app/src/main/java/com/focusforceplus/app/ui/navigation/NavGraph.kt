@@ -55,7 +55,7 @@ fun NavGraph(
                 onGoToTodos          = { goToTab(TodoRoutes.LIST) },
                 onGoToFocus          = { goToTab(FocusRoutes.LIST) },
                 onGoToBlocker        = { goToTab(BlockerRoutes.LIST) },
-                onNewTodo            = { navController.navigate(TodoRoutes.CREATE) },
+                onNewTodo            = { navController.navigate(TodoRoutes.create()) },
                 onNewRoutine         = { navController.navigate(RoutineRoutes.CREATE) },
                 onOpenStats          = { navController.navigate(StatsRoutes.STATS) },
                 onGoToLists          = { goToTab(ListRoutes.LIST) },
@@ -128,12 +128,18 @@ fun NavGraph(
         // ── Todos ─────────────────────────────────────────────────────────────
         composable(TodoRoutes.LIST) {
             TodoListScreen(
-                onCreateTodo = { navController.navigate(TodoRoutes.CREATE) },
+                onCreateTodo = { navController.navigate(TodoRoutes.create()) },
                 onEditTodo   = { id -> navController.navigate(TodoRoutes.edit(id)) },
             )
         }
 
-        composable(TodoRoutes.CREATE) {
+        composable(
+            route = TodoRoutes.CREATE_PATTERN,
+            arguments = listOf(
+                navArgument("listId") { type = NavType.LongType; defaultValue = -1L },
+                navArgument("title") { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+        ) {
             CreateTodoScreen(onNavigateBack = { navController.popBackStack() })
         }
 
@@ -262,6 +268,11 @@ fun NavGraph(
         ) {
             com.focusforceplus.app.ui.screens.lists.ListDetailScreen(
                 onBack = { navController.popBackStack() },
+                onRemind = { listId, title -> navController.navigate(TodoRoutes.create(listId, title)) },
+                onEditTodo = { id -> navController.navigate(TodoRoutes.edit(id)) },
+                onOpenList = { id ->
+                    navController.navigate(ListRoutes.detail(id)) { popUpTo(ListRoutes.DETAIL) { inclusive = true } }
+                },
             )
         }
 

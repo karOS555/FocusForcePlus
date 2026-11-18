@@ -195,6 +195,7 @@ fun ListsScreen(
                 )
                 ListRow(title = "Open", onClick = { menuFor = null; onOpenList(list.id) })
                 ListRow(title = "Rename", onClick = { menuFor = null; renaming = list })
+                ListRow(title = "Duplicate", onClick = { menuFor = null; viewModel.duplicate(list, onOpenList) })
                 ListRow(title = "Delete", titleColor = colors.error, onClick = { menuFor = null; deleteTarget = list })
             }
         }

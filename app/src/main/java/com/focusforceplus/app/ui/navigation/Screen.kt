@@ -42,7 +42,18 @@ object RoutineRoutes {
 object TodoRoutes {
     const val LIST   = "todos"
     const val CREATE = "todo/create"
+    /** The destination: a new todo, optionally for a list and with a title. */
+    const val CREATE_PATTERN = "todo/create?listId={listId}&title={title}"
     const val EDIT   = "todo/edit/{todoId}"
+
+    fun create(listId: Long? = null, title: String? = null): String = buildString {
+        append(CREATE)
+        val args = buildList {
+            if (listId != null) add("listId=$listId")
+            if (!title.isNullOrBlank()) add("title=" + android.net.Uri.encode(title))
+        }
+        if (args.isNotEmpty()) append('?').append(args.joinToString("&"))
+    }
 
     fun edit(todoId: Long) = "todo/edit/$todoId"
 }
@@ -92,7 +103,7 @@ fun isFocusedRoute(route: String?): Boolean {
         route.startsWith("blocker/disclosure") ||
         route.startsWith("blocker/block") ||
         route == RoutineRoutes.CREATE || route.startsWith("routine/edit") ||
-        route == TodoRoutes.CREATE || route.startsWith("todo/edit") ||
+        route.startsWith(TodoRoutes.CREATE) || route.startsWith("todo/edit") ||
         route == FocusRoutes.CREATE || route.startsWith("focus/edit") ||
         // Running sessions get the whole screen too: the timer, nothing else.
         route.startsWith("routine/active") || route.startsWith("focus/active") ||

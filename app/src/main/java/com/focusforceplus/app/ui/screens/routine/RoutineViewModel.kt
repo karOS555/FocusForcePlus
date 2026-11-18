@@ -42,6 +42,7 @@ data class TaskUiItem(
     val iconKey: String? = null,
     val reminderBeforeEndMinutes: Int = 3,
     val overtimeReminderIntervalMinutes: Int = 5,
+    val listId: Long? = null,
 )
 
 /** A step that exists in some routine, offered while typing a new one. */
@@ -91,8 +92,13 @@ class RoutineViewModel @Inject constructor(
     private val tamperGuard: TamperProtectionGuard,
     private val settingsRepository: SettingsRepository,
     private val navRepository: NavRepository,
+    listRepository: com.focusforceplus.app.data.repository.ListRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    /** Lists a step can carry, e.g. a packing list for "Pack the bag". */
+    val lists: StateFlow<List<com.focusforceplus.app.data.db.entity.ListEntity>> = listRepository.getLists()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val editRoutineId: Long = savedStateHandle.get<Long>("routineId") ?: 0L
     val isEditMode: Boolean get() = editRoutineId != 0L
@@ -192,6 +198,7 @@ class RoutineViewModel @Inject constructor(
         iconKey = iconKey,
         reminderBeforeEndMinutes = reminderBeforeEndMinutes,
         overtimeReminderIntervalMinutes = overtimeReminderIntervalMinutes,
+        listId = listId,
     )
 
     fun updateName(v: String) = _uiState.update { it.copy(name = v, nameError = false) }
@@ -347,6 +354,7 @@ class RoutineViewModel @Inject constructor(
                             iconKey = t.iconKey,
                             reminderBeforeEndMinutes = t.reminderBeforeEndMinutes,
                             overtimeReminderIntervalMinutes = t.overtimeReminderIntervalMinutes,
+                            listId = t.listId,
                         )
                     },
                 )

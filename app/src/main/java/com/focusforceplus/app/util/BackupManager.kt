@@ -273,6 +273,7 @@ class BackupManager @Inject constructor(
         putNullable("iconKey", t.iconKey)
         put("reminderBeforeEndMinutes", t.reminderBeforeEndMinutes)
         put("overtimeReminderIntervalMinutes", t.overtimeReminderIntervalMinutes)
+        putNullable("listId", t.listId)
     }
 
     private fun taskFromJson(o: JSONObject) = RoutineTaskEntity(
@@ -285,6 +286,7 @@ class BackupManager @Inject constructor(
         iconKey = o.optStringOrNull("iconKey"),
         reminderBeforeEndMinutes = o.getInt("reminderBeforeEndMinutes"),
         overtimeReminderIntervalMinutes = o.getInt("overtimeReminderIntervalMinutes"),
+        listId = o.optLongOrNull("listId"),
     )
 
     private fun todoJson(t: TodoEntity) = JSONObject().apply {
@@ -447,6 +449,7 @@ class BackupManager @Inject constructor(
         put("sortOrder", l.sortOrder)
         put("createdAt", l.createdAt)
         putNullable("deletedAt", l.deletedAt)
+        putNullable("sectionOrder", l.sectionOrder)
     }
 
     private fun listFromJson(o: JSONObject) = ListEntity(
@@ -456,6 +459,7 @@ class BackupManager @Inject constructor(
         sortOrder = o.optInt("sortOrder", 0),
         createdAt = o.getLong("createdAt"),
         deletedAt = o.optLongOrNull("deletedAt"),
+        sectionOrder = o.optStringOrNull("sectionOrder"),
     )
 
     private fun listItemJson(i: ListItemEntity) = JSONObject().apply {
@@ -467,6 +471,8 @@ class BackupManager @Inject constructor(
         putNullable("checkedAt", i.checkedAt)
         put("sortOrder", i.sortOrder)
         put("createdAt", i.createdAt)
+        putNullable("section", i.section)
+        putNullable("quantity", i.quantity)
     }
 
     private fun listItemFromJson(o: JSONObject) = ListItemEntity(
@@ -478,6 +484,8 @@ class BackupManager @Inject constructor(
         checkedAt = o.optLongOrNull("checkedAt"),
         sortOrder = o.optInt("sortOrder", 0),
         createdAt = o.getLong("createdAt"),
+        section = o.optStringOrNull("section"),
+        quantity = o.optStringOrNull("quantity"),
     )
 
     private fun suggestionJson(s: ListSuggestionEntity) = JSONObject().apply {
@@ -487,6 +495,7 @@ class BackupManager @Inject constructor(
         put("text", s.text)
         put("useCount", s.useCount)
         put("lastUsedAt", s.lastUsedAt)
+        putNullable("section", s.section)
     }
 
     private fun suggestionFromJson(o: JSONObject) = ListSuggestionEntity(
@@ -496,6 +505,7 @@ class BackupManager @Inject constructor(
         text = o.getString("text"),
         useCount = o.optInt("useCount", 1),
         lastUsedAt = o.getLong("lastUsedAt"),
+        section = o.optStringOrNull("section"),
     )
 
     private fun routineCompletionJson(c: RoutineCompletionEntity) = JSONObject().apply {

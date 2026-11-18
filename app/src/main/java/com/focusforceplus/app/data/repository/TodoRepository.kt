@@ -25,6 +25,9 @@ class TodoRepository @Inject constructor(
 
     fun getCompletionTimesSince(since: Long): Flow<List<Long>> = todoDao.getCompletionTimesSince(since)
 
+    /** Open todos that remind about a list. */
+    fun getOpenForList(listId: Long): Flow<List<TodoEntity>> = todoDao.getOpenForList(listId)
+
     fun getTrashedTodos(): Flow<List<TodoEntity>> = todoDao.getTrashed()
 
     fun observeTodo(id: Long): Flow<TodoEntity?> = todoDao.observeById(id)

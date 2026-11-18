@@ -70,6 +70,10 @@ class ListsViewModel @Inject constructor(
         viewModelScope.launch { repository.updateList(list.copy(name = trimmed, iconKey = iconKey)) }
     }
 
+    fun duplicate(list: ListEntity, onDone: (Long) -> Unit) {
+        viewModelScope.launch { repository.duplicateList(list.id)?.let(onDone) }
+    }
+
     fun moveToTrash(list: ListEntity) {
         viewModelScope.launch {
             repository.moveToTrash(list.id)

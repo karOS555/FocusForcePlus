@@ -72,6 +72,18 @@ interface ListDao {
     @Query("UPDATE list_items SET isChecked = :checked, checkedAt = :at WHERE id = :id")
     suspend fun setChecked(id: Long, checked: Boolean, at: Long?)
 
+    @Query("SELECT * FROM list_items WHERE listId = :listId AND isChecked = 0 ORDER BY sortOrder, createdAt")
+    fun getOpenItems(listId: Long): Flow<List<ListItemEntity>>
+
+    @Query("UPDATE list_suggestions SET section = :section WHERE listId = :listId AND `key` = :key")
+    suspend fun setSuggestionSection(listId: Long, key: String, section: String?)
+
+    @Query("UPDATE list_items SET section = :to WHERE listId = :listId AND section = :from")
+    suspend fun renameSection(listId: Long, from: String, to: String?)
+
+    @Query("UPDATE list_suggestions SET section = :to WHERE listId = :listId AND section = :from")
+    suspend fun renameSuggestionSection(listId: Long, from: String, to: String?)
+
     @Query("UPDATE list_items SET isChecked = 0, checkedAt = NULL WHERE listId = :listId")
     suspend fun uncheckAll(listId: Long)
 

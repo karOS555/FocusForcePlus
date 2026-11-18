@@ -160,22 +160,36 @@ object FeatureHelpContent {
     val LISTS = FeatureHelp(
         key = "lists",
         title = "How lists work",
-        intro = "Lists are for things you collect rather than do on time: shopping, " +
-            "packing, ideas. No alarms, no deadlines.",
+        intro = "Lists are for things you collect rather than do at a set time: shopping, " +
+            "packing, what to take to work. They work together with todos and routines.",
         sections = listOf(
             HelpSection(
                 "Adding fast",
-                "Type several items at once, separated by commas. Things you added before " +
-                    "come back as suggestions.",
+                "Type several items at once, separated by commas. An amount you type, like " +
+                    "\"2 milk\" or \"flour 500 g\", shows up next to the item. Things you " +
+                    "added before come back as suggestions.",
             ),
             HelpSection(
-                "Ticking off",
-                "Ticked items move to the bottom. Clear them all at once when you are done, " +
-                    "or untick them to use the list again.",
+                "Sections",
+                "Long-press an item to put it into a section, like Produce or Dairy. It goes " +
+                    "there again next time on its own. Order the sections the way you walk " +
+                    "through your shop from the menu.",
             ),
             HelpSection(
-                "Shopping mode",
-                "Keeps the screen on while the list is open, so it does not lock between aisles.",
+                "Reminders",
+                "\"Remind me\" in the menu makes a todo for the list. When it rings, the " +
+                    "open items are right there on the alarm to tick off.",
+            ),
+            HelpSection(
+                "Lists in routines",
+                "A routine step can carry a list, like a packing list for \"Pack the bag\". " +
+                    "While the step runs, its items are on screen to tick off, and \"Start " +
+                    "fresh\" unticks them for the next time.",
+            ),
+            HelpSection(
+                "Shopping mode and sharing",
+                "Shopping mode keeps the screen on in the shop. Share sends the open items " +
+                    "as text, by section. Duplicate makes a fresh copy, e.g. for the next trip.",
             ),
         ),
     )

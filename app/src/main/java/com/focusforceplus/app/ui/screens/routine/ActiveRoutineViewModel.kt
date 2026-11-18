@@ -1,5 +1,11 @@
 package com.focusforceplus.app.ui.screens.routine
 
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -99,6 +105,7 @@ class ActiveRoutineViewModel @Inject constructor(
     private val rescheduleTracker: PendingRescheduleTracker,
     private val registry: ActiveRoutineRegistry,
     private val settingsRepository: SettingsRepository,
+    private val listRepository: com.focusforceplus.app.data.repository.ListRepository,
     @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -107,6 +114,28 @@ class ActiveRoutineViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ActiveRoutineUiState())
     val uiState: StateFlow<ActiveRoutineUiState> = _uiState.asStateFlow()
+
+    /** The current step's list, if it has one. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val stepList: StateFlow<com.focusforceplus.app.ui.screens.lists.LinkedList?> = _uiState
+        .map { it.currentTask?.listId }
+        .distinctUntilChanged()
+        .flatMapLatest { listId ->
+            if (listId == null) kotlinx.coroutines.flow.flowOf(null)
+            else combine(listRepository.observeList(listId), listRepository.getOpenItems(listId)) { list, open ->
+                list?.let { com.focusforceplus.app.ui.screens.lists.LinkedList(it, open) }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun tickListItem(item: com.focusforceplus.app.data.db.entity.ListItemEntity) {
+        viewModelScope.launch { listRepository.setChecked(item.id, true) }
+    }
+
+    /** Unticks the whole list, for a packing list that is used again each time. */
+    fun restartList(listId: Long) {
+        viewModelScope.launch { listRepository.uncheckAll(listId) }
+    }
 
     private val _events = MutableSharedFlow<RoutineEvent>(extraBufferCapacity = 4)
     val events: SharedFlow<RoutineEvent> = _events.asSharedFlow()

@@ -40,7 +40,7 @@ import com.focusforceplus.app.data.db.entity.TodoEntity
         ListItemEntity::class,
         ListSuggestionEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 @TypeConverters(AppTypeConverters::class)
@@ -172,6 +172,17 @@ abstract class AppDatabase : RoomDatabase() {
          * (soft delete), the confirmation guards, the todo reminder state, and the
          * Lists module. Only adds columns and tables, so nothing existing is touched.
          */
+        /** Sections and amounts on lists, and lists on routine steps. */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE lists ADD COLUMN sectionOrder TEXT")
+                db.execSQL("ALTER TABLE list_items ADD COLUMN section TEXT")
+                db.execSQL("ALTER TABLE list_items ADD COLUMN quantity TEXT")
+                db.execSQL("ALTER TABLE list_suggestions ADD COLUMN section TEXT")
+                db.execSQL("ALTER TABLE routine_tasks ADD COLUMN listId INTEGER")
+            }
+        }
+
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE todos ADD COLUMN iconKey TEXT")

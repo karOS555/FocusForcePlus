@@ -43,6 +43,9 @@ interface TodoDao {
     )
     fun getCompleted(): Flow<List<TodoEntity>>
 
+    @Query("SELECT * FROM todos WHERE listId = :listId AND isCompleted = 0 AND deletedAt IS NULL ORDER BY dueDateTime")
+    fun getOpenForList(listId: Long): Flow<List<TodoEntity>>
+
     /** When todos were ticked off, for the statistics; trashed ones still count. */
     @Query("SELECT completedAt FROM todos WHERE completedAt IS NOT NULL AND completedAt >= :since")
     fun getCompletionTimesSince(since: Long): Flow<List<Long>>

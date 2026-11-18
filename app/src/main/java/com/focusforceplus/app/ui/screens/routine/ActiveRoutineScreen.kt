@@ -79,6 +79,7 @@ fun ActiveRoutineScreen(
     viewModel: ActiveRoutineViewModel = hiltViewModel(),
 ) {
     val s by viewModel.uiState.collectAsState()
+    val stepList by viewModel.stepList.collectAsState()
     val colors = FfTheme.colors
 
     // While an invincible routine runs, Back must not be a way out: the run can only
@@ -191,6 +192,15 @@ fun ActiveRoutineScreen(
                 overtimeSeconds = s.overtimeSeconds,
                 timerState = s.timerState,
             )
+            stepList?.let { linked ->
+                Spacer(Modifier.height(20.dp))
+                com.focusforceplus.app.ui.screens.lists.ListTickCard(
+                    linked = linked,
+                    onTick = viewModel::tickListItem,
+                    onStartFresh = { viewModel.restartList(linked.list.id) },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
             s.tasks.getOrNull(s.currentTaskIndex + 1)?.let { next ->
                 Spacer(Modifier.height(20.dp))
                 Text(

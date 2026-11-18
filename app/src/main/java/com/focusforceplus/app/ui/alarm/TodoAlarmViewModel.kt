@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.alarm
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -56,6 +58,7 @@ data class TodoAlarmUiState(
 class TodoAlarmViewModel @Inject constructor(
     private val engine: TodoReminderEngine,
     private val repository: TodoRepository,
+    private val listRepository: com.focusforceplus.app.data.repository.ListRepository,
     settings: SettingsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -66,6 +69,24 @@ class TodoAlarmViewModel @Inject constructor(
 
     /** The todo this screen is showing. */
     val currentId: StateFlow<Long> = todoId.asStateFlow()
+
+    /** The list the todo is about, with its open items, if it has one. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val linkedList: StateFlow<com.focusforceplus.app.ui.screens.lists.LinkedList?> = todoId
+        .flatMapLatest { repository.observeTodo(it) }
+        .map { it?.listId }
+        .distinctUntilChanged()
+        .flatMapLatest { listId ->
+            if (listId == null) kotlinx.coroutines.flow.flowOf(null)
+            else combine(listRepository.observeList(listId), listRepository.getOpenItems(listId)) { list, open ->
+                list?.let { com.focusforceplus.app.ui.screens.lists.LinkedList(it, open) }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun tickListItem(item: com.focusforceplus.app.data.db.entity.ListItemEntity) {
+        viewModelScope.launch { listRepository.setChecked(item.id, true) }
+    }
 
     /** Set once the user answered here; the screen then closes whatever the state. */
     private val answered = MutableStateFlow(false)

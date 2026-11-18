@@ -1,5 +1,7 @@
 package com.focusforceplus.app.debug
 
+import com.focusforceplus.app.data.db.entity.ListItemEntity
+import com.focusforceplus.app.data.db.entity.ListEntity
 import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import android.content.BroadcastReceiver
@@ -127,6 +129,13 @@ class DebugSeedReceiver : BroadcastReceiver() {
             db.listDao().deleteAllSuggestions()
             db.listDao().deleteAllLists()
 
+            val workBag = db.listDao().insertList(
+                ListEntity(name = "Work bag", iconKey = "work", sortOrder = 2, createdAt = now)
+            )
+            listOf("Laptop", "Charger", "Keys", "Lunch box", "Water bottle").forEachIndexed { i, text ->
+                db.listDao().insertItem(ListItemEntity(listId = workBag, text = text, sortOrder = i, createdAt = now))
+            }
+
             val everyDay = "MO,DI,MI,DO,FR,SA,SO"
             val morning = db.routineDao().insert(
                 RoutineEntity(
@@ -140,7 +149,7 @@ class DebugSeedReceiver : BroadcastReceiver() {
                     RoutineTaskEntity(routineId = morning, name = "Make the bed", durationMinutes = 3, sortOrder = 0, iconKey = "bed"),
                     RoutineTaskEntity(routineId = morning, name = "Shower", durationMinutes = 10, sortOrder = 1, iconKey = "shower"),
                     RoutineTaskEntity(routineId = morning, name = "Breakfast", durationMinutes = 15, sortOrder = 2, iconKey = "breakfast_dining"),
-                    RoutineTaskEntity(routineId = morning, name = "Pack the bag", durationMinutes = 5, sortOrder = 3, iconKey = "work"),
+                    RoutineTaskEntity(routineId = morning, name = "Pack the bag", durationMinutes = 5, sortOrder = 3, iconKey = "work", listId = workBag),
                 )
             )
             val evening = db.routineDao().insert(
@@ -285,8 +294,20 @@ class DebugSeedReceiver : BroadcastReceiver() {
 
         val lists = ep.lists()
         val groceries = lists.createList("Groceries", "shopping_cart")
-        listOf("Milk", "Bread", "Eggs", "Tomatoes", "Coffee", "Oat flakes").forEach { lists.addItem(groceries, it) }
-        lists.getItemsOnce(groceries).take(2).forEach { lists.setChecked(it.id, true) }
+        listOf(
+            "Tomatoes 500 g" to "Produce", "Bananas" to "Produce", "2 Milk" to "Dairy", "6 Eggs" to "Dairy",
+            "Bread" to "Bakery", "Coffee" to "Pantry", "Oat flakes" to "Pantry",
+        ).forEach { (text, section) ->
+            lists.addItem(groceries, text)
+            lists.getItemsOnce(groceries).last().let { lists.setSection(it, section) }
+        }
+        lists.getItemsOnce(groceries).filter { it.text == "Bananas" }.forEach { lists.setChecked(it.id, true) }
+        engine.save(
+            TodoEntity(
+                title = "Do the weekly shop", iconKey = "shopping_cart", priority = 1,
+                dueDateTime = later(today(17, 30)), listId = groceries, createdAt = now,
+            )
+        )
         val packing = lists.createList("Weekend trip", "train")
         listOf("Charger", "Toothbrush", "Rain jacket", "Tickets").forEach { lists.addItem(packing, it) }
 

@@ -196,9 +196,12 @@ class MainActivity : ComponentActivity() {
         /** The running focus session, opened from its notification. */
         private val ACTIVE_FOCUS_ROUTE = Regex("focus/active/[0-9]+")
 
+        /** A list, opened from a todo's alarm or a widget. */
+        private val LIST_ROUTE = Regex("list/[0-9]+")
+
         /** Screens below the modules that other parts of the app may open directly. */
         fun isDirectRoute(route: String): Boolean =
-            ACTIVE_FOCUS_ROUTE.matches(route) || route == SettingsRoutes.INTEGRATIONS ||
+            ACTIVE_FOCUS_ROUTE.matches(route) || LIST_ROUTE.matches(route) || route == SettingsRoutes.INTEGRATIONS ||
                 route == SettingsRoutes.AUTO_BACKUP || route == TodoRoutes.CREATE
     }
 

@@ -168,6 +168,15 @@ class TodoAlarmActivity : ComponentActivity() {
                     },
                     onDismiss = viewModel::dismiss,
                     onToggleChecklistItem = viewModel::toggleChecklistItem,
+                    linkedList = viewModel.linkedList.collectAsState().value,
+                    onTickListItem = viewModel::tickListItem,
+                    onOpenList = { listId ->
+                        startActivity(
+                            android.content.Intent(this, com.focusforceplus.app.MainActivity::class.java)
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                .putExtra(com.focusforceplus.app.MainActivity.EXTRA_OPEN_ROUTE, "list/$listId"),
+                        )
+                    },
                 )
             }
         }
@@ -236,6 +245,9 @@ private fun TodoAlarmScreen(
     onReschedule: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
     onDismiss: () -> Unit,
     onToggleChecklistItem: (Int) -> Unit,
+    linkedList: com.focusforceplus.app.ui.screens.lists.LinkedList? = null,
+    onTickListItem: (com.focusforceplus.app.data.db.entity.ListItemEntity) -> Unit = {},
+    onOpenList: (Long) -> Unit = {},
 ) {
     val colors = FfTheme.colors
     val todo = state.todo
@@ -326,6 +338,14 @@ private fun TodoAlarmScreen(
                 if (state.checklist.isNotEmpty()) {
                     Spacer(Modifier.height(18.dp))
                     AlarmChecklist(state.checklist, onToggleChecklistItem)
+                }
+                linkedList?.let { linked ->
+                    Spacer(Modifier.height(18.dp))
+                    com.focusforceplus.app.ui.screens.lists.ListTickCard(
+                        linked = linked,
+                        onTick = onTickListItem,
+                        onOpen = { onOpenList(linked.list.id) },
+                    )
                 }
             }
 

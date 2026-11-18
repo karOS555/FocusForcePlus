@@ -93,6 +93,7 @@ fun CreateRoutineScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val templates by viewModel.taskTemplates.collectAsState()
+    val lists by viewModel.lists.collectAsState()
     val others by viewModel.otherRoutines.collectAsState()
     val colors = FfTheme.colors
     val snackbar = remember { SnackbarHostState() }
@@ -220,6 +221,7 @@ fun CreateRoutineScreen(
             StepList(
                 tasks = viewModel.tasks,
                 templates = templates,
+                lists = lists,
                 onUpdate = viewModel::updateTask,
                 onDelete = viewModel::deleteTask,
                 onSwap = viewModel::swapTasks,
@@ -399,6 +401,7 @@ fun CreateRoutineScreen(
 private fun StepList(
     tasks: List<TaskUiItem>,
     templates: List<TaskTemplate>,
+    lists: List<com.focusforceplus.app.data.db.entity.ListEntity>,
     onUpdate: (TaskUiItem) -> Unit,
     onDelete: (String) -> Unit,
     onSwap: (Int, Int) -> Unit,
@@ -415,6 +418,7 @@ private fun StepList(
                 index = index,
                 task = task,
                 templates = templates,
+                lists = lists,
                 dragging = index == draggingIndex,
                 dragOffsetY = if (index == draggingIndex) draggingOffsetY else 0f,
                 onDragStart = { draggingIndex = index; draggingOffsetY = 0f },
@@ -454,6 +458,7 @@ private fun StepCard(
     index: Int,
     task: TaskUiItem,
     templates: List<TaskTemplate>,
+    lists: List<com.focusforceplus.app.data.db.entity.ListEntity>,
     dragging: Boolean,
     dragOffsetY: Float,
     onDragStart: () -> Unit,
@@ -466,6 +471,7 @@ private fun StepCard(
 ) {
     val colors = FfTheme.colors
     var showNote by rememberSaveable(task.tempId) { mutableStateOf(task.notes.isNotEmpty()) }
+    var pickList by remember { mutableStateOf(false) }
     var nameFocused by remember { mutableStateOf(false) }
 
     // Steps from other routines that match what is being typed.
@@ -558,10 +564,30 @@ private fun StepCard(
                     onChange = { onUpdate(task.copy(durationMinutes = it)) },
                 )
                 Spacer(Modifier.weight(1f))
+                if (lists.isNotEmpty() || task.listId != null) {
+                    TextAction(
+                        lists.firstOrNull { it.id == task.listId }?.name ?: "Add a list",
+                        onClick = { pickList = true },
+                        color = if (task.listId != null) colors.accent else colors.textSecondary,
+                    )
+                }
                 TextAction(
                     if (showNote) "Hide note" else "Add a note",
                     onClick = { showNote = !showNote },
                     color = colors.textSecondary,
+                )
+            }
+            if (pickList) {
+                com.focusforceplus.app.ui.components.ChoiceDialog(
+                    title = "List for this step",
+                    choices = listOf(com.focusforceplus.app.ui.components.Choice(-1L, "None")) +
+                        lists.map { com.focusforceplus.app.ui.components.Choice(it.id, it.name) },
+                    selected = task.listId ?: -1L,
+                    onSelect = { id ->
+                        onUpdate(task.copy(listId = id.takeIf { it > 0L }))
+                        pickList = false
+                    },
+                    onDismiss = { pickList = false },
                 )
             }
             if (showNote) {

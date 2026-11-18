@@ -37,6 +37,9 @@ data class TodoUiState(
     val recurringType: String = "DAILY",
     val recurringDays: Set<String> = setOf("MO"),
     val checklistItems: List<ChecklistItem> = emptyList(),
+    /** A list this todo is about, e.g. the groceries for "Go shopping". */
+    val listId: Long? = null,
+    val lists: List<com.focusforceplus.app.data.db.entity.ListEntity> = emptyList(),
     /** This todo's own speed bumps; an action not listed follows the default. */
     val guardOverrides: GuardOverrides = GuardOverrides(),
     val guardDefaults: GuardSettings = GuardSettings(),
@@ -58,8 +61,13 @@ class TodoViewModel @Inject constructor(
     private val repository: TodoRepository,
     private val settingsRepository: SettingsRepository,
     private val engine: TodoReminderEngine,
+    private val listRepository: com.focusforceplus.app.data.repository.ListRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    // A new todo can come from a list ("Remind me"), with its list and title set.
+    private val presetListId: Long? = savedStateHandle.get<Long>("listId")?.takeIf { it > 0L }
+    private val presetTitle: String? = savedStateHandle.get<String>("title")
 
     private val editTodoId: Long = savedStateHandle.get<Long>("todoId") ?: 0L
     val isEditMode: Boolean get() = editTodoId != 0L
@@ -77,9 +85,12 @@ class TodoViewModel @Inject constructor(
         get() = snapshotState?.let { normalized(_uiState.value) != normalized(it) } ?: false
 
     private fun normalized(s: TodoUiState) =
-        s.copy(isSaving = false, titleError = false, error = null, guardDefaults = GuardSettings())
+        s.copy(isSaving = false, titleError = false, error = null, guardDefaults = GuardSettings(), lists = emptyList())
 
     init {
+        viewModelScope.launch {
+            listRepository.getLists().collect { lists -> _uiState.update { it.copy(lists = lists) } }
+        }
         viewModelScope.launch {
             val guards = settingsRepository.guardSettings.first()
             if (isEditMode) {
@@ -103,12 +114,20 @@ class TodoViewModel @Inject constructor(
                             guardOverrides = GuardOverrides.decode(todo.guards),
                             guardDefaults = guards,
                             isCompleted = todo.isCompleted,
+                            listId = todo.listId,
                         )
                     }
                 }
             } else {
                 val defaultPriority = settingsRepository.defaultPriority.first()
-                _uiState.update { it.copy(priority = defaultPriority, guardDefaults = guards) }
+                _uiState.update {
+                    it.copy(
+                        priority = defaultPriority,
+                        guardDefaults = guards,
+                        listId = presetListId,
+                        title = presetTitle.orEmpty(),
+                    )
+                }
             }
             snapshotState = _uiState.value
         }
@@ -163,6 +182,8 @@ class TodoViewModel @Inject constructor(
         )
     }
 
+    fun setList(listId: Long?) = _uiState.update { it.copy(listId = listId) }
+
     fun moveChecklistItem(from: Int, to: Int) = _uiState.update { state ->
         val items = state.checklistItems.toMutableList()
         if (from in items.indices && to in items.indices) items.add(to, items.removeAt(from))
@@ -198,6 +219,7 @@ class TodoViewModel @Inject constructor(
                     recurringPattern = pattern,
                     checklistJson = state.checklistItems.takeIf { it.isNotEmpty() }?.toChecklistJson(),
                     guards = state.guardOverrides.encode(),
+                    listId = state.listId,
                 )
                 engine.save(todo)
                 _uiState.update { it.copy(isSaving = false) }

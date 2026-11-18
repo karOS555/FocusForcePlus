@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.todo
 
+import com.focusforceplus.app.ui.components.ChoiceDialog
+import com.focusforceplus.app.ui.components.Choice
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -278,6 +280,35 @@ fun CreateTodoScreen(
                         onChange = viewModel::updateMaxRescheduleCount,
                     )
                 }
+            }
+        }
+
+        // ── List ──────────────────────────────────────────────────────────────
+        if (state.lists.isNotEmpty() || state.listId != null) {
+            var pickList by remember { mutableStateOf(false) }
+            FormSection(
+                title = "List",
+                hint = "Its open items show up on the alarm, ready to tick off.",
+            ) {
+                FfCard {
+                    ValueRow(
+                        title = "List for this todo",
+                        value = state.lists.firstOrNull { it.id == state.listId }?.name ?: "None",
+                        onClick = { pickList = true },
+                    )
+                }
+            }
+            if (pickList) {
+                ChoiceDialog(
+                    title = "List for this todo",
+                    choices = listOf(Choice(-1L, "None")) + state.lists.map { Choice(it.id, it.name) },
+                    selected = state.listId ?: -1L,
+                    onSelect = { id ->
+                        viewModel.setList(id.takeIf { it > 0L })
+                        pickList = false
+                    },
+                    onDismiss = { pickList = false },
+                )
             }
         }
 

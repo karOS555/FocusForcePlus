@@ -22,7 +22,11 @@ data class ListEntity(
     val createdAt: Long,
     /** Set when the list is in the trash; null = not deleted. */
     val deletedAt: Long? = null,
-)
+    /** The order of the list's sections, one name per line, e.g. the aisles of a shop. */
+    val sectionOrder: String? = null,
+) {
+    val sections: List<String> get() = sectionOrder?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+}
 
 @Entity(
     tableName = "list_items",
@@ -47,6 +51,10 @@ data class ListItemEntity(
     val checkedAt: Long? = null,
     val sortOrder: Int = 0,
     val createdAt: Long,
+    /** Where it is in the shop or the bag: "Produce", "Toiletries". Null = no section. */
+    val section: String? = null,
+    /** How much: "2", "500 g", "x3". Parsed from what was typed. */
+    val quantity: String? = null,
 )
 
 /**
@@ -66,4 +74,6 @@ data class ListSuggestionEntity(
     val text: String,
     val useCount: Int = 1,
     val lastUsedAt: Long,
+    /** The section this item went into last time, so it lands there again. */
+    val section: String? = null,
 )
