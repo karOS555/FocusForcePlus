@@ -131,7 +131,7 @@ class HomeViewModel @Inject constructor(
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             add(Calendar.DAY_OF_YEAR, 1)
         }.timeInMillis
-        calendarRepository.events(now, endOfDay, ids).filter { it.eventId !in own }
+        calendarRepository.events(now, endOfDay, ids).filter { !it.fromTodo && it.eventId !in own }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _usage = MutableStateFlow(UsageStats())

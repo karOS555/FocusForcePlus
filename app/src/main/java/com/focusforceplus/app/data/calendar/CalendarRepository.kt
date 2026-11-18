@@ -43,6 +43,8 @@ data class CalendarEvent(
     val location: String?,
     /** Shows the user as busy: not marked free, not declined. */
     val busy: Boolean,
+    /** One of the events FocusForce+ makes for todos (see [CalendarRepository.TODO_MARKER]). */
+    val fromTodo: Boolean = false,
 )
 
 /**
@@ -129,6 +131,7 @@ class CalendarRepository @Inject constructor(
             CalendarContract.Instances.AVAILABILITY,
             CalendarContract.Instances.SELF_ATTENDEE_STATUS,
             CalendarContract.Instances.VISIBLE,
+            CalendarContract.Instances.DESCRIPTION,
         )
         val selection = buildString {
             append("${CalendarContract.Instances.VISIBLE} = 1")
@@ -162,6 +165,7 @@ class CalendarRepository @Inject constructor(
                                 location = c.getString(7)?.takeIf { it.isNotBlank() },
                                 busy = c.getInt(8) != CalendarContract.Events.AVAILABILITY_FREE &&
                                     c.getInt(9) != CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED,
+                                fromTodo = c.getString(11) == TODO_MARKER,
                             )
                         )
                     }
@@ -257,7 +261,7 @@ class CalendarRepository @Inject constructor(
     private fun todoValues(calendarId: Long, title: String, start: Long) = ContentValues().apply {
         put(CalendarContract.Events.CALENDAR_ID, calendarId)
         put(CalendarContract.Events.TITLE, title)
-        put(CalendarContract.Events.DESCRIPTION, "A todo in FocusForce+.")
+        put(CalendarContract.Events.DESCRIPTION, TODO_MARKER)
         put(CalendarContract.Events.DTSTART, start)
         put(CalendarContract.Events.DTEND, start + TODO_EVENT_MINUTES * 60_000L)
         put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
@@ -265,7 +269,25 @@ class CalendarRepository @Inject constructor(
         put(CalendarContract.Events.HAS_ALARM, 0)
     }
 
+    /** Events in [calendarId] that FocusForce+ made for todos, by their marker. */
+    suspend fun todoEventIds(calendarId: Long): Set<Long> = withContext(Dispatchers.IO) {
+        if (!canRead()) return@withContext emptySet()
+        runCatching {
+            context.contentResolver.query(
+                CalendarContract.Events.CONTENT_URI,
+                arrayOf(CalendarContract.Events._ID),
+                "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DESCRIPTION} = ? AND " +
+                    "${CalendarContract.Events.DELETED} = 0",
+                arrayOf(calendarId.toString(), TODO_MARKER),
+                null,
+            )?.use { c -> buildSet { while (c.moveToNext()) add(c.getLong(0)) } }.orEmpty()
+        }.getOrDefault(emptySet())
+    }
+
     companion object {
         const val TODO_EVENT_MINUTES = 30
+
+        /** The description of every todo event; how FocusForce+ knows its own. */
+        const val TODO_MARKER = "A todo in FocusForce+."
     }
 }

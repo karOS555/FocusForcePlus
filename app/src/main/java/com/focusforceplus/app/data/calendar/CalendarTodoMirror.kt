@@ -42,6 +42,8 @@ class CalendarTodoMirror @Inject constructor(
     private suspend fun sync(candidates: List<TodoEntity>, target: Long?) = mutex.withLock {
         if (!calendar.canWrite()) return@withLock
         val stored = calendar.storedEvents(candidates.mapNotNull { it.calendarEventId?.takeIf { id -> id > 0 } })
+        // Every event this pass leaves linked to a todo; the rest of ours are leftovers.
+        val kept = mutableSetOf<Long>()
         for (todo in candidates) {
             val due = todo.dueDateTime
             val wanted = target != null && due != null && !todo.isCompleted && todo.deletedAt == null
@@ -55,7 +57,10 @@ class CalendarTodoMirror @Inject constructor(
                 eventId == null -> {
                     // Long overdue todos stay out; a calendar full of old ones helps nobody.
                     if (due!! >= System.currentTimeMillis() - 24 * 60 * 60_000L) {
-                        calendar.insertTodoEvent(target!!, todo.title, due)?.let { todos.setCalendarEventId(todo.id, it) }
+                        calendar.insertTodoEvent(target!!, todo.title, due)?.let {
+                            todos.setCalendarEventId(todo.id, it)
+                            kept += it
+                        }
                     }
                 }
                 else -> {
@@ -66,12 +71,22 @@ class CalendarTodoMirror @Inject constructor(
                             calendar.deleteEvent(eventId)
                             val moved = calendar.insertTodoEvent(target!!, todo.title, due!!)
                             todos.setCalendarEventId(todo.id, moved)
+                            moved?.let { kept += it }
                         }
-                        event.title != todo.title || event.start != due ->
-                            calendar.updateTodoEvent(eventId, target!!, todo.title, due!!)
+                        else -> {
+                            kept += eventId
+                            if (event.title != todo.title || event.start != due) {
+                                calendar.updateTodoEvent(eventId, target!!, todo.title, due!!)
+                            }
+                        }
                     }
                 }
             }
+        }
+        // Todo events nothing points to any more (app data cleared, a backup put
+        // back): they would show twice. Only events with FocusForce+'s marker.
+        if (target != null) {
+            calendar.todoEventIds(target).filter { it !in kept }.forEach { calendar.deleteEvent(it) }
         }
     }
 
