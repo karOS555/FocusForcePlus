@@ -256,7 +256,19 @@ private fun AppContent(
     val hideChrome = isFocusedRoute(currentRoute) || (currentRoute == null && !onboardingCompleted)
 
     fun openModule(module: AppModule) {
-        if (module.route == currentRoute) return
+        // Read the route now, at the tap. A value captured when this function was
+        // created can be stale by the time the bar calls it, and then a tap on a
+        // tab was ignored as "already there".
+        val route = navController.currentDestination?.route
+        if (module.route == route) return
+        // Tapping the module you are already in, on one of its inner pages, goes
+        // back to the module's own page. Restoring its saved state would only
+        // bring the inner page back, which looked like the tap did nothing.
+        if (module == AppModule.owning(route) &&
+            navController.popBackStack(module.route, inclusive = false)
+        ) {
+            return
+        }
         if (module in AppModule.topLevel) {
             navController.navigate(module.route) {
                 popUpTo(AppModule.HOME.route) { saveState = true }
@@ -283,7 +295,9 @@ private fun AppContent(
         when {
             module != null -> openModule(module)
             route != null && MainActivity.isDirectRoute(route) ->
-                if (currentRoute != FocusRoutes.ACTIVE) navController.navigate(route) { launchSingleTop = true }
+                if (navController.currentDestination?.route != FocusRoutes.ACTIVE) {
+                    navController.navigate(route) { launchSingleTop = true }
+                }
         }
     }
 

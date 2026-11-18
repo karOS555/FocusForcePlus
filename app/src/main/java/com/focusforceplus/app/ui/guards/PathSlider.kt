@@ -51,8 +51,12 @@ import kotlin.random.Random
 enum class PathLayout(internal val points: List<Offset>) {
     LINE(listOf(Offset(0f, 0.5f), Offset(1f, 0.5f))),
     CORNER(listOf(Offset(0f, 0f), Offset(1f, 0f), Offset(1f, 1f))),
+    /** Right, down, back left. */
     TURN(listOf(Offset(0f, 0f), Offset(1f, 0f), Offset(1f, 1f), Offset(0.3f, 1f))),
+    /** Right, down, right again. */
     STEP(listOf(Offset(0f, 0f), Offset(0.5f, 0f), Offset(0.5f, 1f), Offset(1f, 1f))),
+    /** Up, right, down. */
+    HOOK(listOf(Offset(0f, 1f), Offset(0f, 0f), Offset(1f, 0f), Offset(1f, 1f))),
 }
 
 /** One concrete path: a layout plus how it is flipped. */
@@ -66,9 +70,9 @@ data class PathSpec(
     }
 
     companion object {
-        /** A path with bends, different on every call. */
+        /** A path with two bends, different on every call. */
         fun random(random: Random = Random.Default): PathSpec = PathSpec(
-            layout = listOf(PathLayout.CORNER, PathLayout.TURN, PathLayout.STEP).random(random),
+            layout = listOf(PathLayout.TURN, PathLayout.STEP, PathLayout.HOOK).random(random),
             flipX = random.nextBoolean(),
             flipY = random.nextBoolean(),
         )

@@ -99,7 +99,8 @@ fun Dock(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val itemCount = entries.size + 1 // plus the Edit entry
-    val selectedIndex = entries.indexOfFirst { it.route == currentRoute }
+    val owner = AppModule.owning(currentRoute)
+    val selectedIndex = entries.indexOfFirst { it == owner }
 
     BoxWithConstraints(
         modifier = modifier

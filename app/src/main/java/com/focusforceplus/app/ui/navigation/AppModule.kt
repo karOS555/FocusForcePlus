@@ -49,6 +49,27 @@ enum class AppModule(
 
         fun fromRoute(route: String?): AppModule? = entries.firstOrNull { it.route == route }
 
+        /**
+         * The module a screen belongs to, also for the pages below a module
+         * (Blocker settings belong to Blocker, a list to Lists). The bar marks
+         * that module, and tapping it there goes back to the module's own page.
+         */
+        fun owning(route: String?): AppModule? {
+            if (route == null) return null
+            fromRoute(route)?.let { return it }
+            val head = route.substringBefore('/').substringBefore('?')
+            return when (head) {
+                "routine" -> ROUTINES
+                "todo" -> TODOS
+                "list" -> LISTS
+                "blocker" -> BLOCKER
+                "focus" -> FOCUS
+                "sleep" -> SLEEP
+                "settings", "trash" -> SETTINGS
+                else -> null
+            }
+        }
+
         /** Top-level screens that share the app bar with the title in it. */
         val topLevel: Set<AppModule> = setOf(HOME, ROUTINES, TODOS, LISTS, BLOCKER, FOCUS, SLEEP)
     }

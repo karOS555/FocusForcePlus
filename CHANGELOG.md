@@ -2,7 +2,7 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
-## [0.10.0-beta] - 2026-11-18
+## [0.9.5-beta] - 2026-11-18
 
 The last big update before 1.0: a new look, speed bumps, lists, and a blocker that can skip just Reels and Shorts. 0.9.4-beta was never released as an APK, so its changes arrive with this version as well.
 
@@ -45,7 +45,7 @@ The last big update before 1.0: a new look, speed bumps, lists, and a blocker th
 - Saving a paused routine switched it back on, and editing a focus session lost its icon
 - Snoozing a routine before it started did nothing
 
-[0.10.0-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.10.0-beta
+[0.9.5-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.9.5-beta
 
 ## [0.9.4-beta] - 2026-08-08
 
