@@ -1,5 +1,11 @@
 package com.focusforceplus.app.ui.screens.home
 
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -117,7 +123,7 @@ fun HomeScreen(
     }
 
     val activeFocus = s.activeFocusSession
-    val calendarToday by viewModel.calendarToday.collectAsState()
+    val plan by viewModel.today.collectAsState()
     val runningRoutine = s.todayRoutines.firstOrNull { it.status == RoutineTodayStatus.RUNNING }
 
     Scaffold(
@@ -136,6 +142,7 @@ fun HomeScreen(
                 Column(Modifier.padding(horizontal = 2.dp)) {
                     Text(greeting(), style = MaterialTheme.typography.headlineMedium, color = colors.text)
                     Text(todayLine(), style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+                    DayProgress(done = plan.doneToday, planned = plan.plannedToday)
                 }
             }
 
@@ -178,6 +185,20 @@ fun HomeScreen(
                             )
                         }
                     }
+                }
+            }
+
+            // ── Up next: the one thing to look at when nothing runs ───────────
+            if (activeFocus == null && runningRoutine == null && !s.sleepWindowActive) {
+                item(key = "next") {
+                    UpNextCard(
+                        item = plan.next,
+                        onStartRoutine = onStartRoutine,
+                        onOpenActiveRoutine = onOpenActiveRoutine,
+                        onTick = { tickOff(it) },
+                        onOpenTodo = onEditTodo,
+                        onNewTodo = onNewTodo,
+                    )
                 }
             }
 
@@ -233,65 +254,50 @@ fun HomeScreen(
                 }
             }
 
-            // ── Today's routines ──────────────────────────────────────────────
-            if (s.isOn(AppModule.ROUTINES)) {
-                item(key = "routines") {
-                    Column {
-                        SectionHeader("Today's routines", actionLabel = "Manage", onAction = onGoToRoutines)
-                        if (s.todayRoutines.isEmpty()) {
-                            FfCard {
-                                ListRow(
-                                    title = "Nothing planned for today",
-                                    subtitle = "Create a routine",
-                                    subtitleColor = colors.accent,
-                                    onClick = onNewRoutine,
-                                    leading = { IconCircle(icon = Icons.Filled.ViewDay) },
-                                )
-                            }
-                        } else {
-                            FfCard {
-                                s.todayRoutines.forEachIndexed { index, today ->
-                                    if (index > 0) RowDivider()
-                                    RoutineRow(
-                                        today = today,
-                                        onOpen = {
-                                            if (today.status == RoutineTodayStatus.RUNNING) {
-                                                onOpenActiveRoutine(today.routine.id)
-                                            } else {
-                                                onStartRoutine(today.routine.id)
-                                            }
-                                        },
-                                    )
-                                }
-                            }
+            // ── Today: routines, todos and calendar in one timeline ───────────
+            item(key = "today") {
+                Column {
+                    SectionHeader("Today", actionLabel = if (s.isOn(AppModule.TODOS)) "All todos" else null, onAction = onGoToTodos)
+                    FfCard {
+                        if (plan.items.isEmpty()) {
+                            ListRow(
+                                title = "Nothing else today",
+                                subtitle = "Plan something",
+                                subtitleColor = colors.accent,
+                                onClick = onNewTodo,
+                                leading = { IconCircle(icon = Icons.Filled.TaskAlt) },
+                            )
+                        }
+                        plan.items.take(TODAY_ROWS).forEachIndexed { index, item ->
+                            if (index > 0) RowDivider()
+                            TimelineRow(
+                                item = item,
+                                isNext = item == plan.next,
+                                onStartRoutine = onStartRoutine,
+                                onOpenActiveRoutine = onOpenActiveRoutine,
+                                onTick = { tickOff(it) },
+                                onOpenTodo = onEditTodo,
+                            )
+                        }
+                        if (plan.items.size > TODAY_ROWS) {
+                            RowDivider()
+                            ListRow(
+                                title = "${plan.items.size - TODAY_ROWS} more today",
+                                titleColor = colors.accent,
+                                onClick = onGoToTodos,
+                            )
                         }
                     }
                 }
             }
 
-            // ── Calendar: what is still ahead today ───────────────────────────
-            if (calendarToday.isNotEmpty()) {
-                item(key = "calendar") {
-                    CalendarTodayCard(calendarToday)
-                }
-            }
-
-            // ── Next todos ────────────────────────────────────────────────────
-            if (s.isOn(AppModule.TODOS)) {
-                item(key = "todos") {
+            // ── Anytime: todos without a date ─────────────────────────────────
+            if (plan.anytime.isNotEmpty()) {
+                item(key = "anytime") {
                     Column {
-                        SectionHeader("Next todos", actionLabel = "View all", onAction = onGoToTodos)
+                        SectionHeader("Anytime")
                         FfCard {
-                            if (s.urgentTodos.isEmpty()) {
-                                ListRow(
-                                    title = "Nothing open",
-                                    subtitle = "Add a todo",
-                                    subtitleColor = colors.accent,
-                                    onClick = onNewTodo,
-                                    leading = { IconCircle(icon = Icons.Filled.TaskAlt) },
-                                )
-                            }
-                            s.urgentTodos.take(4).forEachIndexed { index, todo ->
+                            plan.anytime.forEachIndexed { index, todo ->
                                 if (index > 0) RowDivider()
                                 TodoRow(todo = todo, onOpen = { onEditTodo(todo.id) }, onTick = { tickOff(todo) })
                             }
@@ -396,41 +402,6 @@ fun HomeScreen(
 // ── Pieces ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun RoutineRow(today: TodayRoutine, onOpen: () -> Unit) {
-    val colors = FfTheme.colors
-    val routine = today.routine
-    val start = TimeFormat.clock(routine.startTimeHour * 60 + routine.startTimeMinute)
-    val detail = when (today.status) {
-        RoutineTodayStatus.RUNNING -> "Running now"
-        RoutineTodayStatus.DONE_TODAY -> today.doneAt?.let { "Done at ${TimeFormat.clock(it)}" } ?: "Done today"
-        RoutineTodayStatus.UPCOMING -> buildString {
-            append("Starts at $start")
-            if (today.totalMinutes > 0) append(" · ${TimeFormat.duration(today.totalMinutes)}")
-        }
-        RoutineTodayStatus.EARLIER_TODAY -> "Was due at $start"
-    }
-    ListRow(
-        title = routine.name,
-        subtitle = detail,
-        subtitleColor = when (today.status) {
-            RoutineTodayStatus.RUNNING -> colors.accent
-            RoutineTodayStatus.EARLIER_TODAY -> colors.warning
-            else -> colors.textMuted
-        },
-        titleColor = if (today.status == RoutineTodayStatus.DONE_TODAY) colors.textSecondary else colors.text,
-        onClick = onOpen,
-        leading = { IconCircle(icon = RoutineIcons.find(routine.iconKey)?.vector ?: Icons.Filled.ViewDay) },
-        trailing = {
-            if (today.status != RoutineTodayStatus.DONE_TODAY) {
-                IconButton(onClick = onOpen) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Start ${routine.name}", tint = colors.accent)
-                }
-            }
-        },
-    )
-}
-
-@Composable
 private fun TodoRow(todo: TodoEntity, onOpen: () -> Unit, onTick: () -> Unit) {
     val colors = FfTheme.colors
     val now = System.currentTimeMillis()
@@ -485,56 +456,216 @@ private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_
 private fun todayLine(): String =
     LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.ENGLISH))
 
-/** Today's events that are still ahead; a tap opens the event in the calendar app. */
+private const val TODAY_ROWS = 8
+
+/** "3 of 7 done" with a thin bar; nothing on a day without plans. */
 @Composable
-private fun CalendarTodayCard(events: List<com.focusforceplus.app.data.calendar.CalendarEvent>) {
+private fun DayProgress(done: Int, planned: Int) {
+    if (planned <= 0) return
+    val colors = FfTheme.colors
+    val fraction = (done.toFloat() / planned).coerceIn(0f, 1f)
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 10.dp)) {
+        Box(
+            Modifier
+                .weight(1f)
+                .height(6.dp)
+                .clip(CircleShape)
+                .background(colors.surfaceHigh),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(fraction)
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(if (done >= planned) colors.success else colors.accent),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            if (done >= planned) "All $planned done today" else "$done of $planned done today",
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.textMuted,
+        )
+    }
+}
+
+/** The next thing with a time, big enough to act on without looking for it. */
+@Composable
+private fun UpNextCard(
+    item: TodayItem?,
+    onStartRoutine: (Long) -> Unit,
+    onOpenActiveRoutine: (Long) -> Unit,
+    onTick: (TodoEntity) -> Unit,
+    onOpenTodo: (Long) -> Unit,
+    onNewTodo: () -> Unit,
+) {
     val colors = FfTheme.colors
     val context = androidx.compose.ui.platform.LocalContext.current
-    fun open(eventId: Long?, begin: Long = 0L, end: Long = 0L) {
-        val intent = if (eventId == null) {
-            android.content.Intent(android.content.Intent.ACTION_VIEW).setData(
-                android.provider.CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
-                    .appendPath(System.currentTimeMillis().toString()).build()
+    if (item == null) return
+    val now = System.currentTimeMillis()
+    val whenText = when {
+        item is TodayItem.Routine && item.today.status == RoutineTodayStatus.RUNNING -> "Running now"
+        item.at <= now -> "Now"
+        else -> "In " + TimeFormat.duration(((item.at - now) / 60_000L).toInt().coerceAtLeast(1))
+    }
+    FfPaddedCard(spacing = 4.dp) {
+        Text("Up next · $whenText", style = MaterialTheme.typography.labelLarge, color = colors.accent)
+        Text(itemTitle(item), style = MaterialTheme.typography.titleLarge, color = colors.text, maxLines = 2)
+        Text(itemDetail(item, withTime = true), style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+        Spacer(Modifier.height(8.dp))
+        when (item) {
+            is TodayItem.Routine -> {
+                val running = item.today.status == RoutineTodayStatus.RUNNING
+                PrimaryButton(
+                    text = if (running) "Open" else "Start now",
+                    icon = Icons.Filled.PlayArrow,
+                    onClick = { if (running) onOpenActiveRoutine(item.today.routine.id) else onStartRoutine(item.today.routine.id) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            is TodayItem.Todo -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PrimaryButton(text = "Done", icon = Icons.Filled.TaskAlt, onClick = { onTick(item.todo) }, modifier = Modifier.weight(1f))
+                TonalButton(text = "Open", onClick = { onOpenTodo(item.todo.id) }, modifier = Modifier.weight(1f))
+            }
+            is TodayItem.Event -> TonalButton(
+                text = "Open in calendar",
+                onClick = { openEvent(context, item.event) },
+                modifier = Modifier.fillMaxWidth(),
             )
-        } else {
-            android.content.Intent(
-                android.content.Intent.ACTION_VIEW,
-                android.content.ContentUris.withAppendedId(android.provider.CalendarContract.Events.CONTENT_URI, eventId),
-            ).putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
-                .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, end)
         }
-        runCatching { context.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
-    Column {
-        SectionHeader("Today in your calendar", actionLabel = "Open", onAction = { open(null) })
-        FfCard {
-            events.take(4).forEachIndexed { index, event ->
-                if (index > 0) RowDivider()
-                val time = if (event.allDay) "All day" else
-                    com.focusforceplus.app.util.TimeFormat.clock(event.begin) + " to " +
-                        com.focusforceplus.app.util.TimeFormat.clock(event.end)
-                ListRow(
-                    title = event.title,
-                    subtitle = listOfNotNull(time, event.location).joinToString(" · "),
-                    onClick = { open(event.eventId, event.begin, event.end) },
-                    leading = {
-                        androidx.compose.foundation.layout.Box(
-                            Modifier
-                                .padding(horizontal = 14.dp)
-                                .size(12.dp)
-                                .background(androidx.compose.ui.graphics.Color(event.color), androidx.compose.foundation.shape.CircleShape),
-                        )
+}
+
+/** One row of today: the time on the left, what it is, and what you can do with it. */
+@Composable
+private fun TimelineRow(
+    item: TodayItem,
+    isNext: Boolean,
+    onStartRoutine: (Long) -> Unit,
+    onOpenActiveRoutine: (Long) -> Unit,
+    onTick: (TodoEntity) -> Unit,
+    onOpenTodo: (Long) -> Unit,
+) {
+    val colors = FfTheme.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val late = (item is TodayItem.Todo && item.overdue) ||
+        (item is TodayItem.Routine && item.today.status == RoutineTodayStatus.EARLIER_TODAY)
+    val timeLabel = when {
+        item is TodayItem.Event && item.event.allDay -> "All day"
+        item is TodayItem.Todo && item.at < startOfToday() -> TimeFormat.day(item.at)
+        else -> TimeFormat.clock(item.at)
+    }
+    val open: () -> Unit = when (item) {
+        is TodayItem.Routine -> {
+            { if (item.today.status == RoutineTodayStatus.RUNNING) onOpenActiveRoutine(item.today.routine.id) else onStartRoutine(item.today.routine.id) }
+        }
+        is TodayItem.Todo -> { { onOpenTodo(item.todo.id) } }
+        is TodayItem.Event -> { { openEvent(context, item.event) } }
+    }
+    ListRow(
+        title = itemTitle(item),
+        subtitle = itemDetail(item, withTime = false),
+        subtitleColor = when {
+            late -> if (item is TodayItem.Todo) colors.error else colors.warning
+            item is TodayItem.Routine && item.today.status == RoutineTodayStatus.RUNNING -> colors.accent
+            else -> colors.textMuted
+        },
+        onClick = open,
+        leading = {
+            Column(Modifier.width(58.dp), horizontalAlignment = Alignment.Start) {
+                Text(
+                    timeLabel,
+                    style = if (timeLabel.length > 5) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,
+                    color = when {
+                        late -> if (item is TodayItem.Todo) colors.error else colors.warning
+                        isNext -> colors.accent
+                        else -> colors.textSecondary
                     },
+                    maxLines = 1,
                 )
+                if (item is TodayItem.Event) {
+                    Box(
+                        Modifier
+                            .padding(top = 4.dp)
+                            .size(width = 18.dp, height = 4.dp)
+                            .clip(CircleShape)
+                            .background(Color(item.event.color)),
+                    )
+                }
             }
-            if (events.size > 4) {
-                RowDivider()
-                ListRow(
-                    title = "${events.size - 4} more today",
-                    titleColor = colors.accent,
-                    onClick = { open(null) },
+        },
+        trailing = {
+            when (item) {
+                is TodayItem.Routine -> IconButton(onClick = open) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Start ${item.today.routine.name}", tint = colors.accent)
+                }
+                is TodayItem.Todo -> CompletionRing(
+                    checked = false,
+                    onClick = { onTick(item.todo) },
+                    color = colors.priority(item.todo.priority),
+                    contentDescription = "Mark ${item.todo.title} as done",
                 )
+                is TodayItem.Event -> Unit
             }
+        },
+    )
+}
+
+private fun itemTitle(item: TodayItem): String = when (item) {
+    is TodayItem.Routine -> item.today.routine.name
+    is TodayItem.Todo -> item.todo.title
+    is TodayItem.Event -> item.event.title
+}
+
+private fun itemDetail(item: TodayItem, withTime: Boolean): String = when (item) {
+    is TodayItem.Routine -> {
+        val today = item.today
+        val time = TimeFormat.clock(today.routine.startTimeHour * 60 + today.routine.startTimeMinute)
+        when (today.status) {
+            RoutineTodayStatus.RUNNING -> "Routine · running now"
+            RoutineTodayStatus.EARLIER_TODAY -> "Routine · was due at $time, start it now"
+            else -> listOfNotNull(
+                "Routine",
+                time.takeIf { withTime },
+                today.totalMinutes.takeIf { it > 0 }?.let { TimeFormat.duration(it) },
+            ).joinToString(" · ")
         }
     }
+    is TodayItem.Todo -> {
+        val due = item.todo.dueDateTime ?: 0L
+        when {
+            item.overdue -> "Todo · overdue since " + TimeFormat.dayAndClock(due)
+            withTime -> "Todo · " + TimeFormat.clock(due)
+            else -> listOfNotNull("Todo", item.todo.checklistJson?.let { checklistProgress(it) }).joinToString(" · ")
+        }
+    }
+    is TodayItem.Event -> {
+        val e = item.event
+        listOfNotNull(
+            "Calendar",
+            (if (e.allDay) "all day" else TimeFormat.clock(e.begin) + " to " + TimeFormat.clock(e.end)).takeIf { withTime || !e.allDay },
+            e.location,
+        ).joinToString(" · ")
+    }
+}
+
+private fun checklistProgress(json: String): String? {
+    val items = com.focusforceplus.app.data.model.checklistFromJson(json)
+    if (items.isEmpty()) return null
+    return "${items.count { it.done }} of ${items.size} checked"
+}
+
+private fun startOfToday(): Long = Calendar.getInstance().apply {
+    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+}.timeInMillis
+
+/** Opens an event in the calendar app. */
+private fun openEvent(context: android.content.Context, event: com.focusforceplus.app.data.calendar.CalendarEvent) {
+    val intent = android.content.Intent(
+        android.content.Intent.ACTION_VIEW,
+        android.content.ContentUris.withAppendedId(android.provider.CalendarContract.Events.CONTENT_URI, event.eventId),
+    ).putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.begin)
+        .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, event.end)
+        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
 }

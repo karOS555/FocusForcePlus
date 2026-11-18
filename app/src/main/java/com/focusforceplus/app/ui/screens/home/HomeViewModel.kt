@@ -42,6 +42,29 @@ data class TodayRoutine(
 
 enum class RoutineTodayStatus { RUNNING, DONE_TODAY, UPCOMING, EARLIER_TODAY }
 
+/** One thing on today's timeline, whatever module it comes from. */
+sealed interface TodayItem {
+    /** When it happens; what is overdue or missed sorts by its old time, so it comes first. */
+    val at: Long
+
+    data class Routine(val today: TodayRoutine, override val at: Long) : TodayItem
+    data class Todo(val todo: TodoEntity, val overdue: Boolean, override val at: Long) : TodayItem
+    data class Event(val event: com.focusforceplus.app.data.calendar.CalendarEvent, override val at: Long) : TodayItem
+}
+
+/** The day at a glance: what is left, what is next, how far along it is. */
+data class TodayPlan(
+    /** Still ahead today, overdue and missed things first. */
+    val items: List<TodayItem> = emptyList(),
+    /** The next thing with a time that has not started yet (or a routine running now). */
+    val next: TodayItem? = null,
+    /** Open todos without a date, most important first. */
+    val anytime: List<TodoEntity> = emptyList(),
+    val doneToday: Int = 0,
+    /** Done today plus what is still planned for today (routines and todos). */
+    val plannedToday: Int = 0,
+)
+
 data class UsageStats(
     val permissionGranted: Boolean = false,
     val totalScreenTimeMinutes: Int = 0,
@@ -189,6 +212,73 @@ class HomeViewModel @Inject constructor(
             sleep = sleep,
             sleepWindowActive = sleepWindowActive(sleep),
             message = message,
+        )
+    }
+
+    /** Routines, todos and calendar events of today, in one timeline. */
+    val today: StateFlow<TodayPlan> by lazy {
+        combine(
+            uiState,
+            todoRepository.getUncompletedTodos(),
+            todoRepository.getCompletionTimesSince(startOfTodayMillis()),
+            calendarToday,
+            kotlinx.coroutines.flow.flow { while (true) { emit(Unit); kotlinx.coroutines.delay(60_000L) } },
+        ) { state, open, completedTimes, events, _ ->
+            planToday(state, open, completedTimes, events)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayPlan())
+    }
+
+    private fun planToday(
+        state: HomeUiState,
+        open: List<TodoEntity>,
+        completedTimes: List<Long>,
+        events: List<com.focusforceplus.app.data.calendar.CalendarEvent>,
+    ): TodayPlan {
+        val now = System.currentTimeMillis()
+        val start = startOfTodayMillis()
+        val end = Calendar.getInstance().apply { timeInMillis = start; add(Calendar.DAY_OF_YEAR, 1) }.timeInMillis
+        val routines = if (state.isOn(com.focusforceplus.app.ui.navigation.AppModule.ROUTINES)) state.todayRoutines else emptyList()
+        val todosOn = state.isOn(com.focusforceplus.app.ui.navigation.AppModule.TODOS)
+
+        val items = buildList {
+            routines.filter { it.status != RoutineTodayStatus.DONE_TODAY }.forEach { today ->
+                val at = start + (today.routine.startTimeHour * 60 + today.routine.startTimeMinute) * 60_000L
+                add(TodayItem.Routine(today, if (today.status == RoutineTodayStatus.RUNNING) minOf(at, now) else at))
+            }
+            if (todosOn) {
+                open.filter { it.dueDateTime != null && it.dueDateTime < end }.forEach { todo ->
+                    val due = todo.dueDateTime!!
+                    add(TodayItem.Todo(todo, overdue = due < now, at = due))
+                }
+            }
+            events.forEach { add(TodayItem.Event(it, if (it.allDay) start else it.begin)) }
+        }.sortedWith(compareBy({ !(it is TodayItem.Event && it.event.allDay) }, { it.at }))
+
+        val next = items.firstOrNull { item ->
+            when (item) {
+                is TodayItem.Routine -> item.today.status == RoutineTodayStatus.RUNNING ||
+                    item.today.status == RoutineTodayStatus.UPCOMING
+                is TodayItem.Todo -> !item.overdue
+                is TodayItem.Event -> !item.event.allDay && item.event.end > now
+            }
+        }
+        val doneRoutines = routines.count { it.status == RoutineTodayStatus.DONE_TODAY }
+        val doneTodos = if (todosOn) completedTimes.count { it >= start } else 0
+        val leftToday = items.count { item ->
+            when (item) {
+                is TodayItem.Routine -> true
+                is TodayItem.Todo -> item.todo.dueDateTime!! >= start
+                is TodayItem.Event -> false
+            }
+        }
+        return TodayPlan(
+            items = items,
+            next = next,
+            anytime = if (todosOn) open.filter { it.dueDateTime == null }
+                .sortedWith(compareByDescending<TodoEntity> { it.priority }.thenBy { it.createdAt })
+                .take(3) else emptyList(),
+            doneToday = doneRoutines + doneTodos,
+            plannedToday = doneRoutines + doneTodos + leftToday,
         )
     }
 

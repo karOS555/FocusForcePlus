@@ -36,20 +36,35 @@ data class DayStat(
 /** An app in today's screen time. */
 data class AppTime(val packageName: String, val name: String, val minutes: Int)
 
-data class StatsUiState(
-    val routinesPerDay: List<DayStat> = emptyList(),
-    val focusMinutesPerDay: List<DayStat> = emptyList(),
-    val todosPerDay: List<DayStat> = emptyList(),
-    /** Null without Usage Access. */
-    val screenPerDay: List<DayStat>? = null,
-    val topApps: List<AppTime> = emptyList(),
-    val totalOvertimeMinutes7d: Int = 0,
-    val isLoading: Boolean = true,
+/** One measure over the last seven days, with the seven before for comparison. */
+data class Metric(
+    /** The last seven days, oldest first, today last. */
+    val days: List<DayStat> = emptyList(),
+    val previousTotal: Int = 0,
+    /** Days of the seven before that had something. */
+    val previousCounted: Int = 0,
+    /** Days in a row with something, up to today (or yesterday, while today is still empty). */
+    val streak: Int = 0,
 ) {
-    val screenToday: Int? get() = screenPerDay?.lastOrNull()?.value
-    val focusToday: Int get() = focusMinutesPerDay.lastOrNull()?.value ?: 0
-    val todosToday: Int get() = todosPerDay.lastOrNull()?.value ?: 0
+    val total: Int get() = days.sumOf { it.value }
+    val change: Int get() = total - previousTotal
+
+    /** Average over the days that have something; empty days before first use do not count. */
+    val average: Int get() = days.filter { it.value > 0 }.let { if (it.isEmpty()) 0 else it.sumOf { d -> d.value } / it.size }
+
+    val previousAverage: Int get() = if (previousCounted == 0) 0 else previousTotal / previousCounted
 }
+
+data class StatsUiState(
+    val focus: Metric = Metric(),
+    val routines: Metric = Metric(),
+    val todos: Metric = Metric(),
+    /** Null without usage access. */
+    val screen: Metric? = null,
+    val topApps: List<AppTime> = emptyList(),
+    val overtimeMinutes: Int = 0,
+    val isLoading: Boolean = true,
+)
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
@@ -60,27 +75,29 @@ class StatsViewModel @Inject constructor(
     private val usageTracker: UsageTracker,
 ) : ViewModel() {
 
-    private val windowStart = startOfDayDaysAgo(DAYS - 1)
+    /** Enough history for this week, the week before, and a streak of a few weeks. */
+    private val historyStart = startOfDayDaysAgo(HISTORY_DAYS - 1)
     private val screen = MutableStateFlow<Pair<ScreenTime?, List<AppTime>>>(null to emptyList())
 
     val uiState: StateFlow<StatsUiState> = combine(
-        routineRepository.getCompletionsSince(windowStart),
-        focusRepository.getCompletionsSince(windowStart),
-        todoRepository.getCompletionTimesSince(windowStart),
+        routineRepository.getCompletionsSince(historyStart),
+        focusRepository.getCompletionsSince(historyStart),
+        todoRepository.getCompletionTimesSince(historyStart),
         screen,
     ) { routineCompletions, focusCompletions, todoTimes, (screenTime, apps) ->
+        val weekStart = startOfDayDaysAgo(DAYS - 1)
         StatsUiState(
-            routinesPerDay = bucketByDay { _, day -> routineCompletions.count { isOnDay(it.completedAt, day) } },
-            focusMinutesPerDay = bucketByDay { _, day ->
-                focusCompletions.filter { isOnDay(it.completedAt, day) }.sumOf { it.focusedMinutes }
-            },
-            todosPerDay = bucketByDay { _, day -> todoTimes.count { isOnDay(it, day) } },
+            focus = metric { day -> focusCompletions.filter { it.completedAt in day }.sumOf { it.focusedMinutes } },
+            routines = metric { day -> routineCompletions.count { it.completedAt in day } },
+            todos = metric { day -> todoTimes.count { it in day } },
             // perDayMinutes is oldest first, so today is its last entry.
-            screenPerDay = screenTime?.perDayMinutes?.let { minutes ->
-                bucketByDay { daysAgo, _ -> minutes.getOrElse(minutes.size - 1 - daysAgo) { 0 } }
+            screen = screenTime?.perDayMinutes?.let { minutes ->
+                metric(streaks = false) { day ->
+                    minutes.getOrElse(minutes.size - 1 - day.daysAgo) { 0 }
+                }
             },
             topApps = apps,
-            totalOvertimeMinutes7d = routineCompletions.sumOf { it.overtimeMinutes },
+            overtimeMinutes = routineCompletions.filter { it.completedAt >= weekStart }.sumOf { it.overtimeMinutes },
             isLoading = false,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatsUiState())
@@ -88,7 +105,7 @@ class StatsViewModel @Inject constructor(
     /** Called on resume: screen time keeps changing while the app is closed. */
     fun refresh() {
         viewModelScope.launch {
-            val time = usageTracker.screenTime(DAYS)
+            val time = usageTracker.screenTime(DAYS * 2)
             val apps = time?.todayByApp?.take(TOP_APPS)?.map { (pkg, minutes) ->
                 AppTime(pkg, appName(pkg), minutes)
             }.orEmpty()
@@ -107,23 +124,35 @@ class StatsViewModel @Inject constructor(
         }.getOrDefault(packageName)
     }
 
-    /** Builds the buckets, oldest first, labelled with the weekday. */
-    private fun bucketByDay(valueForDay: (daysAgo: Int, day: Calendar) -> Int): List<DayStat> {
-        val format = SimpleDateFormat("EE", Locale.ENGLISH)
-        return (DAYS - 1 downTo 0).map { daysAgo ->
-            val day = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }
-            DayStat(
-                label = format.format(Date(day.timeInMillis)),
-                value = valueForDay(daysAgo, day),
-                isToday = daysAgo == 0,
-            )
-        }
+    /** One local day: its start, its end, and how many days ago it was. */
+    private class Day(val daysAgo: Int, val start: Long, val end: Long) {
+        operator fun contains(millis: Long) = millis in start until end
     }
 
-    private fun isOnDay(millis: Long, day: Calendar): Boolean {
-        val c = Calendar.getInstance().apply { timeInMillis = millis }
-        return c.get(Calendar.YEAR) == day.get(Calendar.YEAR) &&
-            c.get(Calendar.DAY_OF_YEAR) == day.get(Calendar.DAY_OF_YEAR)
+    private fun day(daysAgo: Int): Day {
+        val start = startOfDayDaysAgo(daysAgo)
+        val end = Calendar.getInstance().apply { timeInMillis = start; add(Calendar.DAY_OF_YEAR, 1) }.timeInMillis
+        return Day(daysAgo, start, end)
+    }
+
+    private fun metric(streaks: Boolean = true, valueOf: (Day) -> Int): Metric {
+        val format = SimpleDateFormat("EE", Locale.ENGLISH)
+        val days = (DAYS - 1 downTo 0).map { ago ->
+            val d = day(ago)
+            DayStat(label = format.format(Date(d.start)), value = valueOf(d), isToday = ago == 0)
+        }
+        val previousValues = (DAYS * 2 - 1 downTo DAYS).map { valueOf(day(it)) }
+        val streak = if (!streaks) 0 else {
+            // Today still counts as "not broken" while it is empty.
+            val firstDay = if (valueOf(day(0)) > 0) 0 else 1
+            (firstDay until HISTORY_DAYS).takeWhile { valueOf(day(it)) > 0 }.count()
+        }
+        return Metric(
+            days = days,
+            previousTotal = previousValues.sum(),
+            previousCounted = previousValues.count { it > 0 },
+            streak = streak,
+        )
     }
 
     private fun startOfDayDaysAgo(days: Int): Long = Calendar.getInstance().apply {
@@ -136,6 +165,7 @@ class StatsViewModel @Inject constructor(
 
     private companion object {
         const val DAYS = 7
+        const val HISTORY_DAYS = 60
         const val TOP_APPS = 5
     }
 }
