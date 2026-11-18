@@ -1,0 +1,10 @@
+The photo behind the Aero style (res/drawable-nodpi/aero_backdrop.webp)
+
+"Wandern am Untreusee 20240608 HOF7926 RAW-Export" by PantheraLeo1359531
+https://commons.wikimedia.org/wiki/File:Wandern_am_Untreusee_20240608_HOF7926_RAW-Export.png
+
+Licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Changes: cropped to a portrait section and scaled down. The app draws soap bubbles
+over it, softens the grass in front and, for dark themes, darkens it.
