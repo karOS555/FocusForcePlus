@@ -4,13 +4,21 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.focusforceplus.app.MainActivity
 import com.focusforceplus.app.data.repository.SettingsRepository
+import com.focusforceplus.app.ui.navigation.AppModule
+import com.focusforceplus.app.ui.navigation.SettingsRoutes
+import com.focusforceplus.app.util.NotificationStyle.applyBrand
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -83,7 +91,44 @@ class AutoBackup @Inject constructor(
             else e.message ?: "The backup failed."
         }
         settings.saveAutoBackupResult(System.currentTimeMillis(), error)
+        if (error == null) clearFailureNotice()
         error
+    }
+
+    /**
+     * Says so when the nightly backup gave up. Without this a lost folder went
+     * unnoticed until someone looked into the settings, which is usually the day
+     * the backup is needed.
+     */
+    fun postFailureNotice(error: String) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_BACKUP, "Backups", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "When an automatic backup could not be saved"
+                group = NotificationStyle.GROUP_REMINDERS
+            }
+        )
+        val open = PendingIntent.getActivity(
+            context, RC_OPEN,
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(MainActivity.EXTRA_OPEN_ROUTE, SettingsRoutes.AUTO_BACKUP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_BACKUP)
+            .applyBrand(context, AppModule.SETTINGS, "Backup")
+            .setContentTitle("Last night's backup was not saved")
+            .setContentText(error)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(error))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        runCatching { nm.notify(NOTIFICATION_ID_FAILED, notification) }
+    }
+
+    private fun clearFailureNotice() {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.cancel(NOTIFICATION_ID_FAILED)
     }
 
     /** A readable name for the chosen folder. */
@@ -125,6 +170,9 @@ class AutoBackup @Inject constructor(
 
     companion object {
         const val UNIQUE_NAME = "auto_backup"
+        private const val CHANNEL_BACKUP = "backup_status"
+        private const val NOTIFICATION_ID_FAILED = 970_001
+        private const val RC_OPEN = 970_002
         const val FILE_PREFIX = "focusforceplus-backup-"
         const val FILE_SUFFIX = ".json"
 
@@ -161,15 +209,19 @@ class AutoBackupWorker(
     }
 
     override suspend fun doWork(): Result {
-        val error = EntryPointAccessors
+        val backup = EntryPointAccessors
             .fromApplication(applicationContext, WorkerEntryPoint::class.java)
             .autoBackup()
-            .runNow()
+        val error = backup.runNow()
         // A lost folder will not come back by retrying; anything else may.
         return when {
             error == null -> Result.success()
             runAttemptCount < 3 && !error.startsWith("FocusForce+ lost access") -> Result.retry()
-            else -> Result.failure()
+            else -> {
+                backup.postFailureNotice(error)
+                // A periodic job that fails is still run again tomorrow.
+                Result.failure()
+            }
         }
     }
 }

@@ -111,7 +111,11 @@ class SleepReceiver : BroadcastReceiver() {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (!nm.isNotificationPolicyAccessGranted) return // degrade gracefully
         runCatching {
-            sleepRepository.setPreviousDndFilter(nm.currentInterruptionFilter)
+            // Only the first bedtime of a night remembers the state to go back to;
+            // a second one would remember our own Do Not Disturb and keep it on.
+            if (sleepRepository.previousDndFilter.first() < 0) {
+                sleepRepository.setPreviousDndFilter(nm.currentInterruptionFilter)
+            }
             nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
         }
     }
@@ -121,7 +125,10 @@ class SleepReceiver : BroadcastReceiver() {
         if (previous < 0) return
         sleepRepository.setPreviousDndFilter(-1)
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.isNotificationPolicyAccessGranted) {
+        // Changed during the night by hand: leave it as the user set it.
+        if (nm.isNotificationPolicyAccessGranted &&
+            nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_PRIORITY
+        ) {
             runCatching { nm.setInterruptionFilter(previous) }
         }
     }

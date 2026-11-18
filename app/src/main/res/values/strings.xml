@@ -14,4 +14,10 @@
         you land on the rest of the app. It sees no other app, reads no text, stores nothing
         and sends nothing; FocusForce+ has no internet access. Turn it off here at any time.</string>
     <string name="share_label">Add to FocusForce+</string>
+    <string name="shortcut_todo_short">New todo</string>
+    <string name="shortcut_todo_long">Add a new todo</string>
+    <string name="shortcut_focus_short">Focus</string>
+    <string name="shortcut_focus_long">Start a focus session</string>
+    <string name="shortcut_lists_short">Lists</string>
+    <string name="shortcut_lists_long">Open your lists</string>
 </resources>

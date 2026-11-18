@@ -55,6 +55,7 @@ import com.focusforceplus.app.ui.navigation.OnboardingRoutes
 import com.focusforceplus.app.ui.navigation.RoutineRoutes
 import com.focusforceplus.app.ui.navigation.SettingsRoutes
 import com.focusforceplus.app.ui.navigation.StatsRoutes
+import com.focusforceplus.app.ui.navigation.TodoRoutes
 import com.focusforceplus.app.ui.navigation.isFocusedRoute
 import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.ui.theme.FocusForceTheme
@@ -197,7 +198,8 @@ class MainActivity : ComponentActivity() {
 
         /** Screens below the modules that other parts of the app may open directly. */
         fun isDirectRoute(route: String): Boolean =
-            ACTIVE_FOCUS_ROUTE.matches(route) || route == SettingsRoutes.INTEGRATIONS
+            ACTIVE_FOCUS_ROUTE.matches(route) || route == SettingsRoutes.INTEGRATIONS ||
+                route == SettingsRoutes.AUTO_BACKUP || route == TodoRoutes.CREATE
     }
 
     private fun Intent.routineId(): Long =

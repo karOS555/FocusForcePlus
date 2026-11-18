@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon: the three things people open the app for most. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_todo"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_todo"
+        android:shortcutShortLabel="@string/shortcut_todo_short"
+        android:shortcutLongLabel="@string/shortcut_todo_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.focusforceplus.app"
+            android:targetClass="com.focusforceplus.app.MainActivity">
+            <extra android:name="openRoute" android:value="todo/create" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="focus"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_focus"
+        android:shortcutShortLabel="@string/shortcut_focus_short"
+        android:shortcutLongLabel="@string/shortcut_focus_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.focusforceplus.app"
+            android:targetClass="com.focusforceplus.app.MainActivity">
+            <extra android:name="openRoute" android:value="focus" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="lists"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_list"
+        android:shortcutShortLabel="@string/shortcut_lists_short"
+        android:shortcutLongLabel="@string/shortcut_lists_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.focusforceplus.app"
+            android:targetClass="com.focusforceplus.app.MainActivity">
+            <extra android:name="openRoute" android:value="lists" />
+        </intent>
+    </shortcut>
+</shortcuts>
