@@ -137,7 +137,7 @@ fun RoutineListScreen(
             }
             item(key = "hint") {
                 Text(
-                    "Press and hold a routine to start it now, copy it or pause it.",
+                    "Press and hold a routine to start it now, duplicate it or pause it.",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textFaint,
                     modifier = Modifier.padding(top = 10.dp, start = 2.dp),

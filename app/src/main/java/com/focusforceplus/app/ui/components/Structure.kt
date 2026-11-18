@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.components
 
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
@@ -140,7 +141,7 @@ fun UnderlineTabs(
                 RowDivider()
                 Box(
                     Modifier
-                        .offset(x = indicatorOffset)
+                        .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
                         .width(indicatorWidth)
                         .height(2.dp)
                         .background(colors.accent),
@@ -306,7 +307,7 @@ fun ScrollHint(
                 tint = colors.text,
                 modifier = Modifier
                     .size(22.dp)
-                    .offset(y = shift.dp),
+                    .offset { IntOffset(0, shift.dp.roundToPx()) },
             )
         }
     }

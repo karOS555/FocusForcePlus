@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.routine
 
+import androidx.compose.runtime.mutableIntStateOf
 import com.focusforceplus.app.ui.theme.ffBackdrop
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.InfiniteTransition
@@ -551,7 +552,7 @@ private fun MoveDialog(
     onMove: (hour: Int, minute: Int, tomorrow: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var day by remember { mutableStateOf(0) }
+    var day by remember { mutableIntStateOf(0) }
     var pickTime by remember { mutableStateOf(false) }
     val colors = FfTheme.colors
     if (!pickTime) {

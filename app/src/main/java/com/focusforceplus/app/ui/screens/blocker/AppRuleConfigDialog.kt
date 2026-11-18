@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.blocker
 
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -56,10 +57,10 @@ internal fun AppRuleConfigDialog(
 
     var enabled by remember { mutableStateOf(base.isBlocked) }
     var limitOn by remember { mutableStateOf(base.dailyLimitMinutes != null) }
-    var limit by remember { mutableStateOf(base.dailyLimitMinutes ?: 30) }
+    var limit by remember { mutableIntStateOf(base.dailyLimitMinutes ?: 30) }
     var scheduleOn by remember { mutableStateOf(base.windowStartMinutes != null && base.windowEndMinutes != null) }
-    var start by remember { mutableStateOf(base.windowStartMinutes ?: 9 * 60) }
-    var end by remember { mutableStateOf(base.windowEndMinutes ?: 17 * 60) }
+    var start by remember { mutableIntStateOf(base.windowStartMinutes ?: 9 * 60) }
+    var end by remember { mutableIntStateOf(base.windowEndMinutes ?: 17 * 60) }
     var invincible by remember { mutableStateOf(base.invincibleMode) }
     var duringRoutines by remember { mutableStateOf(base.blockDuringRoutines) }
     var duringFocus by remember { mutableStateOf(base.blockDuringFocus) }
