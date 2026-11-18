@@ -2,7 +2,7 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
-## [0.9.5-beta] - 2026-11-18
+## [0.9.5-beta] - 2026-11-19
 
 The last big update before 1.0: a new look, a home screen that shows your day in one list, speed bumps, lists that work with todos and routines, your calendar and tasks apps, widgets, and a blocker that can skip just Reels and Shorts. 0.9.4-beta was never released as an APK, so its changes arrive with this version as well.
 
@@ -20,7 +20,7 @@ The last big update before 1.0: a new look, a home screen that shows your day in
 - **Duplicate routines and reuse steps (#4).** Long-press a routine to duplicate it, copy steps from another routine, or start from a few common ones. Todos, focus sessions and lists can be duplicated too
 - **Routines** set their own heads-up time (or none), can switch on Do Not Disturb, and can block only some groups, like focus sessions
 - **A trash** for deleted todos, routines, focus sessions and lists, kept for as long as you choose
-- **Themes:** six ready-made ones, two of them light, or your own five colours, saved under a name. **Aero** is a real Frutiger Aero style: glass cards, glossy buttons, and a sky with bubbles and green hills drawn by the app itself. Copy, send or paste a theme as text
+- **Themes:** six ready-made ones, two of them light, or your own five colours, saved under a name. **Aero** is a real Frutiger Aero style: frosted glass that blurs what is behind it, glossy see-through buttons, text with a soft glow, and a summer photo of a green hill with soap bubbles behind everything (photo by PantheraLeo1359531, CC BY 4.0). Copy, send or paste a theme as text
 - **Sharing and start links.** Share text from any app to make a todo or list items. `focusforceplus://` links start focus or a routine, or add a todo or list items, from Tasker, shortcuts or NFC tags. They are off until you switch them on and can only start and add
 - **Nightly backups** into a folder you choose, keeping the newest 3 to 30 files. An import can be undone: what was in the app before is kept
 - Icons for todos, focus sessions, lists and blocks, shown in their notifications too. Every module has its own status-bar glyph

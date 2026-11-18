@@ -40,7 +40,7 @@
 > [!NOTE]
 > FocusForce+ is in public beta. If something breaks or feels wrong on your phone, please [open an issue](../../issues).
 
-<h2 id="why-i-built-it"><sub><img src="docs/readme/icons/sparkles.svg" height="24" width="24" alt=""></sub> Why I built it</h2>
+<h2 id="why-i-built-it"><sub><img src="docs/readme/icons/user-round.svg" height="24" width="24" alt=""></sub> Why I built it</h2>
 
 **I built FocusForce+ for myself.** Every routine app, todo app and blocker I tried stopped working for me the moment motivation dipped, because everything in them could be swiped away, snoozed forever or switched off in two taps. So I wrote the app I needed: reminders that come back, routines that start with a real alarm, blocks that hold, and a little friction in front of every way out. I use it every day.
 
@@ -84,9 +84,7 @@ It is made for brains that need more structure than most apps assume: ADHD, habi
 
 ### Make it yours
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/9.png" align="right" width="30%" alt="Home in the Frutiger Aero style: glass cards over a drawn sky with bubbles and green hills">
-
-- Six themes or your own colours, saved under a name. **Aero** is a real Frutiger Aero style: glass, gloss, bubbles and green hills, drawn by the app itself.
+- Six themes or your own colours, saved under a name. **Aero** is a real Frutiger Aero style: frosted glass, glossy see-through buttons and a summer photo of a green hill with soap bubbles behind everything.
 - Choose which modules sit in the bottom bar, in which order, or switch a module off.
 - Widgets for today, quick focus and a list to tick off.
 - Your calendar on Home, todos with a date in it, and blocking during events.
@@ -94,9 +92,11 @@ It is made for brains that need more structure than most apps assume: ADHD, habi
 - Share text from any app to make a todo or list items; `focusforceplus://` links start things from Tasker, shortcuts or NFC tags (off until you switch them on).
 - A backup into a folder every night, a file by hand, and an import you can undo.
 
-Everything stays on your phone. There is no account, no cloud, and the app has no internet permission.
+<p align="center">
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/9.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/9.png" width="30%" alt="Home in a light custom theme with glass cards"></a>
+</p>
 
-<br clear="right"/>
+Everything stays on your phone. There is no account, no cloud, and the app has no internet permission.
 
 <h2 id="how-it-holds-you-to-it"><sub><img src="docs/readme/icons/lock-keyhole.svg" height="24" width="24" alt=""></sub> How it holds you to it</h2>
 
@@ -203,6 +203,8 @@ The code is written from scratch, but some ideas come from these projects:
 - [MindMaster](https://github.com/ArmanKhanTech/MindMaster) by ArmanKhanTech, for blocking modes and Kotlin patterns
 - [Curbox / DigiPaws](https://github.com/nethical6/digipaws) by nethical6, for blocking ideas
 - [Routinery](https://play.google.com/store/apps/details?id=com.routinery.routinery), for how a running routine should feel
+
+The photo behind the Aero style, also in its screenshot, is ["Wandern am Untreusee 20240608 HOF7926"](https://commons.wikimedia.org/wiki/File:Wandern_am_Untreusee_20240608_HOF7926_RAW-Export.png) by PantheraLeo1359531, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), cropped and scaled, with bubbles drawn over it in the app.
 
 Icons in this README are from [Lucide](https://github.com/lucide-icons/lucide), used under the ISC License.
 
