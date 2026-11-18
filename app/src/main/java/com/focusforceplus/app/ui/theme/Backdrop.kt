@@ -100,7 +100,7 @@ private val BUBBLES = listOf(
     // Kept off the top left, where titles and greetings sit.
     Bubble(0.86f, 0.22f, 0.055f), Bubble(0.24f, 0.29f, 0.024f), Bubble(0.80f, 0.36f, 0.075f),
     Bubble(0.66f, 0.24f, 0.030f), Bubble(0.90f, 0.53f, 0.040f), Bubble(0.07f, 0.52f, 0.036f),
-    Bubble(0.36f, 0.61f, 0.052f), Bubble(0.64f, 0.155f, 0.020f), Bubble(0.94f, 0.69f, 0.026f),
+    Bubble(0.36f, 0.61f, 0.052f), Bubble(0.58f, 0.112f, 0.020f), Bubble(0.94f, 0.69f, 0.026f),
     Bubble(0.22f, 0.76f, 0.030f), Bubble(0.62f, 0.68f, 0.022f), Bubble(0.45f, 0.40f, 0.017f),
     Bubble(0.72f, 0.46f, 0.014f), Bubble(0.44f, 0.028f, 0.014f), Bubble(0.15f, 0.90f, 0.028f),
     Bubble(0.52f, 0.86f, 0.020f),
