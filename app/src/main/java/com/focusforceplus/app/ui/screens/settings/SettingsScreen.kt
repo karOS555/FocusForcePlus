@@ -114,6 +114,7 @@ fun SettingsScreen(
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
     var confirmResetUsage by remember { mutableStateOf(false) }
     var pickingWidget by remember { mutableStateOf(false) }
+    var confirmUndoImport by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -446,9 +447,17 @@ fun SettingsScreen(
                         RowDivider()
                         LinkRow(
                             title = "Import a backup",
-                            subtitle = "Replaces everything that is in the app now",
+                            subtitle = "Replaces everything that is in the app now; what is here now is kept to undo it",
                             onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
                         )
+                        if (state.canUndoImport) {
+                            RowDivider()
+                            LinkRow(
+                                title = "Undo the last import",
+                                subtitle = "Puts back what was in the app before it",
+                                onClick = { confirmUndoImport = true },
+                            )
+                        }
                         RowDivider()
                         LinkRow(
                             title = "Calendar",
@@ -645,7 +654,8 @@ fun SettingsScreen(
             title = "Replace everything?",
             message = "Importing this backup replaces all routines, todos, lists, blocker rules, " +
                 "focus sessions and history that are in the app now. Alarms are set again for " +
-                "the imported data. This cannot be undone.",
+                "the imported data. What is here now is kept: \"Undo the last import\" in " +
+                "Settings puts it back.",
             confirmLabel = "Import and replace",
             destructive = true,
             onConfirm = {
@@ -653,6 +663,20 @@ fun SettingsScreen(
                 pendingImportUri = null
             },
             onDismiss = { pendingImportUri = null },
+        )
+    }
+
+    if (confirmUndoImport) {
+        com.focusforceplus.app.ui.components.ConfirmDialog(
+            title = "Undo the last import?",
+            message = "Everything goes back to how it was before the last import. What is in the app now is kept, so you can undo this too.",
+            confirmLabel = "Undo import",
+            dismissLabel = "Cancel",
+            onConfirm = {
+                confirmUndoImport = false
+                viewModel.undoLastImport()
+            },
+            onDismiss = { confirmUndoImport = false },
         )
     }
 

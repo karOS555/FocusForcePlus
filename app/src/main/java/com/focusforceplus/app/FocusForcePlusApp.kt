@@ -67,6 +67,18 @@ class FocusForcePlusApp : Application() {
         // leave a todo without its next reminder until someone opened the app.
         appScope.launch { alarmRearmer.rearmAll() }
 
+        // Debug builds only: report disk work on the main thread and leaked
+        // cursors/streams in logcat, so they get fixed before they get shipped.
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            android.os.StrictMode.setThreadPolicy(
+                android.os.StrictMode.ThreadPolicy.Builder().detectDiskReads().detectDiskWrites().penaltyLog().build()
+            )
+            android.os.StrictMode.setVmPolicy(
+                android.os.StrictMode.VmPolicy.Builder().detectLeakedClosableObjects().detectLeakedSqlLiteObjects()
+                    .detectActivityLeaks().penaltyLog().build()
+            )
+        }
+
         // Todos with a date, mirrored into the calendar the user picked (if any).
         calendarTodoMirror.start(appScope)
         // Todos and a list of a tasks app, kept in step both ways (if set up).

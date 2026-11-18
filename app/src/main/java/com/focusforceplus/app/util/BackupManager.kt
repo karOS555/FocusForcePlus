@@ -83,9 +83,16 @@ class BackupManager @Inject constructor(
     private val todoReminders: TodoReminderEngine,
     private val focusAlarmHelper: FocusAlarmHelper,
     private val alarmRearmer: AlarmRearmer,
+    private val calendarRepository: com.focusforceplus.app.data.calendar.CalendarRepository,
 ) {
     companion object {
         const val BACKUP_VERSION = 3
+
+        /** Far above any real backup; stops a wrong pick from filling the memory. */
+        private const val MAX_IMPORT_BYTES = 32 * 1024 * 1024
+
+        /** What was in the app before the last import, to undo it. */
+        private const val BEFORE_IMPORT_FILE = "before_last_import.json"
         const val SUGGESTED_FILE_NAME = "focusforceplus-backup.json"
     }
 
@@ -139,8 +146,18 @@ class BackupManager @Inject constructor(
      * never destroys existing data.
      */
     suspend fun importFrom(uri: Uri): String = withContext(Dispatchers.IO) {
-        val text = context.contentResolver.openInputStream(uri)?.use {
-            it.readBytes().toString(Charsets.UTF_8)
+        val text = context.contentResolver.openInputStream(uri)?.use { input ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(64 * 1024)
+            var total = 0
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                total += n
+                require(total <= MAX_IMPORT_BYTES) { "This file is too big to be a FocusForce+ backup." }
+                out.write(buffer, 0, n)
+            }
+            out.toString(Charsets.UTF_8.name())
         } ?: throw IllegalStateException("Could not open the selected file.")
 
         val root = JSONObject(text)
@@ -172,6 +189,21 @@ class BackupManager @Inject constructor(
         // current settings instead of resetting them to defaults.
         val settings = root.optJSONObject("settings")
         val sleep = root.optJSONObject("sleep")?.let { sleepFromJson(it) }
+
+        // Keep what is here now, so a wrong file can be undone (Settings > Data).
+        // Written to a new file first, so a failure never leaves half a copy.
+        runCatching {
+            val copy = java.io.File(context.filesDir, BEFORE_IMPORT_FILE)
+            val tmp = java.io.File(context.filesDir, "$BEFORE_IMPORT_FILE.tmp")
+            tmp.writeText(buildBackup().first.toString())
+            if (!tmp.renameTo(copy)) {
+                copy.delete()
+                tmp.renameTo(copy)
+            }
+        }
+        // Calendar events made for the todos that are about to go; removed once the
+        // new data is in, so a failed import changes nothing there either.
+        val oldEvents = todoDao.getAllOnce().mapNotNull { it.calendarEventId?.takeIf { id -> id > 0 } }
 
         // Cancel alarms of the data that is about to be replaced.
         routineDao.getAllOnce().forEach { alarmHelper.cancelRoutineAlarms(it.id) }
@@ -205,6 +237,8 @@ class BackupManager @Inject constructor(
             listSuggestions.forEach { listDao.upsertSuggestion(it) }
         }
 
+        oldEvents.forEach { runCatching { calendarRepository.deleteEvent(it) } }
+
         // Settings live in DataStore, outside the Room transaction. They are applied
         // after the data landed so a failed import never leaves half-applied settings.
         settings?.let { applySettings(it) }
@@ -222,6 +256,25 @@ class BackupManager @Inject constructor(
                 settings != null -> append(" and settings.")
                 else -> append(".\nThis backup predates settings export, so your current settings were kept.")
             }
+        }
+    }
+
+    /** True while the data from before the last import is still kept. */
+    suspend fun canUndoImport(): Boolean = withContext(Dispatchers.IO) {
+        java.io.File(context.filesDir, BEFORE_IMPORT_FILE).exists()
+    }
+
+    /** Puts back what was in the app before the last import (and keeps today's data to undo that). */
+    suspend fun undoLastImport(): String = withContext(Dispatchers.IO) {
+        val copy = java.io.File(context.filesDir, BEFORE_IMPORT_FILE)
+        require(copy.exists()) { "There is nothing to undo." }
+        // Read it first: the import writes a new copy of the current data.
+        val saved = java.io.File(context.filesDir, "restore_in_progress.json")
+        copy.copyTo(saved, overwrite = true)
+        try {
+            importFrom(android.net.Uri.fromFile(saved)).replaceFirst("Imported", "Put back")
+        } finally {
+            saved.delete()
         }
     }
 
@@ -259,13 +312,13 @@ class BackupManager @Inject constructor(
         isActive = o.getBoolean("isActive"),
         invincibleMode = o.getBoolean("invincibleMode"),
         appBlockerEnabled = o.getBoolean("appBlockerEnabled"),
-        maxSnoozeCount = o.getInt("maxSnoozeCount"),
-        maxRescheduleCount = o.getInt("maxRescheduleCount"),
+        maxSnoozeCount = o.getInt("maxSnoozeCount").coerceIn(0, 10),
+        maxRescheduleCount = o.getInt("maxRescheduleCount").coerceIn(0, 10),
         iconKey = o.optStringOrNull("iconKey"),
         createdAt = o.getLong("createdAt"),
         deletedAt = o.optLongOrNull("deletedAt"),
         guards = o.optStringOrNull("guards"),
-        preAlarmMinutes = o.optInt("preAlarmMinutes", 15),
+        preAlarmMinutes = o.optInt("preAlarmMinutes", 15).coerceIn(0, 120),
         enableDnd = o.optBoolean("enableDnd", false),
         blockedGroupsCsv = o.optStringOrNull("blockedGroupsCsv"),
     )
@@ -288,7 +341,7 @@ class BackupManager @Inject constructor(
         routineId = o.getLong("routineId"),
         name = o.getString("name"),
         description = o.optStringOrNull("description"),
-        durationMinutes = o.getInt("durationMinutes"),
+        durationMinutes = o.getInt("durationMinutes").coerceIn(1, 24 * 60),
         sortOrder = o.getInt("sortOrder"),
         iconKey = o.optStringOrNull("iconKey"),
         reminderBeforeEndMinutes = o.getInt("reminderBeforeEndMinutes"),
@@ -324,14 +377,14 @@ class BackupManager @Inject constructor(
         title = o.getString("title"),
         description = o.optStringOrNull("description"),
         dueDateTime = o.optLongOrNull("dueDateTime"),
-        priority = o.getInt("priority"),
+        priority = o.getInt("priority").coerceIn(0, 2),
         isCompleted = o.getBoolean("isCompleted"),
         isRecurring = o.getBoolean("isRecurring"),
         recurringPattern = o.optStringOrNull("recurringPattern"),
         snoozeCount = o.getInt("snoozeCount"),
-        maxSnoozeCount = o.getInt("maxSnoozeCount"),
+        maxSnoozeCount = o.getInt("maxSnoozeCount").coerceIn(0, 10),
         rescheduleCount = o.getInt("rescheduleCount"),
-        maxRescheduleCount = o.getInt("maxRescheduleCount"),
+        maxRescheduleCount = o.getInt("maxRescheduleCount").coerceIn(0, 10),
         createdAt = o.getLong("createdAt"),
         completedAt = o.optLongOrNull("completedAt"),
         postponedTo = o.optLongOrNull("postponedTo"),
@@ -367,7 +420,7 @@ class BackupManager @Inject constructor(
         id = o.getLong("id"),
         packageName = o.getString("packageName"),
         appName = o.getString("appName"),
-        dailyLimitMinutes = o.optIntOrNull("dailyLimitMinutes"),
+        dailyLimitMinutes = o.optIntOrNull("dailyLimitMinutes")?.coerceIn(0, 24 * 60),
         usedTodayMinutes = o.optInt("usedTodayMinutes", 0),
         isBlocked = o.getBoolean("isBlocked"),
         blockDuringRoutines = o.getBoolean("blockDuringRoutines"),
@@ -398,7 +451,7 @@ class BackupManager @Inject constructor(
     private fun groupFromJson(o: JSONObject) = BlockerGroupEntity(
         id = o.getLong("id"),
         name = o.getString("name"),
-        sharedDailyLimitMinutes = o.optIntOrNull("sharedDailyLimitMinutes"),
+        sharedDailyLimitMinutes = o.optIntOrNull("sharedDailyLimitMinutes")?.coerceIn(0, 24 * 60),
         invincibleMode = o.optBoolean("invincibleMode", false),
         windowStartMinutes = o.optIntOrNull("windowStartMinutes"),
         windowEndMinutes = o.optIntOrNull("windowEndMinutes"),
@@ -432,7 +485,7 @@ class BackupManager @Inject constructor(
         id = o.getLong("id"),
         name = o.getString("name"),
         type = o.getString("type"),
-        durationMinutes = o.getInt("durationMinutes"),
+        durationMinutes = o.getInt("durationMinutes").coerceIn(1, 24 * 60),
         enableDnd = o.getBoolean("enableDnd"),
         blockNotifications = o.getBoolean("blockNotifications"),
         appBlockerEnabled = o.getBoolean("appBlockerEnabled"),

@@ -54,6 +54,8 @@ data class SettingsUiState(
     val permissions: SettingsPermissionStates = SettingsPermissionStates(),
     val appVersion: String = "",
     val message: String? = null,
+    /** The data from before the last import is still kept. */
+    val canUndoImport: Boolean = false,
     // Tamper Protection
     val tpEnabled: Boolean = false,
     val tpWindowStartMinutes: Int = 8 * 60,
@@ -81,6 +83,13 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState(appVersion = readVersionName()))
+
+    init {
+        viewModelScope.launch {
+            val undo = backupManager.canUndoImport()
+            _uiState.update { it.copy(canUndoImport = undo) }
+        }
+    }
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
@@ -351,8 +360,17 @@ class SettingsViewModel @Inject constructor(
     fun importBackup(uri: Uri) {
         viewModelScope.launch {
             val message = runCatching { backupManager.importFrom(uri) }
+                .map { "$it Your data from before is kept: Undo the last import brings it back." }
                 .getOrElse { "Import failed: ${it.message} — your existing data is unchanged." }
-            _uiState.update { it.copy(message = message) }
+            _uiState.update { it.copy(message = message, canUndoImport = backupManager.canUndoImport()) }
+        }
+    }
+
+    fun undoLastImport() {
+        viewModelScope.launch {
+            val message = runCatching { backupManager.undoLastImport() }
+                .getOrElse { "Could not undo: ${it.message} — nothing was changed." }
+            _uiState.update { it.copy(message = message, canUndoImport = backupManager.canUndoImport()) }
         }
     }
 }
