@@ -194,6 +194,7 @@ fun TodoListScreen(
                     maxLines = 2,
                 )
                 ListRow(title = "Edit", onClick = { menuFor = null; onEditTodo(todo.id) })
+                ListRow(title = "Duplicate", onClick = { menuFor = null; viewModel.duplicate(todo, onEditTodo) })
                 ListRow(
                     title = if (todo.isCompleted) "Mark as not done" else "Mark as done",
                     onClick = { menuFor = null; onRingTapped(todo) },

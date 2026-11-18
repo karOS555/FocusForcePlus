@@ -242,6 +242,9 @@ class BackupManager @Inject constructor(
         put("createdAt", r.createdAt)
         putNullable("deletedAt", r.deletedAt)
         putNullable("guards", r.guards)
+        put("preAlarmMinutes", r.preAlarmMinutes)
+        put("enableDnd", r.enableDnd)
+        putNullable("blockedGroupsCsv", r.blockedGroupsCsv)
         put("tasks", JSONArray(routineTasks.map { taskJson(it) }))
     }
 
@@ -261,6 +264,9 @@ class BackupManager @Inject constructor(
         createdAt = o.getLong("createdAt"),
         deletedAt = o.optLongOrNull("deletedAt"),
         guards = o.optStringOrNull("guards"),
+        preAlarmMinutes = o.optInt("preAlarmMinutes", 15),
+        enableDnd = o.optBoolean("enableDnd", false),
+        blockedGroupsCsv = o.optStringOrNull("blockedGroupsCsv"),
     )
 
     private fun taskJson(t: RoutineTaskEntity) = JSONObject().apply {

@@ -201,7 +201,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 app = effectiveRule,
                 nowMillis = now,
                 minutesOfDay = minutesOfDay(),
-                routineBlocking = snap.blockDuringRoutines && routineRegistry.isBlockingApps(),
+                routineBlocking = snap.blockDuringRoutines && routineRegistry.blocksGroup(ruleGroupName),
                 focusBlocking = focusApplies,
                 inGroup = group != null,
                 groupLimitReached = groupLimitReached,

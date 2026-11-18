@@ -67,6 +67,8 @@ data class ActiveRoutineUiState(
     val showOvertimeReminder: Boolean = false,
     val overtimeReminderMinutes: Int = 0,
     val cancelConfirmStep: Int = 0, // 0=hidden 1=first-confirm 2=offer to move instead
+    /** The speed bump before stopping early; always asks first. */
+    val endGuard: com.focusforceplus.app.compliance.Guard = com.focusforceplus.app.compliance.Guard(confirm = true),
     // Speed bumps
     val snoozeGuard: Guard = Guard.NONE,
     val rescheduleGuard: Guard = Guard.NONE,
@@ -301,7 +303,12 @@ class ActiveRoutineViewModel @Inject constructor(
     fun dismissThreeMinWarning() = _uiState.update { it.copy(showThreeMinWarning = false) }
     fun dismissTimeUpDialog() = _uiState.update { it.copy(showTimeUpDialog = false) }
     fun dismissOvertimeReminder() = _uiState.update { it.copy(showOvertimeReminder = false) }
-    fun onCancelFirstClick() = _uiState.update { it.copy(cancelConfirmStep = 1) }
+    fun onCancelFirstClick() {
+        viewModelScope.launch {
+            val guard = settingsRepository.guardSettings.first()[com.focusforceplus.app.compliance.GuardSlot.ROUTINE_END]
+            _uiState.update { it.copy(endGuard = guard.copy(confirm = true), cancelConfirmStep = 1) }
+        }
+    }
 
     fun onCancelConfirmed() {
         val s = _uiState.value

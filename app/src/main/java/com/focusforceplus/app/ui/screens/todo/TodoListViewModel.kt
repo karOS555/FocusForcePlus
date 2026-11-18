@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.todo
 
+import com.focusforceplus.app.data.model.toChecklistJson
+import com.focusforceplus.app.data.model.checklistFromJson
 import kotlinx.coroutines.flow.first
 import com.focusforceplus.app.compliance.clampTodoLimits
 import androidx.lifecycle.ViewModel
@@ -176,6 +178,34 @@ class TodoListViewModel @Inject constructor(
 
     fun reopen(todo: TodoEntity) {
         viewModelScope.launch { engine.reopen(todo.id) }
+    }
+
+    /** A fresh copy: nothing ticked or snoozed, and no due time in the past. */
+    fun duplicate(todo: TodoEntity, onDone: (Long) -> Unit) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val id = engine.save(
+                todo.copy(
+                    id = 0L,
+                    title = "${todo.title} (copy)".take(200),
+                    isCompleted = false,
+                    completedAt = null,
+                    snoozeCount = 0,
+                    rescheduleCount = 0,
+                    postponedTo = null,
+                    snoozedUntil = null,
+                    nagCount = 0,
+                    lastAlarmAt = null,
+                    deletedAt = null,
+                    dueDateTime = todo.dueDateTime?.takeIf { it > now },
+                    createdAt = now,
+                    checklistJson = todo.checklistJson?.let { json ->
+                        checklistFromJson(json).map { it.copy(done = false) }.toChecklistJson()
+                    },
+                )
+            )
+            onDone(id)
+        }
     }
 
     fun moveToTrash(todo: TodoEntity) {

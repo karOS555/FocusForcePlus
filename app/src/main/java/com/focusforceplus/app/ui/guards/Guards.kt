@@ -92,6 +92,7 @@ data class GuardCopy(
         val SNOOZE = GuardCopy("Snooze it?", "Yes, snooze", "Never mind", "Snooze", "snooze")
         val RESCHEDULE = GuardCopy("Move it to later?", "Yes, move it", "Never mind", "Move it", "move it")
         val FOCUS_END = GuardCopy("End the session now?", "Yes, end it", "Keep going", "End session", "end the session")
+        val ROUTINE_END = GuardCopy("Stop the routine now?", "Yes, stop it", "Keep going", "Stop", "stop the routine")
         val BLOCKER_EXCEPTION = GuardCopy("Open it anyway?", "Yes, a few minutes", "Never mind", "Open", "open it")
         val BLOCKER_PAUSE = GuardCopy("Pause the blocker?", "Yes, pause", "Never mind", "Pause", "pause the blocker")
     }

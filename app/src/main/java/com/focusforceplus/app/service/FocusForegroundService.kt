@@ -1,5 +1,6 @@
 package com.focusforceplus.app.service
 
+import com.focusforceplus.app.util.Dnd
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
@@ -170,6 +171,10 @@ class FocusForegroundService : Service() {
         blockedGroups = snap.blockedGroupsCsv?.split(',')?.filter { it.isNotBlank() }?.toSet()?.takeIf { it.isNotEmpty() }
         appliedFilter = snap.appliedFilter
         previousInterruptionFilter = snap.previousFilter
+        // A session an older version started kept Do Not Disturb itself: hand it over.
+        snap.appliedFilter?.let { applied ->
+            if (!Dnd.holds(this, Dnd.FOCUS)) Dnd.acquire(this, Dnd.FOCUS, applied, knownPrevious = snap.previousFilter)
+        }
         paused = snap.pausedRemainingSeconds != null
         pausedRemaining = snap.pausedRemainingSeconds ?: 0
         endsAtElapsed = SystemClock.elapsedRealtime() + (snap.endsAtMillis - System.currentTimeMillis())
@@ -287,24 +292,16 @@ class FocusForegroundService : Service() {
     private fun applyDnd(enableDnd: Boolean, blockNotifications: Boolean) {
         appliedFilter = null
         if (!enableDnd && !blockNotifications) return
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.isNotificationPolicyAccessGranted) return // degrade gracefully
-        runCatching {
-            previousInterruptionFilter = nm.currentInterruptionFilter
-            val filter = if (blockNotifications) NotificationManager.INTERRUPTION_FILTER_NONE
-                         else NotificationManager.INTERRUPTION_FILTER_PRIORITY
-            nm.setInterruptionFilter(filter)
-            appliedFilter = filter
-        }
+        val filter = if (blockNotifications) NotificationManager.INTERRUPTION_FILTER_NONE
+                     else NotificationManager.INTERRUPTION_FILTER_PRIORITY
+        // Without access this degrades gracefully: the session runs without DND.
+        if (Dnd.acquire(this, Dnd.FOCUS, filter)) appliedFilter = filter
     }
 
-    /** Puts DND back, unless the user changed it themselves in the meantime. */
+    /** Hands DND back (see [Dnd]: sleep mode or a routine may still want it). */
     private fun restoreDnd() {
-        val applied = appliedFilter ?: return
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.isNotificationPolicyAccessGranted && nm.currentInterruptionFilter == applied) {
-            runCatching { nm.setInterruptionFilter(previousInterruptionFilter) }
-        }
+        appliedFilter ?: return
+        Dnd.release(this, Dnd.FOCUS)
         appliedFilter = null
     }
 

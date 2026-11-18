@@ -260,6 +260,7 @@ fun FocusListScreen(
                     if (viewModel.startSession(session)) onOpenActive(session.id)
                 })
                 ListRow(title = "Edit", onClick = { menuFor = null; onEditSession(session.id) })
+                ListRow(title = "Duplicate", onClick = { menuFor = null; viewModel.duplicate(session) })
                 if (session.scheduledDays != null) {
                     ListRow(
                         title = if (session.isActive) "Pause the schedule" else "Resume the schedule",

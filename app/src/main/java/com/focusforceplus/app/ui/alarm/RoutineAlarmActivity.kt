@@ -113,7 +113,7 @@ class RoutineAlarmActivity : ComponentActivity() {
 
             playAlarmSound()
         }
-        // The heads-up 15 minutes before: no sound, Back works, no lock-screen overlay.
+        // The heads-up before the start: no sound, Back works, no lock-screen overlay.
 
         val routineId = intent.getLongExtra("routineId", 0L)
 
@@ -306,7 +306,8 @@ private fun RoutineAlarmScreen(
             Text(text = clock, style = MaterialTheme.typography.displayLarge, color = colors.text)
             Spacer(Modifier.height(10.dp))
             Text(
-                text = if (isPreAlarm) "Routine · starts in 15 minutes" else "Routine · time to start",
+                text = if (isPreAlarm) "Routine · starts at " + com.focusforceplus.app.util.TimeFormat.clock(state.startMinutes)
+                       else "Routine · time to start",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textMuted,
             )

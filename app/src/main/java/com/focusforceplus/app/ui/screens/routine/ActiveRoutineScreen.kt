@@ -323,13 +323,11 @@ fun ActiveRoutineScreen(
     // Stopping: first "are you sure", then, while moves are left, the offer to move
     // the run instead of dropping it.
     when (s.cancelConfirmStep) {
-        1 -> ConfirmDialog(
-            title = "Stop the routine?",
-            message = "This run ends here. What you have done so far is not saved as a finished run.",
-            confirmLabel = "Stop",
-            dismissLabel = "Keep going",
-            destructive = true,
-            onConfirm = viewModel::onCancelConfirmed,
+        1 -> com.focusforceplus.app.ui.guards.GuardDialog(
+            guard = s.endGuard,
+            copy = com.focusforceplus.app.ui.guards.GuardCopy.ROUTINE_END,
+            subject = s.routineName,
+            onPassed = viewModel::onCancelConfirmed,
             onDismiss = viewModel::dismissCancel,
         )
         2 -> ConfirmDialog(

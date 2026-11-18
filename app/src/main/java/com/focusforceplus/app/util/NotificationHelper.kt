@@ -134,7 +134,7 @@ class NotificationHelper @Inject constructor(
             .build()
     }
 
-    // ── Pre-alarm reminder (15 min before) ────────────────────────────────────
+    // ── Pre-alarm reminder (the routine's heads-up minutes before) ────────────
 
     fun buildPreAlarmNotification(
         routineId: Long,
@@ -154,7 +154,7 @@ class NotificationHelper @Inject constructor(
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
             .setContentTitle("\"$routineName\" starts at $timeStr")
-            .setContentText("Your routine starts in 15 minutes.")
+            .setContentText(startsIn(startHour, startMinute))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(tapIntent)
@@ -376,6 +376,18 @@ class NotificationHelper @Inject constructor(
             .build()
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** "Your routine starts in 10 minutes", from the start time and now. */
+    private fun startsIn(hour: Int, minute: Int): String {
+        val now = Calendar.getInstance()
+        val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val left = ((hour * 60 + minute - nowMinutes) + 24 * 60) % (24 * 60)
+        return when {
+            left <= 1 -> "Your routine starts now."
+            left < 60 -> "Your routine starts in $left minutes."
+            else -> "Your routine starts at %02d:%02d.".format(hour, minute)
+        }
+    }
 
     fun showNotification(id: Int, notification: Notification) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

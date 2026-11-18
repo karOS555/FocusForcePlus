@@ -151,6 +151,7 @@ enum class GuardSlot(
     TODO_MEDIUM_RESCHEDULE("todo_medium_reschedule", "Medium-priority todos", "Rescheduling", Guard(waitSeconds = 10)),
     ROUTINE_SNOOZE("routine_snooze", "Routines", "Snoozing the alarm", Guard(challenge = Challenge.MATH)),
     ROUTINE_RESCHEDULE("routine_reschedule", "Routines", "Rescheduling", Guard(challenge = Challenge.MATH)),
+    ROUTINE_END("routine_end", "Routines", "Stopping a routine early", Guard(waitSeconds = 30)),
     FOCUS_END("focus_end", "Focus", "Ending a session early", Guard(waitSeconds = 30)),
     BLOCKER_EXCEPTION("blocker_exception", "Blocker", "A few more minutes in a blocked app", Guard(waitSeconds = 10)),
     BLOCKER_PAUSE("blocker_pause", "Blocker", "Pausing the blocker", Guard(waitSeconds = 10)),

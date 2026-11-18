@@ -37,19 +37,36 @@ class SleepStateReconciler @Inject constructor(
             schedule.bedtimeMinutes, schedule.wakeMinutes, schedule.activeDaysCsv,
             minutesOfDay, dayCodeFor(cal.get(Calendar.DAY_OF_WEEK)),
         )
-        if (stillNight) return
+        if (stillNight) {
+            // A night an older version started kept Do Not Disturb itself: hand it over.
+            val legacy = sleepRepository.previousDndFilter.first()
+            if (legacy >= 0 && !Dnd.holds(context, Dnd.SLEEP) &&
+                Dnd.acquire(context, Dnd.SLEEP, knownPrevious = legacy)
+            ) {
+                sleepRepository.setPreviousDndFilter(-1)
+            }
+            return
+        }
 
         // The night is over but its wake-up never ran — close it out.
         sleepRepository.setNightActive(false)
         notifHelper.cancelNotification(SleepNotificationHelper.NOTIFICATION_ID_SLEEP_ACTIVE)
 
-        val previous = sleepRepository.previousDndFilter.first()
-        if (previous >= 0) {
-            sleepRepository.setPreviousDndFilter(-1)
-            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (nm.isNotificationPolicyAccessGranted) {
-                runCatching { nm.setInterruptionFilter(previous) }
-            }
-        }
+        restoreSleepDnd(context, sleepRepository)
     }
+}
+
+/**
+ * Sleep mode hands Do Not Disturb back (see [Dnd]). Also closes out what an older
+ * version of the app kept itself for a night that was running during the update.
+ */
+suspend fun restoreSleepDnd(context: Context, sleepRepository: SleepRepository) {
+    val legacy = sleepRepository.previousDndFilter.first()
+    if (legacy >= 0) sleepRepository.setPreviousDndFilter(-1)
+    Dnd.release(
+        context,
+        Dnd.SLEEP,
+        legacyApplied = NotificationManager.INTERRUPTION_FILTER_PRIORITY.takeIf { legacy >= 0 },
+        legacyPrevious = legacy.takeIf { it >= 0 },
+    )
 }

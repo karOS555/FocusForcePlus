@@ -169,6 +169,24 @@ class FocusListViewModel @Inject constructor(
         }
     }
 
+    /** A copy whose schedule starts paused, so the same reminder does not come twice. */
+    fun duplicate(session: FocusSessionEntity) {
+        viewModelScope.launch {
+            repository.insertSession(
+                session.copy(
+                    id = 0L,
+                    name = "${session.name} (copy)".take(60),
+                    isActive = if (session.scheduledDays != null) false else session.isActive,
+                    deletedAt = null,
+                    createdAt = System.currentTimeMillis(),
+                )
+            )
+            if (session.scheduledDays != null) {
+                _message.value = "Copied as \"${session.name} (copy)\". Its schedule stays paused until you switch it on."
+            }
+        }
+    }
+
     fun toggleScheduleActive(session: FocusSessionEntity) {
         viewModelScope.launch {
             val updated = session.copy(isActive = !session.isActive)

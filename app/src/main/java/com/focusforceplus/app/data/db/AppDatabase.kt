@@ -180,6 +180,9 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE list_items ADD COLUMN quantity TEXT")
                 db.execSQL("ALTER TABLE list_suggestions ADD COLUMN section TEXT")
                 db.execSQL("ALTER TABLE routine_tasks ADD COLUMN listId INTEGER")
+                db.execSQL("ALTER TABLE routines ADD COLUMN preAlarmMinutes INTEGER NOT NULL DEFAULT 15")
+                db.execSQL("ALTER TABLE routines ADD COLUMN enableDnd INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE routines ADD COLUMN blockedGroupsCsv TEXT")
             }
         }
 

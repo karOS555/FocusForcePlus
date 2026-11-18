@@ -13,6 +13,8 @@ data class ActiveRoutineSession(
     val blocksApps: Boolean,
     /** Whether the running routine is invincible (gates the block-screen exception). */
     val invincible: Boolean,
+    /** Only these block groups; null = every app that blocks during routines. */
+    val blockedGroups: Set<String>? = null,
 )
 
 enum class RoutineSessionPhase { RUNNING, OVERTIME, COMPLETED }
@@ -74,8 +76,13 @@ class ActiveRoutineRegistry @Inject constructor() {
         if (_sessionProgress.value?.routineId == routineId) _sessionProgress.value = null
     }
 
-    fun markActive(id: Long, blocksApps: Boolean = false, invincible: Boolean = false) {
-        _activeSession.value = ActiveRoutineSession(id, blocksApps, invincible)
+    fun markActive(
+        id: Long,
+        blocksApps: Boolean = false,
+        invincible: Boolean = false,
+        blockedGroups: Set<String>? = null,
+    ) {
+        _activeSession.value = ActiveRoutineSession(id, blocksApps, invincible, blockedGroups)
         _activeRoutineId.value = id
     }
 
@@ -93,6 +100,14 @@ class ActiveRoutineRegistry @Inject constructor() {
 
     /** True when a routine with app blocking enabled is running right now. */
     fun isBlockingApps(): Boolean = _activeSession.value?.blocksApps == true
+
+    /** True when the running routine blocks an app of [groupName] (null = no group). */
+    fun blocksGroup(groupName: String?): Boolean {
+        val session = _activeSession.value ?: return false
+        if (!session.blocksApps) return false
+        val only = session.blockedGroups ?: return true
+        return groupName != null && groupName in only
+    }
 
     /** True when the running routine (if any) is invincible. */
     fun isSessionInvincible(): Boolean = _activeSession.value?.invincible == true

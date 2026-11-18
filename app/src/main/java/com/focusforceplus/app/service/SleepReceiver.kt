@@ -1,6 +1,7 @@
 package com.focusforceplus.app.service
 
-import android.app.NotificationManager
+import com.focusforceplus.app.util.restoreSleepDnd
+import com.focusforceplus.app.util.Dnd
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -108,29 +109,18 @@ class SleepReceiver : BroadcastReceiver() {
     // ── DND ───────────────────────────────────────────────────────────────────
 
     private suspend fun applyDnd(context: Context) {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.isNotificationPolicyAccessGranted) return // degrade gracefully
-        runCatching {
-            // Only the first bedtime of a night remembers the state to go back to;
-            // a second one would remember our own Do Not Disturb and keep it on.
-            if (sleepRepository.previousDndFilter.first() < 0) {
-                sleepRepository.setPreviousDndFilter(nm.currentInterruptionFilter)
-            }
-            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+        // A second bedtime in one night keeps what was there before the first one
+        // (see Dnd). An older version kept that itself: carry it over once.
+        val legacy = sleepRepository.previousDndFilter.first()
+        if (Dnd.acquire(context, Dnd.SLEEP, knownPrevious = legacy.takeIf { it >= 0 && !Dnd.holds(context, Dnd.SLEEP) }) &&
+            legacy >= 0
+        ) {
+            sleepRepository.setPreviousDndFilter(-1)
         }
     }
 
     private suspend fun restoreDnd(context: Context) {
-        val previous = sleepRepository.previousDndFilter.first()
-        if (previous < 0) return
-        sleepRepository.setPreviousDndFilter(-1)
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Changed during the night by hand: leave it as the user set it.
-        if (nm.isNotificationPolicyAccessGranted &&
-            nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_PRIORITY
-        ) {
-            runCatching { nm.setInterruptionFilter(previous) }
-        }
+        restoreSleepDnd(context, sleepRepository)
     }
 
     // ── Native backup alarms ──────────────────────────────────────────────────

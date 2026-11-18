@@ -1,5 +1,9 @@
 package com.focusforceplus.app.ui.screens.routine
 
+import androidx.compose.ui.platform.LocalContext
+import com.focusforceplus.app.util.PermissionHelper
+import com.focusforceplus.app.ui.components.ChoiceDialog
+import com.focusforceplus.app.ui.components.Choice
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -94,6 +98,9 @@ fun CreateRoutineScreen(
     val state by viewModel.uiState.collectAsState()
     val templates by viewModel.taskTemplates.collectAsState()
     val lists by viewModel.lists.collectAsState()
+    var pickHeadsUp by remember { mutableStateOf(false) }
+    val blockGroups by viewModel.blockGroups.collectAsState()
+    val context = LocalContext.current
     val others by viewModel.otherRoutines.collectAsState()
     val colors = FfTheme.colors
     val snackbar = remember { SnackbarHostState() }
@@ -201,6 +208,12 @@ fun CreateRoutineScreen(
                     }
                 }
                 RowDivider()
+                ValueRow(
+                    title = "Heads-up before",
+                    value = if (state.preAlarmMinutes == 0) "Off" else "${state.preAlarmMinutes} min",
+                    onClick = { pickHeadsUp = true },
+                )
+                RowDivider()
                 SwitchRow(
                     title = "On schedule",
                     subtitle = if (state.isActive) "The alarm goes off on these days." else
@@ -265,7 +278,66 @@ fun CreateRoutineScreen(
                     checked = state.appBlockerEnabled,
                     onCheckedChange = viewModel::updateAppBlocker,
                 )
+                if (state.appBlockerEnabled && blockGroups.isNotEmpty()) {
+                    Column(Modifier.padding(horizontal = 14.dp).padding(bottom = 12.dp)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FfChip(
+                                label = "All blocked apps",
+                                selected = state.blockAllApps,
+                                onClick = { viewModel.updateBlockAllApps(true) },
+                            )
+                            FfChip(
+                                label = "Only some groups",
+                                selected = !state.blockAllApps,
+                                onClick = { viewModel.updateBlockAllApps(false) },
+                            )
+                        }
+                        if (!state.blockAllApps) {
+                            Spacer(Modifier.height(6.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                blockGroups.forEach { group ->
+                                    FfChip(
+                                        label = group,
+                                        selected = group in state.selectedGroups,
+                                        onClick = { viewModel.toggleBlockedGroup(group) },
+                                    )
+                                }
+                            }
+                            if (state.selectedGroups.isEmpty()) {
+                                Text(
+                                    "Pick at least one group, or block all apps.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.error,
+                                )
+                            }
+                        }
+                    }
+                }
+                RowDivider()
+                val dndGranted = PermissionHelper.hasDndAccess(context)
+                SwitchRow(
+                    title = "Do Not Disturb",
+                    subtitle = if (dndGranted) "Silences calls and notifications while it runs, except priority ones." else
+                        "Needs Do Not Disturb access; switching it on opens the setting.",
+                    checked = state.enableDnd,
+                    onCheckedChange = { on ->
+                        if (on && !dndGranted) PermissionHelper.openDndAccessSettings(context)
+                        viewModel.updateDnd(on)
+                    },
+                )
             }
+        }
+        if (pickHeadsUp) {
+            ChoiceDialog(
+                title = "Heads-up before the start",
+                choices = listOf(0, 5, 10, 15, 30).map { Choice(it, if (it == 0) "Off" else "$it min") },
+                selected = state.preAlarmMinutes,
+                onSelect = {
+                    viewModel.updatePreAlarm(it)
+                    pickHeadsUp = false
+                },
+                onDismiss = { pickHeadsUp = false },
+            )
         }
 
         // ── Speed bumps ───────────────────────────────────────────────────────

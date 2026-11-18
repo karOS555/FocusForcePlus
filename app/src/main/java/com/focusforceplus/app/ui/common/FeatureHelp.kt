@@ -78,7 +78,8 @@ object FeatureHelpContent {
             HelpSection(
                 "The alarm",
                 "On the days you pick, the routine rings at its start time, over the lock " +
-                    "screen. Fifteen minutes before, a quiet heads-up lets you know it is coming.",
+                    "screen. A quiet heads-up comes before it, 15 minutes by default; each " +
+                    "routine can change that or turn it off.",
             ),
             HelpSection(
                 "Running late on a step",
@@ -89,7 +90,8 @@ object FeatureHelpContent {
                 "While it runs",
                 "The notification shows every step as a timeline with the current " +
                     "countdown, and works from the lock screen: Done, +5 min and Cancel " +
-                    "without unlocking.",
+                    "without unlocking. A routine can block apps (all, or only some " +
+                    "groups) and switch on Do Not Disturb while it runs.",
             ),
             HelpSection(
                 "Snooze and reschedule",

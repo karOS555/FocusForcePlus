@@ -29,7 +29,6 @@ class AlarmHelper @Inject constructor(
             "SO" to Calendar.SUNDAY,
         )
 
-        private const val PRE_ALARM_MINUTES  = 15L
         private const val PRE_ALARM_RC_OFFSET = 100_000
         private const val SNOOZE_RC_OFFSET    = 500_000
         private const val SHOW_RC_OFFSET      =  70_000
@@ -51,9 +50,9 @@ class AlarmHelper @Inject constructor(
                 mainOp,
             )
 
-            // ── 15-minute pre-alarm ───────────────────────────────────────────
-            val preAlarmAt = triggerAt - PRE_ALARM_MINUTES * 60 * 1000
-            if (preAlarmAt > System.currentTimeMillis() + 30_000) {
+            // ── Heads-up before the start (per routine, 0 = none) ─────────────
+            val preAlarmAt = triggerAt - routine.preAlarmMinutes * 60_000L
+            if (routine.preAlarmMinutes > 0 && preAlarmAt > System.currentTimeMillis() + 30_000) {
                 val preOp = preAlarmIntent(
                     routine.id, routine.name,
                     routine.startTimeHour, routine.startTimeMinute,

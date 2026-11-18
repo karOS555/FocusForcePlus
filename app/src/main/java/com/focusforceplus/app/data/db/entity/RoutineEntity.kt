@@ -25,4 +25,14 @@ data class RoutineEntity(
     val deletedAt: Long? = null,
     /** This routine's own speed bumps (see GuardOverrides); null = the defaults. */
     val guards: String? = null,
-)
+    /** Minutes before the start for the quiet heads-up; 0 = none. */
+    val preAlarmMinutes: Int = 15,
+    /** Do Not Disturb while the routine runs. */
+    val enableDnd: Boolean = false,
+    /** Only these block groups while it runs (comma-separated); null = all blocked apps. */
+    val blockedGroupsCsv: String? = null,
+) {
+    val blockedGroups: Set<String>?
+        get() = blockedGroupsCsv?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
+            ?.takeIf { it.isNotEmpty() }
+}

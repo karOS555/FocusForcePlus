@@ -1,5 +1,6 @@
 package com.focusforceplus.app.service
 
+import com.focusforceplus.app.util.Dnd
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.app.Service
@@ -132,7 +133,8 @@ class RoutineForegroundService : Service() {
             invincible = routine.invincibleMode
             blocksApps = routine.appBlockerEnabled
             tasks = loadedTasks
-            activeRoutineRegistry.markActive(id, blocksApps, invincible)
+            activeRoutineRegistry.markActive(id, blocksApps, invincible, routine.blockedGroups)
+            if (routine.enableDnd) Dnd.acquire(this@RoutineForegroundService, Dnd.ROUTINE)
             beginTask(0)
             startTicker()
         }
@@ -148,6 +150,7 @@ class RoutineForegroundService : Service() {
                 snapshot.taskIndex !in loadedTasks.indices
             ) {
                 sessionStore.clear()
+                Dnd.release(this@RoutineForegroundService, Dnd.ROUTINE)
                 stopIfIdle()
                 return@launch
             }
@@ -164,7 +167,7 @@ class RoutineForegroundService : Service() {
             lastNagAtOvertimeSeconds = overtimeSeconds()
             taskEndElapsed = SystemClock.elapsedRealtime() +
                 (snapshot.taskEndWallMillis - System.currentTimeMillis())
-            activeRoutineRegistry.markActive(routineId, blocksApps, invincible)
+            activeRoutineRegistry.markActive(routineId, blocksApps, invincible, routine.blockedGroups)
             updateOngoingNotification()
             if (!inOvertime && remainingSeconds() <= 0) {
                 enterOvertime()
@@ -222,6 +225,7 @@ class RoutineForegroundService : Service() {
 
     private fun finishSession() {
         completed = true
+        Dnd.release(this, Dnd.ROUTINE)
         tickerJob?.cancel()
         stopAlarmRing()
         cancelTaskEndAlarm()
@@ -254,6 +258,7 @@ class RoutineForegroundService : Service() {
 
     /** Cancel path: tears the session down without recording a completion. */
     private fun endSession() {
+        Dnd.release(this, Dnd.ROUTINE)
         tickerJob?.cancel()
         stopAlarmRing()
         cancelTaskEndAlarm()

@@ -1,5 +1,6 @@
 package com.focusforceplus.app.service
 
+import com.focusforceplus.app.util.Dnd
 import android.app.AlarmManager
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -134,10 +135,7 @@ class FocusSessionRecovery @Inject constructor(
         if (registry.activeSession.value != null) return@withLock
 
         snap.appliedFilter?.let { applied ->
-            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (nm.isNotificationPolicyAccessGranted && nm.currentInterruptionFilter == applied) {
-                runCatching { nm.setInterruptionFilter(snap.previousFilter) }
-            }
+            Dnd.release(context, Dnd.FOCUS, legacyApplied = applied, legacyPrevious = snap.previousFilter)
         }
 
         val now = System.currentTimeMillis()

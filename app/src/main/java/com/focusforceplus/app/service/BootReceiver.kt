@@ -44,6 +44,8 @@ class BootReceiver : BroadcastReceiver() {
                     Intent.ACTION_BOOT_COMPLETED -> {
                         // A focus session cannot outlive a restart; Do Not Disturb can.
                         focusRecovery.resolveIfOrphaned()
+                        // Neither can a running routine.
+                        com.focusforceplus.app.util.Dnd.release(context, com.focusforceplus.app.util.Dnd.ROUTINE)
                         routineSessionStore.load()?.let { interrupted ->
                             routineSessionStore.clear()
                             runCatching {

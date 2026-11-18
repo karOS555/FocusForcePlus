@@ -36,6 +36,7 @@ data class AlarmUiState(
     val totalMinutes: Int = 0,
     val snoozeGuard: Guard = Guard.NONE,
     val rescheduleGuard: Guard = Guard.NONE,
+    val startMinutes: Int = 0,
 ) {
     val canSnooze: Boolean get() = snoozeCount < maxSnoozeCount
     val canReschedule: Boolean get() = rescheduleCount < maxRescheduleCount
@@ -73,6 +74,7 @@ class RoutineAlarmViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     routineName        = routine.name,
+                    startMinutes       = routine.startTimeHour * 60 + routine.startTimeMinute,
                     routineDescription = routine.description,
                     routineIconKey     = routine.iconKey,
                     invincibleMode     = routine.invincibleMode,

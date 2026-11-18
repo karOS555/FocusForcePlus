@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 12,
-    "identityHash": "ec971f40f89869075468835e7ef0f167",
+    "identityHash": "d9379c15ada970751e74b1e21bfd8101",
     "entities": [
       {
         "tableName": "routines",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `startTimeHour` INTEGER NOT NULL, `startTimeMinute` INTEGER NOT NULL, `activeDays` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `invincibleMode` INTEGER NOT NULL, `appBlockerEnabled` INTEGER NOT NULL, `maxSnoozeCount` INTEGER NOT NULL, `maxRescheduleCount` INTEGER NOT NULL, `iconKey` TEXT, `createdAt` INTEGER NOT NULL, `deletedAt` INTEGER, `guards` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `startTimeHour` INTEGER NOT NULL, `startTimeMinute` INTEGER NOT NULL, `activeDays` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `invincibleMode` INTEGER NOT NULL, `appBlockerEnabled` INTEGER NOT NULL, `maxSnoozeCount` INTEGER NOT NULL, `maxRescheduleCount` INTEGER NOT NULL, `iconKey` TEXT, `createdAt` INTEGER NOT NULL, `deletedAt` INTEGER, `guards` TEXT, `preAlarmMinutes` INTEGER NOT NULL, `enableDnd` INTEGER NOT NULL, `blockedGroupsCsv` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -92,6 +92,23 @@
           {
             "fieldPath": "guards",
             "columnName": "guards",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "preAlarmMinutes",
+            "columnName": "preAlarmMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enableDnd",
+            "columnName": "enableDnd",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockedGroupsCsv",
+            "columnName": "blockedGroupsCsv",
             "affinity": "TEXT"
           }
         ],
@@ -961,7 +978,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ec971f40f89869075468835e7ef0f167')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd9379c15ada970751e74b1e21bfd8101')"
     ]
   }
 }

@@ -64,6 +64,11 @@ data class RoutineUiState(
     val isActive: Boolean = true,
     val invincibleMode: Boolean = false,
     val appBlockerEnabled: Boolean = true,
+    val enableDnd: Boolean = false,
+    val preAlarmMinutes: Int = 15,
+    /** False = only [selectedGroups] are blocked while it runs. */
+    val blockAllApps: Boolean = true,
+    val selectedGroups: Set<String> = emptySet(),
     val maxSnoozeCount: Int = 2,
     val maxRescheduleCount: Int = 1,
     val guardOverrides: GuardOverrides = GuardOverrides(),
@@ -93,8 +98,14 @@ class RoutineViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val navRepository: NavRepository,
     listRepository: com.focusforceplus.app.data.repository.ListRepository,
+    blockerRepository: com.focusforceplus.app.data.repository.BlockerRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    /** The blocker's group names, to block only some of them while it runs. */
+    val blockGroups: StateFlow<List<String>> = blockerRepository.getAllGroups()
+        .map { groups -> groups.map { it.name } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Lists a step can carry, e.g. a packing list for "Pack the bag". */
     val lists: StateFlow<List<com.focusforceplus.app.data.db.entity.ListEntity>> = listRepository.getLists()
@@ -177,6 +188,10 @@ class RoutineViewModel @Inject constructor(
                     isActive = e.isActive,
                     invincibleMode = e.invincibleMode,
                     appBlockerEnabled = e.appBlockerEnabled,
+                    enableDnd = e.enableDnd,
+                    preAlarmMinutes = e.preAlarmMinutes,
+                    blockAllApps = e.blockedGroups == null,
+                    selectedGroups = e.blockedGroups.orEmpty(),
                     maxSnoozeCount = e.maxSnoozeCount,
                     maxRescheduleCount = e.maxRescheduleCount,
                     guardOverrides = GuardOverrides.decode(e.guards),
@@ -233,6 +248,12 @@ class RoutineViewModel @Inject constructor(
     }
 
     fun updateAppBlocker(v: Boolean) = _uiState.update { it.copy(appBlockerEnabled = v) }
+    fun updateDnd(v: Boolean) = _uiState.update { it.copy(enableDnd = v) }
+    fun updatePreAlarm(minutes: Int) = _uiState.update { it.copy(preAlarmMinutes = minutes) }
+    fun updateBlockAllApps(all: Boolean) = _uiState.update { it.copy(blockAllApps = all) }
+    fun toggleBlockedGroup(group: String) = _uiState.update {
+        it.copy(selectedGroups = if (group in it.selectedGroups) it.selectedGroups - group else it.selectedGroups + group)
+    }
 
     fun updateMaxSnooze(v: Int) {
         // The cap must not be raised mid-run: the running session read it at its
@@ -332,6 +353,10 @@ class RoutineViewModel @Inject constructor(
                     isActive = state.isActive,
                     invincibleMode = state.invincibleMode,
                     appBlockerEnabled = state.appBlockerEnabled,
+                    enableDnd = state.enableDnd,
+                    preAlarmMinutes = state.preAlarmMinutes,
+                    blockedGroupsCsv = if (state.blockAllApps || state.selectedGroups.isEmpty()) null
+                                       else state.selectedGroups.joinToString(","),
                     maxSnoozeCount = state.maxSnoozeCount,
                     maxRescheduleCount = state.maxRescheduleCount,
                     guards = state.guardOverrides.encode(),

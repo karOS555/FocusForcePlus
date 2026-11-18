@@ -44,6 +44,8 @@ class FocusForcePlusApp : Application() {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var sleepRepository: SleepRepository
     @Inject lateinit var focusRecovery: com.focusforceplus.app.service.FocusSessionRecovery
+    @Inject lateinit var routineSessionStore: com.focusforceplus.app.service.RoutineSessionStore
+    @Inject lateinit var activeRoutineRegistry: com.focusforceplus.app.service.ActiveRoutineRegistry
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -68,6 +70,17 @@ class FocusForcePlusApp : Application() {
         appScope.launch {
             kotlinx.coroutines.delay(10_000L)
             focusRecovery.resolveIfOrphaned()
+            // A routine that holds Do Not Disturb but neither runs nor waits to be
+            // picked up again (no snapshot) was stopped from outside: put it back.
+            val dnd = com.focusforceplus.app.util.Dnd
+            if (dnd.holds(this@FocusForcePlusApp, dnd.ROUTINE) && routineSessionStore.load() == null &&
+                activeRoutineRegistry.activeSession.value == null
+            ) {
+                dnd.release(this@FocusForcePlusApp, dnd.ROUTINE)
+            }
+            // Android 15+: the app's own Do Not Disturb mode never stays on with
+            // nothing holding it (older versions could leave it on for good).
+            dnd.clearStale(this@FocusForcePlusApp)
         }
 
         // The picked theme, for every activity.
