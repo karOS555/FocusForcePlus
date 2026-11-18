@@ -160,6 +160,7 @@ fun TodoListScreen(
                     onRing = ::onRingTapped,
                     onLongPress = { menuFor = it },
                     onCreate = onCreateTodo,
+                    onQuickAdd = viewModel::quickAdd,
                 )
                 TodoTab.DONE -> DoneList(
                     state = state,
@@ -292,10 +293,23 @@ private fun OpenList(
     onRing: (TodoEntity) -> Unit,
     onLongPress: (TodoEntity) -> Unit,
     onCreate: () -> Unit,
+    onQuickAdd: (String) -> Unit,
 ) {
     val colors = FfTheme.colors
     if (state.openGroups.isEmpty()) {
         if (state.loading) return
+        // A search that finds nothing is often a todo that does not exist yet.
+        val typed = state.searchQuery.trim()
+        if (typed.isNotEmpty() && state.filterPriority == null) {
+            EmptyState(
+                icon = Icons.Filled.TaskAlt,
+                title = "Nothing matches",
+                text = "Add \"${typed.take(60)}\" as a todo with your default priority, no date.",
+                actionLabel = "Add as todo",
+                onAction = { onQuickAdd(typed) },
+            )
+            return
+        }
         EmptyState(
             icon = Icons.Filled.TaskAlt,
             title = if (state.hasFilters) "Nothing matches" else "Nothing open",

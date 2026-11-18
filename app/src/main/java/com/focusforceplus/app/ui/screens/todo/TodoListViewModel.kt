@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.todo
 
+import kotlinx.coroutines.flow.first
+import com.focusforceplus.app.compliance.clampTodoLimits
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.compliance.Guard
@@ -65,7 +67,7 @@ private data class Filters(
 @HiltViewModel
 class TodoListViewModel @Inject constructor(
     repository: TodoRepository,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
     private val engine: TodoReminderEngine,
 ) : ViewModel() {
 
@@ -142,6 +144,26 @@ class TodoListViewModel @Inject constructor(
     }
 
     fun setSearchQuery(query: String) = filters.update { it.copy(query = query) }
+
+    /** From an empty search: the typed text becomes a todo, and the search clears. */
+    fun quickAdd(title: String) {
+        val clean = title.trim().take(200)
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            val priority = settings.defaultPriority.first()
+            val limits = clampTodoLimits(priority, 2, 1)
+            engine.save(
+                TodoEntity(
+                    title = clean,
+                    priority = priority,
+                    maxSnoozeCount = limits.maxSnoozeCount,
+                    maxRescheduleCount = limits.maxRescheduleCount,
+                    createdAt = System.currentTimeMillis(),
+                )
+            )
+            filters.update { it.copy(query = "") }
+        }
+    }
     fun setFilterPriority(priority: Int?) = filters.update { it.copy(priority = priority) }
     fun setSortOrder(order: SortOrder) = filters.update { it.copy(sort = order) }
 

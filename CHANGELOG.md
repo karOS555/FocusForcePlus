@@ -21,6 +21,9 @@ The last big update before 1.0: a new look, speed bumps, lists, and a blocker th
 - Icons for todos, focus sessions, lists and blocks, shown in their notifications too. Every module has its own status-bar glyph
 - Statistics: screen time per day, today's most used apps, todos done per day
 - Help pages for every module, rewritten for how things work now
+- Long-press the app icon for New todo, Focus and Lists
+- A todo search that finds nothing offers to add what you typed as a todo
+- A notification when a nightly backup could not be saved, so a lost folder does not go unnoticed
 
 ### Changed
 - **A new look:** flat cards, one row style, the Inter typeface and a new logo
@@ -32,6 +35,7 @@ The last big update before 1.0: a new look, speed bumps, lists, and a blocker th
 - Todo reminders run through one engine. Low is one notification, medium comes back a couple of times, high rings again every few minutes, all within set limits
 - Backups include lists, speed bumps, themes and the new settings (backup format 3; older files still import)
 - Deleting anything asks first
+- Focus and sleep mode only switch Do Not Disturb back if it is still what they set, so a change you made by hand stays
 
 ### Fixed
 - **A snooze could be spent twice** when the alarm screen and the notification acted on the same alarm
