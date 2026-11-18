@@ -25,6 +25,9 @@ hilt = "2.60.1"
 # WorkManager
 workmanager = "2.10.1"
 
+# Home-screen widgets
+glance = "1.1.1"
+
 # Coroutines
 coroutines = "1.10.2"
 
@@ -73,6 +76,9 @@ androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navig
 
 # WorkManager
 androidx-workmanager = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workmanager" }
+
+# Home-screen widgets
+androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }

@@ -142,6 +142,10 @@ interface ListDao {
     @Query("SELECT * FROM list_items")
     suspend fun getAllItemsOnce(): List<ListItemEntity>
 
+    /** Every item of every list, for the home-screen widgets. */
+    @Query("SELECT * FROM list_items")
+    fun observeAllItems(): Flow<List<ListItemEntity>>
+
     @Query("SELECT * FROM list_suggestions")
     suspend fun getAllSuggestionsOnce(): List<ListSuggestionEntity>
 

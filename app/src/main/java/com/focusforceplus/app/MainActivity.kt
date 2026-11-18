@@ -199,10 +199,14 @@ class MainActivity : ComponentActivity() {
 
         /** A list, opened from a todo's alarm or a widget. */
         private val LIST_ROUTE = Regex("list/[0-9]+")
+        // Widgets open a todo or a routine's start screen; neither starts or changes anything by itself.
+        private val TODO_EDIT_ROUTE = Regex("todo/edit/[0-9]+")
+        private val ROUTINE_ACTIVE_ROUTE = Regex("routine/active/[0-9]+")
 
         /** Screens below the modules that other parts of the app may open directly. */
         fun isDirectRoute(route: String): Boolean =
             ACTIVE_FOCUS_ROUTE.matches(route) || LIST_ROUTE.matches(route) || route == SettingsRoutes.INTEGRATIONS ||
+                TODO_EDIT_ROUTE.matches(route) || ROUTINE_ACTIVE_ROUTE.matches(route) ||
                 route == SettingsRoutes.AUTO_BACKUP || route == TodoRoutes.CREATE
     }
 

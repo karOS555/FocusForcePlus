@@ -20,4 +20,10 @@
     <string name="shortcut_focus_long">Start a focus session</string>
     <string name="shortcut_lists_short">Lists</string>
     <string name="shortcut_lists_long">Open your lists</string>
+    <string name="widget_today_label">Today</string>
+    <string name="widget_today_description">What is left today: routines and todos by time</string>
+    <string name="widget_focus_label">Quick focus</string>
+    <string name="widget_focus_description">Start a focus session with one tap</string>
+    <string name="widget_list_label">List</string>
+    <string name="widget_list_description">One of your lists, to tick off from here</string>
 </resources>

@@ -46,6 +46,7 @@ class FocusForcePlusApp : Application() {
     @Inject lateinit var focusRecovery: com.focusforceplus.app.service.FocusSessionRecovery
     @Inject lateinit var calendarTodoMirror: com.focusforceplus.app.data.calendar.CalendarTodoMirror
     @Inject lateinit var taskSync: com.focusforceplus.app.data.tasks.TaskSync
+    @Inject lateinit var widgetUpdater: com.focusforceplus.app.widget.WidgetUpdater
     @Inject lateinit var routineSessionStore: com.focusforceplus.app.service.RoutineSessionStore
     @Inject lateinit var activeRoutineRegistry: com.focusforceplus.app.service.ActiveRoutineRegistry
 
@@ -70,6 +71,8 @@ class FocusForcePlusApp : Application() {
         calendarTodoMirror.start(appScope)
         // Todos and a list of a tasks app, kept in step both ways (if set up).
         taskSync.start(appScope)
+        // Home-screen widgets follow the data while the app runs.
+        widgetUpdater.start(this, appScope)
 
         // A focus session whose process was killed without coming back (force stop,
         // a crash) still holds Do Not Disturb. A system restart of the service

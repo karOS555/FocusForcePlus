@@ -113,6 +113,7 @@ fun SettingsScreen(
     var showNavEdit by remember { mutableStateOf(false) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
     var confirmResetUsage by remember { mutableStateOf(false) }
+    var pickingWidget by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -284,6 +285,12 @@ fun SettingsScreen(
                 FormSection(title = "Look") {
                     FfCard {
                         LinkRow(title = "Theme", subtitle = theme.name, onClick = onOpenAppearance)
+                        RowDivider()
+                        LinkRow(
+                            title = "Widgets",
+                            subtitle = "Today, quick focus and a list on your home screen",
+                            onClick = { pickingWidget = true },
+                        )
                     }
                 }
             }
@@ -646,6 +653,33 @@ fun SettingsScreen(
                 pendingImportUri = null
             },
             onDismiss = { pendingImportUri = null },
+        )
+    }
+
+    if (pickingWidget) {
+        val widgetContext = androidx.compose.ui.platform.LocalContext.current
+        com.focusforceplus.app.ui.components.ChoiceDialog(
+            title = "Add a widget",
+            choices = listOf(
+                com.focusforceplus.app.ui.components.Choice(
+                    com.focusforceplus.app.widget.TodayWidgetReceiver::class.java as Class<*>, "Today", "What is left today, by time"),
+                com.focusforceplus.app.ui.components.Choice(
+                    com.focusforceplus.app.widget.FocusWidgetReceiver::class.java as Class<*>, "Quick focus", "Start a session with one tap"),
+                com.focusforceplus.app.ui.components.Choice(
+                    com.focusforceplus.app.widget.ListWidgetReceiver::class.java as Class<*>, "A list", "To tick off from the home screen"),
+            ),
+            selected = null,
+            onSelect = { receiver ->
+                pickingWidget = false
+                if (receiver != null && !com.focusforceplus.app.widget.pinWidget(widgetContext, receiver)) {
+                    android.widget.Toast.makeText(
+                        widgetContext,
+                        "Your home screen does not take widgets from apps. Add it from the home screen's widget list.",
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onDismiss = { pickingWidget = false },
         )
     }
 

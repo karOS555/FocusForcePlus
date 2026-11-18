@@ -86,6 +86,8 @@ class ListRepository @Inject constructor(
         )
     }
 
+    fun observeAllItems(): Flow<List<ListItemEntity>> = listDao.observeAllItems()
+
     /** Open items only, for a todo's alarm or a routine step. */
     fun getOpenItems(listId: Long): Flow<List<ListItemEntity>> = listDao.getOpenItems(listId)
 

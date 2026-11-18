@@ -99,6 +99,9 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.workmanager)
 
+    // Home-screen widgets
+    implementation(libs.androidx.glance.appwidget)
+
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
