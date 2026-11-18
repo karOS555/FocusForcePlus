@@ -183,6 +183,7 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE routines ADD COLUMN preAlarmMinutes INTEGER NOT NULL DEFAULT 15")
                 db.execSQL("ALTER TABLE routines ADD COLUMN enableDnd INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE routines ADD COLUMN blockedGroupsCsv TEXT")
+                db.execSQL("ALTER TABLE todos ADD COLUMN calendarEventId INTEGER")
             }
         }
 

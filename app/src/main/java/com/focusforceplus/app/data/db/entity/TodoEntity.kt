@@ -44,6 +44,8 @@ data class TodoEntity(
     val lastAlarmAt: Long? = null,
     /** A list from the Lists module that belongs to this todo ("Go shopping"). */
     val listId: Long? = null,
+    /** Its event in the calendar the user picked; -1 = removed there, leave it out. */
+    val calendarEventId: Long? = null,
 ) {
     val isInTrash: Boolean get() = deletedAt != null
 

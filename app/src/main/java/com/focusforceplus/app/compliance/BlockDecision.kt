@@ -25,6 +25,8 @@ enum class BlockReason {
     SLEEP_ACTIVE,
     /** The app's group is set to block its apps at all times. */
     GROUP_ALWAYS,
+    /** A busy calendar event is on and the app's group blocks during events. */
+    CALENDAR_EVENT,
 }
 
 /** Maximum temporary exceptions per app per day ("5 more minutes"). */
@@ -153,6 +155,7 @@ private fun isDayWindowActive(
  * @param groupWindowActive  that group's blocking schedule is running right now
  * @param sleepBlocking      the sleep window is running and covers the app's group
  * @param groupAlwaysBlocks  that group is set to block at all times
+ * @param eventBlocking      a busy calendar event is on and covers the app's group
  * @return the reason to block, or null if the app is allowed
  */
 fun evaluateBlock(
@@ -166,6 +169,7 @@ fun evaluateBlock(
     groupWindowActive: Boolean = false,
     sleepBlocking: Boolean = false,
     groupAlwaysBlocks: Boolean = false,
+    eventBlocking: Boolean = false,
 ): BlockReason? {
     if (app.packageName in NEVER_BLOCK_PACKAGES) return null
     if (!app.isBlocked) return null
@@ -175,6 +179,7 @@ fun evaluateBlock(
     if (routineBlocking && app.blockDuringRoutines) return BlockReason.ROUTINE_ACTIVE
     if (focusBlocking && app.blockDuringFocus) return BlockReason.FOCUS_ACTIVE
     if (sleepBlocking) return BlockReason.SLEEP_ACTIVE
+    if (eventBlocking) return BlockReason.CALENDAR_EVENT
 
     if (groupLimitReached) return BlockReason.GROUP_LIMIT
     if (groupWindowActive) return BlockReason.GROUP_WINDOW

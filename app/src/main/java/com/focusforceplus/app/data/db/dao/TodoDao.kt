@@ -53,6 +53,16 @@ interface TodoDao {
     @Query("SELECT * FROM todos WHERE id = :id")
     suspend fun getById(id: Long): TodoEntity?
 
+    /** Todos that have, or should have, an event in the calendar. */
+    @Query(
+        "SELECT * FROM todos WHERE calendarEventId IS NOT NULL OR " +
+            "(dueDateTime IS NOT NULL AND isCompleted = 0 AND deletedAt IS NULL)"
+    )
+    fun observeCalendarCandidates(): Flow<List<TodoEntity>>
+
+    @Query("UPDATE todos SET calendarEventId = :eventId WHERE id = :id")
+    suspend fun setCalendarEventId(id: Long, eventId: Long?)
+
     @Query("SELECT * FROM todos WHERE id = :id")
     fun observeById(id: Long): Flow<TodoEntity?>
 

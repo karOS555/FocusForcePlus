@@ -589,6 +589,9 @@ class BackupManager @Inject constructor(
         put("trashRetentionDays", settingsRepository.trashRetentionDays.first())
         settingsRepository.themeJson.first()?.let { put("theme", it) }
         settingsRepository.savedThemesJson.first()?.let { put("savedThemes", it) }
+        // Calendar ids are local to this phone; which groups block during events is not.
+        put("calendarOnHome", settingsRepository.calendarOnHome.first())
+        put("calendarBlockGroups", JSONArray(settingsRepository.calendarBlockGroups.first().toList()))
         put("externalStarts", settingsRepository.externalStartsAllowed.first())
         put("shortsBlockInstagram", settingsRepository.shortsBlockInstagram.first())
         put("shortsBlockYouTube", settingsRepository.shortsBlockYouTube.first())
@@ -661,6 +664,12 @@ class BackupManager @Inject constructor(
         if (o.has("trashRetentionDays")) settingsRepository.saveTrashRetentionDays(o.getInt("trashRetentionDays"))
         if (o.has("theme")) {
             ThemeSpec.fromJson(o.optString("theme"))?.let { settingsRepository.saveThemeJson(it.toJson()) }
+        }
+        if (o.has("calendarOnHome")) settingsRepository.saveCalendarOnHome(o.optBoolean("calendarOnHome", true))
+        o.optJSONArray("calendarBlockGroups")?.let { arr ->
+            settingsRepository.saveCalendarBlockGroups(
+                (0 until arr.length()).map { arr.optString(it).trim().take(60) }.filter { it.isNotEmpty() }.toSet()
+            )
         }
         if (o.has("savedThemes")) {
             val themes = ThemeSpec.listFromJson(o.optString("savedThemes")).take(ThemeSpec.MAX_SAVED)

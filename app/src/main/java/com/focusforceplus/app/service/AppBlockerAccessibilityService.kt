@@ -68,9 +68,16 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         val blockDuringRoutines: Boolean = true,
         val blockDuringFocus: Boolean = true,
         val sleep: SleepSchedule = SleepSchedule(),
+        /** Groups that block while a busy calendar event is on. */
+        val calendarGroups: Set<String> = emptySet(),
+        val calendarIds: Set<Long>? = null,
     )
 
     @Volatile private var snapshot = BlockerSnapshot()
+
+    /** The busy calendar event going on now; refreshed in the background, never on the event thread. */
+    @Volatile private var busyEvent: com.focusforceplus.app.data.calendar.CalendarEvent? = null
+    @Inject lateinit var calendarRepository: com.focusforceplus.app.data.calendar.CalendarRepository
     @Volatile private var launcherPackage: String? = null
     /** The device's actual clock app — must never be blocked (wake-up alarms). */
     @Volatile private var clockPackage: String? = null
@@ -98,7 +105,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 settingsRepository.blockerEnabled,
                 settingsRepository.blockDuringRoutines,
                 settingsRepository.blockDuringFocus,
-            ) { (apps, groups, sleep), enabled, duringRoutines, duringFocus ->
+                combine(settingsRepository.calendarBlockGroups, settingsRepository.calendarIds, ::Pair),
+            ) { (apps, groups, sleep), enabled, duringRoutines, duringFocus, (calendarGroups, calendarIds) ->
                 BlockerSnapshot(
                     rulesByPackage = apps
                         .filter { it.isBlocked }
@@ -112,10 +120,31 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     blockDuringRoutines = duringRoutines,
                     blockDuringFocus = duringFocus,
                     sleep = sleep,
+                    calendarGroups = calendarGroups,
+                    calendarIds = calendarIds,
                 )
             }.collect { fresh ->
+                val calendarNewlyOn = snapshot.calendarGroups.isEmpty() && fresh.calendarGroups.isNotEmpty()
                 snapshot = fresh
                 updateEventScope(fresh.rulesByPackage.keys)
+                if (calendarNewlyOn) {
+                    busyEvent = runCatching { calendarRepository.busyNow(fresh.calendarIds) }.getOrNull()
+                }
+            }
+        }
+        watchCalendar()
+    }
+
+    /** Keeps [busyEvent] current while any group blocks during events. */
+    private fun watchCalendar() {
+        serviceScope.launch {
+            kotlinx.coroutines.flow.merge(
+                calendarRepository.changes(),
+                kotlinx.coroutines.flow.flow { while (true) { emit(Unit); kotlinx.coroutines.delay(60_000L) } },
+            ).collect {
+                val snap = snapshot
+                busyEvent = if (snap.calendarGroups.isEmpty()) null
+                            else runCatching { calendarRepository.busyNow(snap.calendarIds) }.getOrNull()
             }
         }
     }
@@ -197,6 +226,12 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     snap.sleep.activeDaysCsv, minutesOfDay(), todayCode(),
                 )
 
+            // A busy calendar event; checked against its end, so a finished one
+            // stops blocking at once even before the next refresh.
+            val event = busyEvent
+            val eventApplies = event != null && event.end > now &&
+                ruleGroupName != null && ruleGroupName in snap.calendarGroups
+
             val reason = evaluateBlock(
                 app = effectiveRule,
                 nowMillis = now,
@@ -208,6 +243,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 groupWindowActive = groupWindowActive,
                 sleepBlocking = sleepApplies,
                 groupAlwaysBlocks = group?.alwaysBlock == true,
+                eventBlocking = eventApplies,
             ) ?: return@launch
 
             val lastShown = synchronized(lastBlockShownAt) { lastBlockShownAt[pkg] ?: 0L }

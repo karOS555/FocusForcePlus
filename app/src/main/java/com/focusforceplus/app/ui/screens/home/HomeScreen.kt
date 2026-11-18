@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.home
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -115,6 +117,7 @@ fun HomeScreen(
     }
 
     val activeFocus = s.activeFocusSession
+    val calendarToday by viewModel.calendarToday.collectAsState()
     val runningRoutine = s.todayRoutines.firstOrNull { it.status == RoutineTodayStatus.RUNNING }
 
     Scaffold(
@@ -263,6 +266,13 @@ fun HomeScreen(
                             }
                         }
                     }
+                }
+            }
+
+            // ── Calendar: what is still ahead today ───────────────────────────
+            if (calendarToday.isNotEmpty()) {
+                item(key = "calendar") {
+                    CalendarTodayCard(calendarToday)
                 }
             }
 
@@ -474,3 +484,57 @@ private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_
 
 private fun todayLine(): String =
     LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.ENGLISH))
+
+/** Today's events that are still ahead; a tap opens the event in the calendar app. */
+@Composable
+private fun CalendarTodayCard(events: List<com.focusforceplus.app.data.calendar.CalendarEvent>) {
+    val colors = FfTheme.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    fun open(eventId: Long?, begin: Long = 0L, end: Long = 0L) {
+        val intent = if (eventId == null) {
+            android.content.Intent(android.content.Intent.ACTION_VIEW).setData(
+                android.provider.CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
+                    .appendPath(System.currentTimeMillis().toString()).build()
+            )
+        } else {
+            android.content.Intent(
+                android.content.Intent.ACTION_VIEW,
+                android.content.ContentUris.withAppendedId(android.provider.CalendarContract.Events.CONTENT_URI, eventId),
+            ).putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+                .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, end)
+        }
+        runCatching { context.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+    Column {
+        SectionHeader("Today in your calendar", actionLabel = "Open", onAction = { open(null) })
+        FfCard {
+            events.take(4).forEachIndexed { index, event ->
+                if (index > 0) RowDivider()
+                val time = if (event.allDay) "All day" else
+                    com.focusforceplus.app.util.TimeFormat.clock(event.begin) + " to " +
+                        com.focusforceplus.app.util.TimeFormat.clock(event.end)
+                ListRow(
+                    title = event.title,
+                    subtitle = listOfNotNull(time, event.location).joinToString(" · "),
+                    onClick = { open(event.eventId, event.begin, event.end) },
+                    leading = {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier
+                                .padding(horizontal = 14.dp)
+                                .size(12.dp)
+                                .background(androidx.compose.ui.graphics.Color(event.color), androidx.compose.foundation.shape.CircleShape),
+                        )
+                    },
+                )
+            }
+            if (events.size > 4) {
+                RowDivider()
+                ListRow(
+                    title = "${events.size - 4} more today",
+                    titleColor = colors.accent,
+                    onClick = { open(null) },
+                )
+            }
+        }
+    }
+}

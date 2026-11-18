@@ -1,5 +1,10 @@
 package com.focusforceplus.app.ui.screens.blocker
 
+import androidx.compose.material.icons.filled.CalendarMonth
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +49,7 @@ object DisclosureType {
     const val ACCESSIBILITY = "accessibility"
     const val USAGE_ACCESS = "usage"
     const val SHORT_FORM = "shorts"
+    const val CALENDAR = "calendar"
 }
 
 private data class Disclosure(
@@ -58,6 +64,21 @@ private data class Disclosure(
 )
 
 private fun disclosureFor(type: String): Disclosure = when (type) {
+    DisclosureType.CALENDAR -> Disclosure(
+        title = "Calendar",
+        heading = "Your calendar",
+        icon = Icons.Filled.CalendarMonth,
+        does = "It lets an app read the events in the calendars on this phone and add events to them.",
+        usedFor = "Showing today's events on Home, putting todos with a date into the calendar you " +
+            "pick, and blocking the groups you choose while an event is on. Only what you switch on " +
+            "in Settings > Calendar.",
+        doesNot = "Nothing from your calendar leaves the phone through FocusForce+: the app has no " +
+            "internet access. It never changes or deletes events it did not make itself. Todos you put " +
+            "into a calendar that syncs with an account are synced there by that account, like any event.",
+        turnOff = "Any time, in Android Settings > Apps > FocusForce+ > Permissions > Calendar. Home " +
+            "stops showing events and blocking during events stops; everything else keeps working.",
+        restricted = false,
+    )
     DisclosureType.USAGE_ACCESS -> Disclosure(
         title = "Usage access",
         heading = "Usage access",
@@ -120,12 +141,21 @@ fun DisclosureScreen(
     val content = disclosureFor(type)
 
     fun isGranted(): Boolean = when (type) {
+        DisclosureType.CALENDAR -> CALENDAR_PERMISSIONS.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
         DisclosureType.USAGE_ACCESS -> PermissionHelper.hasUsageStatsPermission(context)
         DisclosureType.SHORT_FORM -> PermissionHelper.isShortFormServiceEnabled(context)
         else -> PermissionHelper.isAccessibilityServiceEnabled(context)
     }
 
     var granted by remember { mutableStateOf(isGranted()) }
+    // Android stops showing its dialog after two refusals; then only the app info helps.
+    var refused by remember { mutableStateOf(false) }
+    val askCalendar = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        granted = isGranted()
+        refused = !granted && result.isNotEmpty()
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -180,11 +210,25 @@ fun DisclosureScreen(
                 }
                 PrimaryButton(text = "Done", onClick = onNavigateBack, modifier = Modifier.fillMaxWidth())
             } else {
+                if (refused) {
+                    FfPaddedCard(spacing = 6.dp) {
+                        Text(
+                            "Android did not ask, or the answer was no. You can allow it in the app info, " +
+                                "under Permissions > Calendar.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textMuted,
+                        )
+                        TextAction("Open app info", onClick = { PermissionHelper.openAppDetailsSettings(context) })
+                    }
+                }
                 PrimaryButton(
-                    text = "Got it, open Android settings",
+                    text = if (type == DisclosureType.CALENDAR) "Got it, allow access" else "Got it, open Android settings",
                     onClick = {
-                        if (type == DisclosureType.USAGE_ACCESS) PermissionHelper.openUsageAccessSettings(context)
-                        else PermissionHelper.openAccessibilitySettings(context)
+                        when (type) {
+                            DisclosureType.CALENDAR -> askCalendar.launch(CALENDAR_PERMISSIONS)
+                            DisclosureType.USAGE_ACCESS -> PermissionHelper.openUsageAccessSettings(context)
+                            else -> PermissionHelper.openAccessibilitySettings(context)
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -194,6 +238,11 @@ fun DisclosureScreen(
         }
     }
 }
+
+private val CALENDAR_PERMISSIONS = arrayOf(
+    android.Manifest.permission.READ_CALENDAR,
+    android.Manifest.permission.WRITE_CALENDAR,
+)
 
 @Composable
 private fun Section(title: String, body: String) {

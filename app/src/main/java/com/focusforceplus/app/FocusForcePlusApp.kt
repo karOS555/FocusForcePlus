@@ -44,6 +44,7 @@ class FocusForcePlusApp : Application() {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var sleepRepository: SleepRepository
     @Inject lateinit var focusRecovery: com.focusforceplus.app.service.FocusSessionRecovery
+    @Inject lateinit var calendarTodoMirror: com.focusforceplus.app.data.calendar.CalendarTodoMirror
     @Inject lateinit var routineSessionStore: com.focusforceplus.app.service.RoutineSessionStore
     @Inject lateinit var activeRoutineRegistry: com.focusforceplus.app.service.ActiveRoutineRegistry
 
@@ -63,6 +64,9 @@ class FocusForcePlusApp : Application() {
         // with what is stored. Phones that kill the app overnight would otherwise
         // leave a todo without its next reminder until someone opened the app.
         appScope.launch { alarmRearmer.rearmAll() }
+
+        // Todos with a date, mirrored into the calendar the user picked (if any).
+        calendarTodoMirror.start(appScope)
 
         // A focus session whose process was killed without coming back (force stop,
         // a crash) still holds Do Not Disturb. A system restart of the service

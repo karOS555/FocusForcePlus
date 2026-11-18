@@ -26,6 +26,8 @@ data class BlockedAppUiState(
     val appName: String = "",
     val packageName: String = "",
     val reason: BlockReason = BlockReason.MANUAL,
+    /** The calendar event that blocks, for CALENDAR_EVENT. */
+    val eventTitle: String? = null,
     val dailyLimitMinutes: Int? = null,
     val usedTodayMinutes: Int = 0,
     /** Minutes until the daily limit resets (midnight) — shown for DAILY_LIMIT. */
@@ -48,6 +50,7 @@ class BlockedAppViewModel @Inject constructor(
     private val repository: BlockerRepository,
     private val sleepRepository: SleepRepository,
     private val settingsRepository: com.focusforceplus.app.data.repository.SettingsRepository,
+    private val calendarRepository: com.focusforceplus.app.data.calendar.CalendarRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -83,7 +86,12 @@ class BlockedAppViewModel @Inject constructor(
                 BlockReason.SLEEP_ACTIVE -> sleepRepository.schedule.first().wakeMinutes
                 else -> null
             }
-            val untilWindowEnd = if (windowEnd != null) {
+            val event = if (reason == BlockReason.CALENDAR_EVENT) {
+                runCatching { calendarRepository.busyNow(settingsRepository.calendarIds.first()) }.getOrNull()
+            } else null
+            val untilWindowEnd = if (event != null) {
+                ((event.end - System.currentTimeMillis()) / 60_000L).toInt().coerceAtLeast(1)
+            } else if (windowEnd != null) {
                 // Wrap-around aware: overnight windows end on the next day.
                 ((windowEnd - minutesOfDay) + 24 * 60) % (24 * 60)
             } else null
@@ -97,6 +105,7 @@ class BlockedAppViewModel @Inject constructor(
                     usedTodayMinutes = rule?.usedTodayMinutes ?: 0,
                     minutesUntilMidnight = untilMidnight,
                     minutesUntilWindowEnd = untilWindowEnd,
+                    eventTitle = event?.title,
                     canUseException = rule != null &&
                         canGrantException(rule, reason, minutesOfDay, sessionInvincible, groupLocked),
                     exceptionsLeft = rule?.let {

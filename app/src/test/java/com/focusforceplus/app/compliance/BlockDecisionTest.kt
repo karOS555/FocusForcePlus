@@ -336,6 +336,37 @@ class BlockDecisionTest {
         assertFalse(isSleepWindowActive(23 * 60, 7 * 60, days, 23 * 60 + 30, "SA"))
     }
 
+    // ── Calendar events ───────────────────────────────────────────────────────
+
+    @Test
+    fun `a busy event blocks members of the picked groups`() {
+        val member = app()
+        assertEquals(
+            BlockReason.CALENDAR_EVENT,
+            evaluateBlock(member, now, 60, false, false, inGroup = true, eventBlocking = true),
+        )
+        // Without the event, a member with no limit or schedule of its own is free.
+        assertNull(evaluateBlock(member, now, 60, false, false, inGroup = true, eventBlocking = false))
+    }
+
+    @Test
+    fun `sessions and sleep name themselves before an event`() {
+        val member = app()
+        assertEquals(
+            BlockReason.SLEEP_ACTIVE,
+            evaluateBlock(member, now, 60, false, false, inGroup = true, sleepBlocking = true, eventBlocking = true),
+        )
+        assertEquals(
+            BlockReason.FOCUS_ACTIVE,
+            evaluateBlock(member, now, 60, false, true, inGroup = true, eventBlocking = true),
+        )
+    }
+
+    @Test
+    fun `an event block keeps the five minute exception`() {
+        assertTrue(canGrantException(app(), BlockReason.CALENDAR_EVENT, 60, sessionIsInvincible = false))
+    }
+
     @Test
     fun `invincible sleep block denies the exception`() {
         val member = app()

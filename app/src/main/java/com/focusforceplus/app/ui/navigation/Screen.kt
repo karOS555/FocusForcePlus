@@ -10,6 +10,7 @@ object SettingsRoutes {
     const val INTEGRATIONS = "settings/integrations"
     const val AUTO_BACKUP = "settings/backup"
     const val APPEARANCE = "settings/appearance"
+    const val CALENDAR = "settings/calendar"
 }
 
 object OnboardingRoutes {

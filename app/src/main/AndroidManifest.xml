@@ -47,6 +47,12 @@
          actual grant still happens there, by the user. -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
+    <!-- Calendar (optional, asked after an in-app disclosure): today's events on Home,
+         dated todos into a calendar the user picks, blocking during events. Read and
+         written on the device only; the app has no internet access. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
     <!-- App blocker: measure per-app usage for daily limits. Special-access permission,
          granted by the user in system settings after an in-app prominent disclosure. -->
     <uses-permission

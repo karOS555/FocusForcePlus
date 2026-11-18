@@ -28,6 +28,10 @@ class TodoRepository @Inject constructor(
     /** Open todos that remind about a list. */
     fun getOpenForList(listId: Long): Flow<List<TodoEntity>> = todoDao.getOpenForList(listId)
 
+    fun observeCalendarCandidates(): Flow<List<TodoEntity>> = todoDao.observeCalendarCandidates()
+
+    suspend fun setCalendarEventId(id: Long, eventId: Long?) = todoDao.setCalendarEventId(id, eventId)
+
     fun getTrashedTodos(): Flow<List<TodoEntity>> = todoDao.getTrashed()
 
     fun observeTodo(id: Long): Flow<TodoEntity?> = todoDao.observeById(id)

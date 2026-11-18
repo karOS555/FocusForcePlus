@@ -220,6 +220,12 @@ private fun reasonText(state: BlockedAppUiState): String = when (state.reason) {
             "Sleep mode is on - you planned to be asleep."
         }
     }
+    BlockReason.CALENDAR_EVENT -> {
+        val what = state.eventTitle?.let { "\"$it\" is on" } ?: "A calendar event is on"
+        val left = state.minutesUntilWindowEnd
+        if (left != null) "$what.\nThis app is blocked during it, for ${formatDuration(left)} more."
+        else "$what.\nThis app is blocked during it."
+    }
     BlockReason.MANUAL -> "You chose to block this app.\nYou can change the rule in FocusForce+ at any time."
     BlockReason.GROUP_ALWAYS -> {
         val group = state.groupName ?: "One of your blocks"

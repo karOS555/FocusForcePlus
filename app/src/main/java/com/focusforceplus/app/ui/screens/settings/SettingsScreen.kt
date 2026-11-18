@@ -95,6 +95,7 @@ fun SettingsScreen(
     onOpenIntegrations: () -> Unit = {},
     onOpenAutoBackup: () -> Unit = {},
     onOpenAppearance: () -> Unit = {},
+    onOpenCalendar: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     navViewModel: NavViewModel = hiltViewModel(),
 ) {
@@ -439,6 +440,12 @@ fun SettingsScreen(
                             title = "Import a backup",
                             subtitle = "Replaces everything that is in the app now",
                             onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Calendar",
+                            subtitle = "Today's events on Home, todos in a calendar, blocking during events",
+                            onClick = onOpenCalendar,
                         )
                         RowDivider()
                         LinkRow(

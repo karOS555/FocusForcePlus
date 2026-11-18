@@ -90,7 +90,26 @@ class HomeViewModel @Inject constructor(
     focusRepository: com.focusforceplus.app.data.repository.FocusRepository,
     listRepository: com.focusforceplus.app.data.repository.ListRepository,
     navRepository: com.focusforceplus.app.data.repository.NavRepository,
+    private val calendarRepository: com.focusforceplus.app.data.calendar.CalendarRepository,
 ) : ViewModel() {
+
+    /** Events still ahead today, without the todos FocusForce+ put into the calendar itself. */
+    val calendarToday: StateFlow<List<com.focusforceplus.app.data.calendar.CalendarEvent>> = combine(
+        settingsRepository.calendarOnHome,
+        settingsRepository.calendarIds,
+        todoRepository.observeCalendarCandidates(),
+        calendarRepository.changes(),
+        kotlinx.coroutines.flow.flow { while (true) { emit(Unit); kotlinx.coroutines.delay(60_000L) } },
+    ) { onHome, ids, todos, _, _ ->
+        if (!onHome || !calendarRepository.canRead()) return@combine emptyList()
+        val own = todos.mapNotNull { it.calendarEventId }.toSet()
+        val now = System.currentTimeMillis()
+        val endOfDay = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1)
+        }.timeInMillis
+        calendarRepository.events(now, endOfDay, ids).filter { it.eventId !in own }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _usage = MutableStateFlow(UsageStats())
     private val _message = MutableStateFlow<String?>(null)

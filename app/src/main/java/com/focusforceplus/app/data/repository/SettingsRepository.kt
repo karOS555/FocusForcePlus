@@ -37,6 +37,10 @@ class SettingsRepository @Inject constructor(
         private val EXTERNAL_STARTS_KEY            = booleanPreferencesKey("external_starts")
         private val THEME_KEY                      = stringPreferencesKey("theme")
         private val SAVED_THEMES_KEY               = stringPreferencesKey("saved_themes")
+        private val CALENDAR_HOME_KEY              = booleanPreferencesKey("calendar_on_home")
+        private val CALENDAR_IDS_KEY               = stringPreferencesKey("calendar_ids")
+        private val CALENDAR_TODO_TARGET_KEY       = longPreferencesKey("calendar_todo_target")
+        private val CALENDAR_BLOCK_GROUPS_KEY      = stringPreferencesKey("calendar_block_groups")
         private val SHORTS_YOUTUBE_KEY             = booleanPreferencesKey("shorts_block_youtube")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
         private val BLOCK_DURING_FOCUS_KEY         = booleanPreferencesKey("blocker_during_focus")
@@ -153,6 +157,51 @@ class SettingsRepository @Inject constructor(
 
     suspend fun saveThemeJson(json: String?) {
         dataStore.edit { prefs -> if (json == null) prefs.remove(THEME_KEY) else prefs[THEME_KEY] = json }
+    }
+
+    // ── Calendar ──────────────────────────────────────────────────────────────
+
+    /** Today's events on Home (only with calendar access). */
+    val calendarOnHome: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[CALENDAR_HOME_KEY] ?: true }
+
+    suspend fun saveCalendarOnHome(on: Boolean) {
+        dataStore.edit { it[CALENDAR_HOME_KEY] = on }
+    }
+
+    /** Calendars FocusForce+ looks at; null = every calendar that is switched on. */
+    val calendarIds: Flow<Set<Long>?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs -> prefs[CALENDAR_IDS_KEY]?.split(',')?.mapNotNull { it.trim().toLongOrNull() }?.toSet() }
+
+    suspend fun saveCalendarIds(ids: Set<Long>?) {
+        dataStore.edit { prefs ->
+            if (ids == null) prefs.remove(CALENDAR_IDS_KEY) else prefs[CALENDAR_IDS_KEY] = ids.joinToString(",")
+        }
+    }
+
+    /** The calendar todos with a date go into; null = none. */
+    val calendarTodoTarget: Flow<Long?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[CALENDAR_TODO_TARGET_KEY] }
+
+    suspend fun saveCalendarTodoTarget(calendarId: Long?) {
+        dataStore.edit { prefs ->
+            if (calendarId == null) prefs.remove(CALENDAR_TODO_TARGET_KEY) else prefs[CALENDAR_TODO_TARGET_KEY] = calendarId
+        }
+    }
+
+    /** Block groups that block while a busy calendar event is on. */
+    val calendarBlockGroups: Flow<Set<String>> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs -> prefs[CALENDAR_BLOCK_GROUPS_KEY]?.split('|')?.filter { it.isNotBlank() }?.toSet().orEmpty() }
+
+    suspend fun saveCalendarBlockGroups(groups: Set<String>) {
+        dataStore.edit { prefs ->
+            if (groups.isEmpty()) prefs.remove(CALENDAR_BLOCK_GROUPS_KEY)
+            else prefs[CALENDAR_BLOCK_GROUPS_KEY] = groups.joinToString("|")
+        }
     }
 
     /** The user's own saved themes, as a JSON list (see ui.theme.ThemeSpec.listToJson). */

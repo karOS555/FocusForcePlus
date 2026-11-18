@@ -31,6 +31,7 @@ Each permission powers one feature and nothing else. You can skip any of them, a
 - **Accessibility service (Reels and Shorts, optional and off by default)**: if you switch Reels or Shorts off, a second, separate service watches only Instagram and YouTube for their short-video player and presses Back when it opens. It is limited to those two apps in its configuration, looks only at the screen ids of the player, reads no text, and stores and sends nothing.
 - **Usage access**: to measure how long you used an app, for daily time limits and the screen-time numbers you see.
 - **Do Not Disturb access**: so a focus session or the night in sleep mode can silence interruptions, and turn that back off when it ends.
+- **Calendar**: optional, asked only from Settings > Calendar, after a screen that explains it. FocusForce+ reads your events to show today's on Home and to block the groups you pick while an event is on, and adds todos with a date to the one calendar you choose. It never changes or deletes events it did not make. If that calendar syncs with an account, the account syncs those events like any other; FocusForce+ itself has no internet access.
 - **Set alarms**: optional, for backup alarms in your phone's own clock app in sleep mode.
 - **Battery (unrestricted)**: optional, so reminders stay reliable on aggressive battery savers.
 
