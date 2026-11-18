@@ -264,15 +264,22 @@ private fun AppContent(
         // tab was ignored as "already there".
         val route = navController.currentDestination?.route
         if (module.route == route) return
-        // Tapping the module you are already in, on one of its inner pages, goes
-        // back to the module's own page. Restoring its saved state would only
-        // bring the inner page back, which looked like the tap did nothing.
-        if (module == AppModule.owning(route) &&
-            navController.popBackStack(module.route, inclusive = false)
-        ) {
-            return
-        }
+        // The module's own page is further down this stack: Home always is, a
+        // tab is while one of its inner pages is open or settings or statistics
+        // were opened over it. Go back to it. Restoring its saved state instead
+        // would only bring the page on top back, which looked like the tap did
+        // nothing.
+        if (navController.popBackStack(module.route, inclusive = false)) return
         if (module in AppModule.topLevel) {
+            // Settings and statistics belong to no tab: leave them rather than
+            // keeping them with the tab they were opened over, or coming back to
+            // that tab would show them again instead of the tab.
+            while (AppModule.owning(navController.currentDestination?.route)
+                    .let { it == AppModule.SETTINGS || it == AppModule.STATS } &&
+                navController.previousBackStackEntry != null
+            ) {
+                if (!navController.popBackStack()) break
+            }
             navController.navigate(module.route) {
                 popUpTo(AppModule.HOME.route) { saveState = true }
                 launchSingleTop = true
