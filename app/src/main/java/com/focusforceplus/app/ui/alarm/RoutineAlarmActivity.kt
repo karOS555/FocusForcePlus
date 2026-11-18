@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.alarm
 
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -294,7 +295,7 @@ private fun RoutineAlarmScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(colors.background),
+            .ffBackdrop(),
     ) {
         Column(
             modifier = Modifier

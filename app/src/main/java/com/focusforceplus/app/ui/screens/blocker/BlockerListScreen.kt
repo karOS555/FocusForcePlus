@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.blocker
 
+import com.focusforceplus.app.ui.theme.glossOverlay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -108,11 +109,12 @@ fun BlockerListScreen(
     }
 
     Scaffold(
-        containerColor = colors.background,
+        containerColor = colors.screen,
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNewBlock,
+                modifier = Modifier.glossOverlay(MaterialTheme.shapes.large, colors.isAero),
                 containerColor = colors.primary,
                 contentColor = colors.onPrimary,
                 shape = MaterialTheme.shapes.large,

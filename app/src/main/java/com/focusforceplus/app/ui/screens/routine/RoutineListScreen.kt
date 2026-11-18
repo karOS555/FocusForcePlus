@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.routine
 
+import com.focusforceplus.app.ui.theme.glossOverlay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -80,11 +81,12 @@ fun RoutineListScreen(
     }
 
     Scaffold(
-        containerColor = colors.background,
+        containerColor = colors.screen,
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onCreateRoutine,
+                modifier = Modifier.glossOverlay(MaterialTheme.shapes.large, colors.isAero),
                 containerColor = colors.primary,
                 contentColor = colors.onPrimary,
                 shape = MaterialTheme.shapes.large,

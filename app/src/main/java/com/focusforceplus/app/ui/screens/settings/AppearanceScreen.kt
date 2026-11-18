@@ -1,5 +1,13 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import com.focusforceplus.app.ui.theme.ffBackdrop
+import com.focusforceplus.app.ui.theme.ThemeStyle
+import com.focusforceplus.app.ui.components.SwitchRow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -78,11 +86,41 @@ class AppearanceViewModel @Inject constructor(
 
     val spec: StateFlow<ThemeSpec> = ThemeStore.spec
 
+    /** Themes of your own, in the order they were saved. */
+    val saved: StateFlow<List<ThemeSpec>> = settings.savedThemesJson
+        .map { ThemeSpec.listFromJson(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     /** Applies at once, everywhere, and is kept. */
     fun use(spec: ThemeSpec) {
         ThemeStore.apply(spec)
         viewModelScope.launch {
             settings.saveThemeJson(if (spec == ThemePresets.MIDNIGHT) null else spec.toJson())
+        }
+    }
+
+    /** Keeps the theme in use under [name]; the same name again updates that one. */
+    fun saveAs(name: String) {
+        val clean = name.trim().take(40)
+        if (clean.isEmpty()) return
+        val theme = spec.value.copy(name = clean)
+        val others = saved.value.filterNot { it.name.equals(clean, ignoreCase = true) }
+        store((others + theme).takeLast(ThemeSpec.MAX_SAVED))
+        use(theme)
+    }
+
+    fun rename(theme: ThemeSpec, name: String) {
+        val clean = name.trim().take(40)
+        if (clean.isEmpty()) return
+        store(saved.value.map { if (it == theme) it.copy(name = clean) else it })
+        if (spec.value == theme) use(theme.copy(name = clean))
+    }
+
+    fun delete(theme: ThemeSpec) = store(saved.value - theme)
+
+    private fun store(themes: List<ThemeSpec>) {
+        viewModelScope.launch {
+            settings.saveSavedThemesJson(if (themes.isEmpty()) null else ThemeSpec.listToJson(themes))
         }
     }
 }
@@ -103,7 +141,13 @@ private fun ThemeSpec.with(role: Role, color: Color) = when (role) {
     Role.PRIMARY -> copy(primary = color)
     Role.ACCENT -> copy(accent = color)
     Role.TEXT -> copy(text = color)
-}.let { if (ThemePresets.ALL.any { p -> p.sameColorsAs(it) }) it else it.copy(name = "Custom") }
+}.named(name)
+
+/** A preset's look keeps the preset's name; a changed preset becomes "Custom". */
+private fun ThemeSpec.named(previous: String): ThemeSpec {
+    ThemePresets.ALL.firstOrNull { it.sameColorsAs(this) }?.let { return copy(name = it.name) }
+    return if (ThemePresets.ALL.any { it.name == previous }) copy(name = "Custom") else copy(name = previous)
+}
 
 /** WCAG contrast ratio between two colours. */
 private fun contrast(a: Color, b: Color): Float {
@@ -120,9 +164,13 @@ fun AppearanceScreen(
     viewModel: AppearanceViewModel = hiltViewModel(),
 ) {
     val spec by viewModel.spec.collectAsState()
+    val saved by viewModel.saved.collectAsState()
     val colors = FfTheme.colors
     val context = LocalContext.current
     var editing by remember { mutableStateOf<Role?>(null) }
+    var naming by remember { mutableStateOf(false) }
+    var managing by remember { mutableStateOf<ThemeSpec?>(null) }
+    var renaming by remember { mutableStateOf<ThemeSpec?>(null) }
 
     PageScaffold(title = "Theme", onBack = onNavigateBack) { padding ->
         Column(
@@ -134,17 +182,25 @@ fun AppearanceScreen(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             FormSection(title = "Ready-made") {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    maxItemsInEachRow = 3,
-                ) {
-                    ThemePresets.ALL.forEach { preset ->
+                TileGrid(ThemePresets.ALL) { preset, modifier ->
+                    ThemeTile(
+                        spec = preset,
+                        selected = spec.sameColorsAs(preset),
+                        onClick = { viewModel.use(preset) },
+                        modifier = modifier,
+                    )
+                }
+            }
+
+            if (saved.isNotEmpty()) {
+                FormSection(title = "Your themes", hint = "Press and hold one to rename or delete it.") {
+                    TileGrid(saved) { theme, modifier ->
                         ThemeTile(
-                            spec = preset,
-                            selected = spec.sameColorsAs(preset),
-                            onClick = { viewModel.use(preset) },
-                            modifier = Modifier.weight(1f),
+                            spec = theme,
+                            selected = spec == theme,
+                            onClick = { viewModel.use(theme) },
+                            onLongClick = { managing = theme },
+                            modifier = modifier,
                         )
                     }
                 }
@@ -165,7 +221,21 @@ fun AppearanceScreen(
                             trailing = { Swatch(c, size = 30) },
                         )
                     }
+                    RowDivider()
+                    SwitchRow(
+                        title = "Aero style",
+                        subtitle = "Glass cards, glossy buttons and a sky with bubbles behind everything.",
+                        checked = spec.style == ThemeStyle.AERO,
+                        onCheckedChange = { on ->
+                            viewModel.use(spec.copy(style = if (on) ThemeStyle.AERO else ThemeStyle.FLAT).named(spec.name))
+                        },
+                    )
                 }
+                TextAction(
+                    "Save as one of your themes",
+                    onClick = { naming = true },
+                    modifier = Modifier.padding(top = 4.dp),
+                )
                 val ratio = contrast(spec.text, spec.background)
                 if (ratio < 4.5f) {
                     Text(
@@ -217,6 +287,46 @@ fun AppearanceScreen(
         }
     }
 
+    if (naming) {
+        val suggested = spec.name.takeUnless { n -> n == "Custom" || ThemePresets.ALL.any { it.name == n } }.orEmpty()
+        NameThemeDialog(
+            title = "Save as one of your themes",
+            initial = suggested,
+            hint = if (saved.size >= ThemeSpec.MAX_SAVED) "You have ${ThemeSpec.MAX_SAVED}; the oldest one makes room." else
+                "The same name again updates that theme.",
+            onSave = { name -> viewModel.saveAs(name); naming = false },
+            onDismiss = { naming = false },
+        )
+    }
+    managing?.let { theme ->
+        AlertDialog(
+            onDismissRequest = { managing = null },
+            containerColor = colors.surfaceVariant,
+            title = { Text(theme.name, style = MaterialTheme.typography.titleLarge, color = colors.text) },
+            text = {
+                Column {
+                    ListRow(title = "Use it", onClick = { viewModel.use(theme); managing = null })
+                    ListRow(title = "Rename", onClick = { renaming = theme; managing = null })
+                    ListRow(title = "Delete", titleColor = colors.error, onClick = { viewModel.delete(theme); managing = null })
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { managing = null }) {
+                    Text("Close", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+                }
+            },
+        )
+    }
+    renaming?.let { theme ->
+        NameThemeDialog(
+            title = "Rename theme",
+            initial = theme.name,
+            hint = null,
+            onSave = { name -> viewModel.rename(theme, name); renaming = null },
+            onDismiss = { renaming = null },
+        )
+    }
+
     editing?.let { role ->
         ColorPickerDialog(
             title = role.label,
@@ -230,8 +340,61 @@ fun AppearanceScreen(
     }
 }
 
+/** Tiles three to a row; a short last row keeps the same tile width. */
 @Composable
-private fun ThemeTile(spec: ThemeSpec, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun <T> TileGrid(items: List<T>, tile: @Composable (T, Modifier) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { tile(it, Modifier.weight(1f)) }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NameThemeDialog(
+    title: String,
+    initial: String,
+    hint: String?,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = FfTheme.colors
+    var name by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surfaceVariant,
+        title = { Text(title, style = MaterialTheme.typography.titleLarge, color = colors.text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FfTextField(value = name, onValueChange = { name = it.take(40) }, label = "Name")
+                hint?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) {
+                Text("Save", style = MaterialTheme.typography.labelLarge, color = colors.accent)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ThemeTile(
+    spec: ThemeSpec,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+) {
     val colors = FfTheme.colors
     Column(
         modifier = modifier
@@ -241,13 +404,21 @@ private fun ThemeTile(spec: ThemeSpec, selected: Boolean, onClick: () -> Unit, m
                 color = if (selected) colors.accent else colors.divider,
                 shape = RoundedCornerShape(14.dp),
             )
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics { contentDescription = spec.name + if (selected) ", in use" else "" },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(spec.background)
+                .then(
+                    if (spec.style == ThemeStyle.AERO) {
+                        Modifier.background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(spec.primary, spec.background, Color(0xFF98DE58)),
+                            )
+                        )
+                    } else Modifier.background(spec.background)
+                )
                 .padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -279,7 +450,7 @@ private fun PreviewCard() {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(colors.background)
+            .ffBackdrop()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

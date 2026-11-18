@@ -23,6 +23,8 @@ data class ThemeSpec(
     /** Links and active icons. */
     val accent: Color,
     val text: Color,
+    /** FLAT, or AERO: glass cards, glossy buttons and a drawn sky behind everything. */
+    val style: ThemeStyle = ThemeStyle.FLAT,
 ) {
     val isDark: Boolean get() = background.luminance() < 0.4f
 
@@ -50,11 +52,13 @@ data class ThemeSpec(
             error = if (dark) Color(0xFFF87171) else Color(0xFFDC2626),
             warning = if (dark) Color(0xFFFBBF24) else Color(0xFFB45309),
             success = if (dark) Color(0xFF34D399) else Color(0xFF059669),
+            style = style,
         )
     }
 
+    /** Same look: the five colours and the style, whatever the name. */
     fun sameColorsAs(other: ThemeSpec) = background == other.background && surface == other.surface &&
-        primary == other.primary && accent == other.accent && text == other.text
+        primary == other.primary && accent == other.accent && text == other.text && style == other.style
 
     fun toJson(): String = JSONObject().apply {
         put("name", name)
@@ -63,9 +67,13 @@ data class ThemeSpec(
         put("primary", hex(primary))
         put("accent", hex(accent))
         put("text", hex(text))
+        put("style", style.name.lowercase())
     }.toString(2)
 
     companion object {
+        /** How many themes of your own the app keeps. */
+        const val MAX_SAVED = 24
+
         fun hex(color: Color): String = "#%06X".format(color.toArgb() and 0xFFFFFF)
 
         fun parseColor(text: String?): Color? {
@@ -84,8 +92,18 @@ data class ThemeSpec(
                 primary = parseColor(o.getString("primary"))!!,
                 accent = parseColor(o.getString("accent"))!!,
                 text = parseColor(o.getString("text"))!!,
+                style = if (o.optString("style") == "aero") ThemeStyle.AERO else ThemeStyle.FLAT,
             )
         }.getOrNull()
+
+        /** A list of saved themes, as kept in the settings and in a backup. */
+        fun listFromJson(json: String?): List<ThemeSpec> = runCatching {
+            val array = org.json.JSONArray(json ?: return emptyList())
+            (0 until array.length()).mapNotNull { fromJson(array.getJSONObject(it).toString()) }
+        }.getOrDefault(emptyList())
+
+        fun listToJson(themes: List<ThemeSpec>): String =
+            org.json.JSONArray(themes.map { JSONObject(it.toJson()) }).toString()
     }
 }
 
@@ -96,7 +114,11 @@ object ThemePresets {
     val FOREST = ThemeSpec("Forest", Color(0xFF060A08), Color(0xFF0F1713), Color(0xFF15803D), Color(0xFF4ADE80), Color(0xFFDCEBE1))
     val EMBER = ThemeSpec("Ember", Color(0xFF0B0706), Color(0xFF1A1210), Color(0xFFC2410C), Color(0xFFFB923C), Color(0xFFF1E4DC))
     val PAPER = ThemeSpec("Paper", Color(0xFFF4F5F7), Color(0xFFFFFFFF), Color(0xFF1D4ED8), Color(0xFF1D4ED8), Color(0xFF111827))
-    val AERO = ThemeSpec("Aero", Color(0xFFE6F4FB), Color(0xFFFFFFFF), Color(0xFF0284C7), Color(0xFF0E7490), Color(0xFF0C2A3A))
+    /** Frutiger Aero: glass, gloss, bubbles and green hills under a bright sky. */
+    val AERO = ThemeSpec(
+        "Aero", Color(0xFFE6F4FB), Color(0xFFFFFFFF), Color(0xFF0284C7), Color(0xFF0E6E8C), Color(0xFF0C2A3A),
+        style = ThemeStyle.AERO,
+    )
 
     val ALL = listOf(MIDNIGHT, GRAPHITE, FOREST, EMBER, PAPER, AERO)
 }

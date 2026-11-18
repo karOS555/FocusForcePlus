@@ -180,7 +180,7 @@ fun FormScaffold(
     val scope = rememberCoroutineScope()
     Scaffold(
         modifier = modifier,
-        containerColor = colors.background,
+        containerColor = colors.screen,
         snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
         topBar = {
             TopAppBar(
@@ -204,8 +204,8 @@ fun FormScaffold(
                 },
                 actions = actions,
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.background,
-                    scrolledContainerColor = colors.background,
+                    containerColor = colors.screen,
+                    scrolledContainerColor = colors.bar,
                     actionIconContentColor = colors.textMuted,
                 ),
             )
@@ -213,7 +213,7 @@ fun FormScaffold(
         bottomBar = {
             Column(
                 Modifier
-                    .background(colors.background)
+                    .background(colors.bar)
                     .navigationBarsPadding()
                     .imePadding(),
             ) {
@@ -533,7 +533,7 @@ fun PageScaffold(
     val colors = FfTheme.colors
     Scaffold(
         modifier = modifier,
-        containerColor = colors.background,
+        containerColor = colors.screen,
         snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
         topBar = {
             TopAppBar(
@@ -557,8 +557,8 @@ fun PageScaffold(
                 },
                 actions = actions,
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.background,
-                    scrolledContainerColor = colors.background,
+                    containerColor = colors.screen,
+                    scrolledContainerColor = colors.bar,
                     actionIconContentColor = colors.textMuted,
                 ),
             )

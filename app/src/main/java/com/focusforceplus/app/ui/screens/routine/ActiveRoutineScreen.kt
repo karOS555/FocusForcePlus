@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.routine
 
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.InfiniteTransition
 import androidx.compose.animation.core.LinearEasing
@@ -103,7 +104,7 @@ fun ActiveRoutineScreen(
     var movePicker by remember { mutableStateOf(false) }
 
     if (s.isLoading) {
-        Box(Modifier.fillMaxSize().background(colors.background))
+        Box(Modifier.fillMaxSize().ffBackdrop())
         return
     }
     if (s.isCompleted) {
@@ -116,7 +117,7 @@ fun ActiveRoutineScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .ffBackdrop()
             .safeDrawingPadding()
             .padding(horizontal = 24.dp)
             .padding(top = 8.dp, bottom = 16.dp),
@@ -476,7 +477,7 @@ private fun TaskCompleteOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .ffBackdrop()
             .safeDrawingPadding(),
     ) {
         Column(
@@ -601,7 +602,7 @@ fun CompletionScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background),
+            .ffBackdrop(),
     ) {
         Confetti(transition, listOf(colors.accent, colors.success, colors.warning, colors.onContainer))
         Column(

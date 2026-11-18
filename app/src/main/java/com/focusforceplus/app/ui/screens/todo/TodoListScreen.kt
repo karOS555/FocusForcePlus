@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.todo
 
+import com.focusforceplus.app.ui.theme.glossOverlay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -110,12 +111,13 @@ fun TodoListScreen(
     }
 
     Scaffold(
-        containerColor = colors.background,
+        containerColor = colors.screen,
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             if (tab == TodoTab.OPEN) {
                 FloatingActionButton(
                     onClick = onCreateTodo,
+                    modifier = Modifier.glossOverlay(MaterialTheme.shapes.large, colors.isAero),
                     containerColor = colors.primary,
                     contentColor = colors.onPrimary,
                     shape = MaterialTheme.shapes.large,

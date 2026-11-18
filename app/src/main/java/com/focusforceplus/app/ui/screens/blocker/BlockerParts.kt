@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.blocker
 
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -110,7 +111,7 @@ internal fun AppPickerDialog(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.background)
+                .ffBackdrop()
                 .safeDrawingPadding(),
         ) {
             Row(

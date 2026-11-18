@@ -1,5 +1,6 @@
 package com.focusforceplus.app.util
 
+import com.focusforceplus.app.ui.theme.ThemeSpec
 import android.content.Context
 import android.net.Uri
 import com.focusforceplus.app.compliance.Guard
@@ -587,6 +588,7 @@ class BackupManager @Inject constructor(
         put("todoRingSeconds", settingsRepository.todoRingSeconds.first())
         put("trashRetentionDays", settingsRepository.trashRetentionDays.first())
         settingsRepository.themeJson.first()?.let { put("theme", it) }
+        settingsRepository.savedThemesJson.first()?.let { put("savedThemes", it) }
         put("externalStarts", settingsRepository.externalStartsAllowed.first())
         put("shortsBlockInstagram", settingsRepository.shortsBlockInstagram.first())
         put("shortsBlockYouTube", settingsRepository.shortsBlockYouTube.first())
@@ -657,7 +659,13 @@ class BackupManager @Inject constructor(
         o.optJSONObject("nagMedium")?.let { settingsRepository.saveNagPolicy(1, nagFromJson(it)) }
         if (o.has("todoRingSeconds")) settingsRepository.saveTodoRingSeconds(o.getInt("todoRingSeconds"))
         if (o.has("trashRetentionDays")) settingsRepository.saveTrashRetentionDays(o.getInt("trashRetentionDays"))
-        if (o.has("theme")) settingsRepository.saveThemeJson(o.getString("theme"))
+        if (o.has("theme")) {
+            ThemeSpec.fromJson(o.optString("theme"))?.let { settingsRepository.saveThemeJson(it.toJson()) }
+        }
+        if (o.has("savedThemes")) {
+            val themes = ThemeSpec.listFromJson(o.optString("savedThemes")).take(ThemeSpec.MAX_SAVED)
+            settingsRepository.saveSavedThemesJson(if (themes.isEmpty()) null else ThemeSpec.listToJson(themes))
+        }
         if (o.has("externalStarts")) settingsRepository.saveExternalStartsAllowed(o.optBoolean("externalStarts", false))
         if (o.has("shortsBlockInstagram") || o.has("shortsBlockYouTube")) {
             settingsRepository.saveShortsBlock(

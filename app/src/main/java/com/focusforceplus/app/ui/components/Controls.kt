@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.components
 
+import com.focusforceplus.app.ui.theme.glossyFill
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -73,13 +74,16 @@ fun PrimaryButton(
     containerColor: Color = FfTheme.colors.primary,
     contentColor: Color = FfTheme.colors.onPrimary,
 ) {
+    val gloss = FfTheme.colors.isAero && enabled && !loading
     Button(
         onClick = onClick,
-        modifier = modifier.height(FfDimens.buttonHeight),
+        modifier = modifier
+            .height(FfDimens.buttonHeight)
+            .glossyFill(containerColor, FfShapes.button, gloss),
         enabled = enabled && !loading,
         shape = FfShapes.button,
         colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
+            containerColor = if (gloss) Color.Transparent else containerColor,
             contentColor = contentColor,
             disabledContainerColor = FfTheme.colors.surfaceHigh,
             disabledContentColor = FfTheme.colors.textFaint,

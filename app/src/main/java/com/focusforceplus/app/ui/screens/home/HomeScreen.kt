@@ -118,7 +118,7 @@ fun HomeScreen(
     val runningRoutine = s.todayRoutines.firstOrNull { it.status == RoutineTodayStatus.RUNNING }
 
     Scaffold(
-        containerColor = colors.background,
+        containerColor = colors.screen,
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         LazyColumn(

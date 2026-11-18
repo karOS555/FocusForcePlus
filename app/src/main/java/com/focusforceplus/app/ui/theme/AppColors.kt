@@ -20,6 +20,9 @@ import androidx.compose.ui.graphics.luminance
  * and accent apart matters on a dark background, where a blue strong enough to
  * carry white button text is too dark to read as a link.
  */
+/** How surfaces are drawn: flat colour, or Frutiger Aero glass and gloss. */
+enum class ThemeStyle { FLAT, AERO }
+
 @Immutable
 data class AppColors(
     val isDark: Boolean,
@@ -48,7 +51,20 @@ data class AppColors(
     val error: Color,
     val warning: Color,
     val success: Color,
+    /** FLAT, or AERO: glass cards, glossy buttons and a drawn sky (see ffBackdrop). */
+    val style: ThemeStyle = ThemeStyle.FLAT,
 ) {
+    val isAero: Boolean get() = style == ThemeStyle.AERO
+
+    /** What a screen fills itself with: see-through in Aero, so the sky shows. */
+    val screen: Color get() = if (isAero) Color.Transparent else background
+
+    /** A bar over scrolling content (a scrolled top bar, a sticky footer). */
+    val bar: Color get() = if (isAero) surface.copy(alpha = 0.72f) else background
+
+    /** The bottom bar of the app. */
+    val dock: Color get() = if (isAero) surface.copy(alpha = 0.72f) else surface
+
     /** The logo's blue: between the fill and the accent, so it works on any surface. */
     val brand: Color get() = lerp(primary, accent, 0.45f)
 

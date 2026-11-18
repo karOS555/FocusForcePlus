@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.blocker
 
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.os.Bundle
@@ -117,7 +118,7 @@ private fun BlockedAppScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .ffBackdrop()
             .safeDrawingPadding()
             .padding(horizontal = 24.dp, vertical = 16.dp),
     ) {

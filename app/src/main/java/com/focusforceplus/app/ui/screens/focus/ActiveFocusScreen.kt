@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.focus
 
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -61,7 +62,7 @@ fun ActiveFocusScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .ffBackdrop()
             .safeDrawingPadding()
             .padding(horizontal = 24.dp)
             .padding(top = 8.dp, bottom = 16.dp),
@@ -161,7 +162,7 @@ private fun FocusFinished(sessionName: String, completed: Boolean, onDone: () ->
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .ffBackdrop()
             .safeDrawingPadding()
             .padding(horizontal = 24.dp, vertical = 16.dp),
     ) {

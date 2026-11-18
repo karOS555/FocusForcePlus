@@ -106,7 +106,7 @@ fun Dock(
         modifier = modifier
             .fillMaxWidth()
             .height(DOCK_HEIGHT)
-            .background(colors.surface),
+            .background(colors.dock),
     ) {
         val scrolls = itemCount > 5
         val itemWidth: Dp = if (scrolls) maxWidth / VISIBLE_WHEN_SCROLLING else maxWidth / itemCount
@@ -268,7 +268,7 @@ private fun DockEdge(
             modifier = Modifier
                 .width(EDGE_WIDTH)
                 .fillMaxHeight()
-                .background(colors.surface)
+                .background(colors.dock)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
@@ -291,7 +291,7 @@ fun DockFooter(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surface)
+            .background(colors.dock)
             .windowInsetsPadding(WindowInsets.navigationBars)
             .height(20.dp),
         horizontalArrangement = Arrangement.Center,

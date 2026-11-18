@@ -1,5 +1,6 @@
 package com.focusforceplus.app
 
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import android.Manifest
 import android.content.Intent
 import android.os.Build
@@ -312,8 +313,8 @@ private fun AppContent(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = FfTheme.colors.background,
+        modifier = Modifier.fillMaxSize().ffBackdrop(),
+        containerColor = FfTheme.colors.screen,
         topBar = {
             if (showTopBar && !hideChrome) FocusForceTopBar(
                 screenTitle = screenTitle,

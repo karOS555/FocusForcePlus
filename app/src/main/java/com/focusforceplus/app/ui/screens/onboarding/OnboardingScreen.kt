@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.onboarding
 
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import android.Manifest
 import android.os.Build
 import android.widget.Toast
@@ -113,7 +114,7 @@ fun OnboardingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background),
+            .ffBackdrop(),
     ) {
         HorizontalPager(
             state = pagerState,

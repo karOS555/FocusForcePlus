@@ -296,7 +296,7 @@ fun SleepScreen(
             if (changed) {
                 Column(
                     Modifier
-                        .background(colors.background)
+                        .background(colors.bar)
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                 ) {
                     PrimaryButton(text = "Save changes", onClick = viewModel::save, modifier = Modifier.fillMaxWidth())
@@ -307,7 +307,7 @@ fun SleepScreen(
 
     if (topLevel) {
         Scaffold(
-            containerColor = colors.background,
+            containerColor = colors.screen,
             snackbarHost = { SnackbarHost(snackbar) },
             content = body,
         )

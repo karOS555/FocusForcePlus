@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.focus
 
+import com.focusforceplus.app.ui.theme.glossOverlay
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -100,11 +101,12 @@ fun FocusListScreen(
     val active = state.activeSession
 
     Scaffold(
-        containerColor = colors.background,
+        containerColor = colors.screen,
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onCreateSession,
+                modifier = Modifier.glossOverlay(MaterialTheme.shapes.large, colors.isAero),
                 containerColor = colors.primary,
                 contentColor = colors.onPrimary,
                 shape = MaterialTheme.shapes.large,

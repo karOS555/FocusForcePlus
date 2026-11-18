@@ -36,6 +36,7 @@ class SettingsRepository @Inject constructor(
         private val SHORTS_INSTAGRAM_KEY           = booleanPreferencesKey("shorts_block_instagram")
         private val EXTERNAL_STARTS_KEY            = booleanPreferencesKey("external_starts")
         private val THEME_KEY                      = stringPreferencesKey("theme")
+        private val SAVED_THEMES_KEY               = stringPreferencesKey("saved_themes")
         private val SHORTS_YOUTUBE_KEY             = booleanPreferencesKey("shorts_block_youtube")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
         private val BLOCK_DURING_FOCUS_KEY         = booleanPreferencesKey("blocker_during_focus")
@@ -152,6 +153,15 @@ class SettingsRepository @Inject constructor(
 
     suspend fun saveThemeJson(json: String?) {
         dataStore.edit { prefs -> if (json == null) prefs.remove(THEME_KEY) else prefs[THEME_KEY] = json }
+    }
+
+    /** The user's own saved themes, as a JSON list (see ui.theme.ThemeSpec.listToJson). */
+    val savedThemesJson: Flow<String?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[SAVED_THEMES_KEY] }
+
+    suspend fun saveSavedThemesJson(json: String?) {
+        dataStore.edit { prefs -> if (json == null) prefs.remove(SAVED_THEMES_KEY) else prefs[SAVED_THEMES_KEY] = json }
     }
 
     /** Whether start links from other apps, automation and NFC tags may run. Off by default. */

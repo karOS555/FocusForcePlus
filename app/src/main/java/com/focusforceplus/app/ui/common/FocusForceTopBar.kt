@@ -45,8 +45,8 @@ fun FocusForceTopBar(
     TopAppBar(
         expandedHeight = BAR_HEIGHT,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = colors.background,
-            scrolledContainerColor = colors.background,
+            containerColor = colors.screen,
+            scrolledContainerColor = colors.bar,
             actionIconContentColor = colors.textMuted,
         ),
         title = {
