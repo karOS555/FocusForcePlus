@@ -49,6 +49,12 @@ android {
             } else {
                 null
             }
+            // The commit an APK was built from would be written into it. That says
+            // nothing the release tag does not say, and it was the one file that came
+            // out differently when the same source was built in another checkout.
+            vcsInfo {
+                include = false
+            }
         }
     }
     compileOptions {
@@ -57,6 +63,13 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    // The native libraries come ready-made with AndroidX. Left as they are, the APK does
+    // not depend on whether the machine that builds it has an NDK to strip them with.
+    packaging {
+        jniLibs {
+            keepDebugSymbols += "**/*.so"
+        }
     }
     // The Android Gradle plugin signs a list of the app's dependencies into every APK,
     // encrypted so that only Google Play can read it. An APK that is not for Play has no
