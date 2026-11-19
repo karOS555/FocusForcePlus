@@ -9,7 +9,7 @@
 
 # FocusForce+
 
-### The all-in-one app for ADHD brains
+### The all-in-one app for ADHD brains, and anyone who wants more structure
 
 Routines, todos, lists, an app blocker, focus and sleep mode in one Android app.<br/>With reminders you can't just swipe away.
 
@@ -55,7 +55,16 @@ Routines, todos, lists, an app blocker, focus and sleep mode in one Android app.
 
 So I wrote the app I needed. I use it every day.
 
-It is made for brains that need more structure than most apps assume: ADHD, habits that run away with you, or too many hours lost to the phone. If yours works like mine, it might fit you too.
+<h2 id="who-it-is-for"><sub><img src="docs/readme/icons/users.svg" height="24" width="24" alt=""></sub> Who it is for</h2>
+
+ADHD is what the app was built around. But you don't need ADHD, or any label, to get something out of it.
+
+| If you... | this is what helps |
+|---|---|
+| **have ADHD** | Structure from outside: alarms that start things, one step at a time, reminders that don't give up. |
+| **keep putting things off** | "Later" gets harder: todos ring again, and snoozing takes a small task first. |
+| **lose hours to your phone** | Limits, schedules and blocks that are not switched off in two taps. |
+| **just want a day that runs** | A plain routine timer, todo list, shopping list and focus timer in one app. The strict parts are all optional. |
 
 <h2 id="how-it-holds-you-to-it"><sub><img src="docs/readme/icons/lock-keyhole.svg" height="24" width="24" alt=""></sub> How it holds you to it</h2>
 
@@ -217,6 +226,18 @@ Everything stays on your phone. There is no account and no cloud, and the app ha
 3. The setup guide walks you through the permissions and says what each one is for.
 
 FocusForce+ needs Android 8.0 or newer.
+
+> [!WARNING]
+> **Play Protect may block the install.** The message reads "App blocked to protect your device", and it has no "Install anyway".
+>
+> This is not about FocusForce+ in particular. In more and more countries, Google blocks every APK from outside an app store that contains an accessibility service, and the app blocker needs one. It stays this way until the app is in an app store.
+>
+> Until then, one of these gets it installed:
+>
+> 1. **Pause the scan for the install.** Play Store > your profile picture > **Play Protect** > the gear > switch off **Scan apps with Play Protect**. Install the APK, then **switch the scan back on right away**.
+> 2. **Install over USB.** With Android's platform tools on a computer: `adb install FocusForcePlus-v0.9.4-beta.apk`. Play Protect stays on.
+>
+> Check your download first: `SHA256SUMS.txt` is attached to every release. An update can run into the same block.
 
 > [!IMPORTANT]
 > Blocking needs an accessibility service. Daily limits need usage access. Focus needs Do Not Disturb access. You grant these in Android's own settings, and the setup guide takes you there. Calendar and tasks apps are optional and only ask when you switch them on.

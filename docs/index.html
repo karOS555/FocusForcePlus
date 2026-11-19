@@ -619,6 +619,30 @@
         <li>The setup guide walks you through the permissions each part needs and explains what each one is for.</li>
       </ol>
       <p>FocusForce+ needs Android 8.0 or newer.</p>
+      <div class="panel" style="margin-bottom: 1.5rem">
+        <h3>Play Protect may block the install</h3>
+        <p>
+          The message reads "App blocked to protect your device", and it has no "Install anyway".
+          This is not about FocusForce+ in particular. In more and more countries, Google blocks
+          every APK from outside an app store that contains an accessibility service, and the app
+          blocker needs one. It stays this way until the app is in an app store.
+        </p>
+        <p>Until then, one of these gets it installed:</p>
+        <ol>
+          <li>
+            <strong>Pause the scan for the install.</strong> Play Store, your profile picture,
+            Play Protect, the gear, then switch off "Scan apps with Play Protect". Install the APK
+            and <strong>switch the scan back on right away</strong>.
+          </li>
+          <li>
+            <strong>Install over USB</strong> with <code>adb install</code> from a computer.
+            Play Protect stays on.
+          </li>
+        </ol>
+        <p class="note" style="margin-bottom: 0">
+          Check your download first: a <code>SHA256SUMS.txt</code> is attached to every release.
+        </p>
+      </div>
       <p class="note">
         The app has no internet access, so it can't check for updates itself.
         <a href="https://github.com/ImranR98/Obtainium">Obtainium</a> can do that for you: point it at
