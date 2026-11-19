@@ -514,8 +514,10 @@ fun SettingsScreen(
                         // updates itself; this opens the releases page instead.
                         LinkRow(
                             title = "Check for updates",
-                            subtitle = "Opens the latest release. Obtainium can update the app for you.",
-                            onClick = { openUrl(context, "$REPO_URL/releases/latest") },
+                            subtitle = "Opens the releases page, newest first. Obtainium can update the app for you.",
+                            // Not /releases/latest: GitHub leaves pre-releases out of it, and
+                            // every beta is one.
+                            onClick = { openUrl(context, "$REPO_URL/releases") },
                         )
                         RowDivider()
                         LinkRow(

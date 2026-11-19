@@ -20,7 +20,7 @@
 
 <br/>
 
-<a href="https://github.com/karOS555/FocusForcePlus/releases/latest">
+<a href="https://github.com/karOS555/FocusForcePlus/releases">
 <img src="https://img.shields.io/badge/Download_the_APK-1d4ed8?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"/>
 </a>
 
@@ -110,7 +110,7 @@ Everything stays on your phone. There is no account, no cloud, and the app has n
 
 <h2 id="install"><sub><img src="docs/readme/icons/download.svg" height="24" width="24" alt=""></sub> Install</h2>
 
-1. Open [the latest release](https://github.com/karOS555/FocusForcePlus/releases/latest) and download the `.apk` file.
+1. Open [the releases page](https://github.com/karOS555/FocusForcePlus/releases) and download the `.apk` file of the newest release, at the top.
 2. Open it on your phone. The first time, Android asks whether to allow installs from this source. Allow it.
 3. The setup guide walks you through the permissions each part needs and explains what each one is for.
 
@@ -132,7 +132,7 @@ The app has no internet access, so it can't check for updates itself. Either ope
 </div>
 
 > [!TIP]
-> Install Obtainium, then add `https://github.com/karOS555/FocusForcePlus` as a source.
+> Install Obtainium, then add `https://github.com/karOS555/FocusForcePlus` as a source. While the app is in beta, switch on **Include prereleases** there, or Obtainium finds no version.
 
 ---
 

@@ -41,6 +41,7 @@ The last big update before 1.0: a new look, a home screen that shows your day in
 - Backups include lists, speed bumps, themes and the new settings (backup format 3; older files still import)
 - Deleting anything asks first
 - Focus, sleep mode and routines share Do Not Disturb: it stays on while any of them needs it, and a change you made by hand stays
+- Check for updates opens the list of releases, betas included, and the setup guide says to switch on "Include prereleases" in Obtainium
 
 ### Fixed
 - **A tap on a tab could do nothing** when Settings or Statistics had been opened over it

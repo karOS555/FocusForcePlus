@@ -418,7 +418,8 @@ private fun UpdatesPage(onContinue: () -> Unit) {
             InfoCard(
                 title = "Or let Obtainium do it",
                 body = "Obtainium watches GitHub releases and updates apps you installed " +
-                    "directly. FocusForce+ itself still never goes online.",
+                    "directly. While FocusForce+ is in beta, switch on \"Include prereleases\" " +
+                    "for it. FocusForce+ itself still never goes online.",
             ) {
                 Spacer(Modifier.height(8.dp))
                 OutlineButton(
