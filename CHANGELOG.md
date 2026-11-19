@@ -49,6 +49,7 @@ The last big update before 1.0: a new look, a home screen that shows your day in
 - Daily todo reminder times are no longer capped at three
 
 ### Fixed
+- **An invincible routine's alarm could be cancelled from its notification.** The notification of a ringing routine offered "Cancel Routine" for every routine, and "Dismiss" on the heads-up before the start took the ringing alarm with it. An invincible routine now has neither way out: it can be started, snoozed or moved, as its alarm screen says
 - **A tap on a tab could do nothing** when Settings or Statistics had been opened over it
 - **Do Not Disturb could stay on for good on Android 15 and later,** where the app's own Do Not Disturb mode was set back instead of switched off. A mode left on that way is now switched off at app start
 - **A snooze could be spent twice** when the alarm screen and the notification acted on the same alarm
