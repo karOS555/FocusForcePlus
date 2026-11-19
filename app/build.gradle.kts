@@ -58,6 +58,12 @@ android {
     buildFeatures {
         compose = true
     }
+    // The Android Gradle plugin signs a list of the app's dependencies into every APK,
+    // encrypted so that only Google Play can read it. An APK that is not for Play has no
+    // use for a block nobody else can inspect, and F-Droid's checks turn it down.
+    dependenciesInfo {
+        includeInApk = false
+    }
 }
 
 ksp {
