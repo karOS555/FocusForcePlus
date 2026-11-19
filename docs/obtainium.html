@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add FocusForce+ to Obtainium</title>
+<meta name="description" content="One tap adds FocusForce+ to Obtainium, which installs it and keeps it up to date.">
+<!-- A helper for the install steps, not a page of its own: the main page is the one to find. -->
+<meta name="robots" content="noindex">
+<link rel="icon" href="logo-192.png">
+<style>
+  /* Same palette as the main page. Like it, this page loads nothing from anywhere else. */
+  :root {
+    --bg: #050508;
+    --primary: #1d4ed8;
+    --surface-1: #0f2847;
+    --surface-3: #1a3a6b;
+    --text: #e2e8f0;
+    --text-body: #cbd5e1;
+    --text-dim: #94a3b8;
+    --link: #93c5fd;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-body);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+  }
+  main { max-width: 38rem; margin-inline: auto; padding: 3rem 1.25rem 4rem; }
+  h1, h2 { color: var(--text); line-height: 1.2; }
+  h1 { font-size: clamp(1.75rem, 6vw, 2.25rem); margin: 1.25rem 0 .75rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.25rem; margin: 2.5rem 0 .75rem; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--link); }
+  ol { margin: 0 0 1rem; padding-left: 1.25rem; }
+  li { margin-bottom: .6rem; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .9em; overflow-wrap: anywhere; }
+  strong { color: var(--text); }
+  .btn {
+    display: block;
+    margin: 1.75rem 0 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 14px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.125rem;
+    text-align: center;
+    text-decoration: none;
+  }
+  .btn:hover, .btn:focus-visible { background: #2559e8; }
+  .note { color: var(--text-dim); font-size: .9375rem; }
+  .panel {
+    background: var(--surface-1);
+    border: 1px solid var(--surface-3);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .panel p:last-child { margin-bottom: 0; }
+</style>
+</head>
+<body>
+<main>
+  <img src="logo-192.png" width="72" height="72" alt="">
+  <h1>Add FocusForce+ to Obtainium</h1>
+  <p>
+    Obtainium installs FocusForce+ straight from its GitHub releases and keeps it up to date.
+    Play Protect does not block an install that comes this way.
+  </p>
+
+  <a class="btn" id="add" href="obtainium://app/%7B%22id%22%3A%22com.focusforceplus.app%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FkarOS555%2FFocusForcePlus%22%2C%22author%22%3A%22karOS555%22%2C%22name%22%3A%22FocusForce%2B%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Atrue%7D%22%7D">Add to Obtainium</a>
+
+  <div class="panel" id="missing" hidden>
+    <p>
+      <strong>Nothing happened?</strong> Then Obtainium is not on this phone yet. Do step 1,
+      come back and tap the button again.
+    </p>
+  </div>
+
+  <ol>
+    <li>
+      <strong>Get Obtainium.</strong> Download it from
+      <a href="https://github.com/ImranR98/Obtainium/releases">its releases page</a>
+      (the file <code>app-arm64-v8a-release.apk</code> fits almost every phone) or from
+      <a href="https://f-droid.org/packages/dev.imranr.obtainium.fdroid/">F-Droid</a>, and install it.
+    </li>
+    <li>
+      <strong>Tap "Add to Obtainium"</strong> above, on your phone. Obtainium opens and asks
+      "Import app". Tap <strong>Continue</strong>.
+    </li>
+    <li>
+      <strong>Install.</strong> Tap <strong>FocusForce+</strong> in Obtainium's list, then
+      <strong>Install</strong>. The first time, Android asks whether Obtainium may install apps.
+      Allow it.
+    </li>
+  </ol>
+  <p class="note">
+    The button already switches on "Include prereleases". FocusForce+ is in beta, every version
+    is a prerelease, and without that switch Obtainium finds none.
+  </p>
+
+  <h2>By hand instead</h2>
+  <ol>
+    <li>In Obtainium, tap <strong>Add</strong>.</li>
+    <li>Paste <code>https://github.com/karOS555/FocusForcePlus</code> as the app source URL.</li>
+    <li>Switch on <strong>Include prereleases</strong>.</li>
+    <li>Tap <strong>Add</strong>, then <strong>Install</strong>.</li>
+  </ol>
+
+  <p class="note"><a href="./">Back to FocusForce+</a></p>
+</main>
+<script>
+  // On a phone the page opens Obtainium by itself; the button is there for a second try.
+  // If the page is still in front a moment later, Obtainium is not installed: say so.
+  (function () {
+    var link = document.getElementById('add');
+    var missing = document.getElementById('missing');
+    var left = false;
+    function leaving() { left = true; }
+    window.addEventListener('blur', leaving);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) leaving(); });
+    function watch() {
+      left = false;
+      setTimeout(function () { if (!left) missing.hidden = false; }, 2500);
+    }
+    link.addEventListener('click', watch);
+    if (/Android/i.test(navigator.userAgent)) {
+      watch();
+      window.location.href = link.href;
+    }
+  })();
+</script>
+</body>
+</html>

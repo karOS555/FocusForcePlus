@@ -22,8 +22,12 @@ Routines, todos, lists, an app blocker, focus and sleep mode in one Android app.
 
 <br/>
 
+<a href="#install-with-obtainium">
+<img src="https://img.shields.io/badge/Install_with_Obtainium-recommended-16a34a?style=for-the-badge&labelColor=1d4ed8" alt="Install with Obtainium (recommended)"/>
+</a>
+&nbsp;
 <a href="https://github.com/karOS555/FocusForcePlus/releases">
-<img src="https://img.shields.io/badge/Download_the_APK-1d4ed8?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"/>
+<img src="https://img.shields.io/badge/Download_the_APK-152e54?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"/>
 </a>
 
 <!-- Enable once FocusForce+ is listed on IzzyOnDroid. Check both URLs against the
@@ -33,11 +37,16 @@ Routines, todos, lists, an app blocker, focus and sleep mode in one Android app.
 </a>
 -->
 
-<sub>Not on the Play Store yet: you install the APK from the releases. [How to install](#install)</sub>
+<sub>Not in an app store yet. [How to install](#install)</sub>
 
 </div>
 
 <br/>
+
+> [!IMPORTANT]
+> **Install it with Obtainium.** Then Play Protect lets it through, and Obtainium keeps the app up to date. [Here is how](#install-with-obtainium), in four steps.
+>
+> If you open the plain APK instead, Play Protect blocks it on many phones: "App blocked to protect your device". **That is a false alarm.** Google blocks every app from outside a store that has an accessibility service, and the app blocker needs one. It says nothing about this app: FocusForce+ is open source and works fully offline. It has no internet permission, so nothing can leave your phone.
 
 > [!NOTE]
 > FocusForce+ is in public beta. If something breaks or feels wrong on your phone, please [open an issue](../../issues).
@@ -221,44 +230,62 @@ Everything stays on your phone. There is no account and no cloud, and the app ha
 
 <h2 id="install"><sub><img src="docs/readme/icons/download.svg" height="24" width="24" alt=""></sub> Install</h2>
 
+FocusForce+ needs Android 8.0 or newer. It is not in an app store yet, so there are two ways to get it.
+
+<h3 id="install-with-obtainium">Recommended: with Obtainium</h3>
+
+[Obtainium](https://github.com/ImranR98/Obtainium) is a free, open source app. It installs apps straight from their GitHub releases.
+
+| Why this way | |
+|---|---|
+| **Play Protect lets it through** | Obtainium installs the way an app store does, so the block described further down does not come. |
+| **Updates without searching** | FocusForce+ has no internet access and can't look for updates. Obtainium checks for new versions and installs them for you. |
+
+1. **Get Obtainium.** Download it from [its releases page](https://github.com/ImranR98/Obtainium/releases) or from [F-Droid](https://f-droid.org/packages/dev.imranr.obtainium.fdroid/) and install it. On the releases page, `app-arm64-v8a-release.apk` fits almost every phone.
+2. **Add FocusForce+.** On your phone, open **[this link](https://karos555.github.io/FocusForcePlus/obtainium.html)**. Obtainium opens and asks "Import app". Tap **Continue**.
+3. **Install it.** Tap **FocusForce+** in Obtainium's list, then **Install**. The first time, Android asks whether Obtainium may install apps. Allow it.
+4. **Set it up.** Open FocusForce+. The setup guide walks you through the permissions and says what each one is for.
+
+> [!TIP]
+> The link already switches on **Include prereleases**. FocusForce+ is in beta, so every version is a prerelease, and without that switch Obtainium finds none.
+
+<details>
+<summary><b>Adding it to Obtainium by hand</b></summary>
+
+<br/>
+
+1. In Obtainium, tap **Add**.
+2. Paste `https://github.com/karOS555/FocusForcePlus` as the **App source URL**.
+3. Switch on **Include prereleases**. This one matters: while the app is in beta, Obtainium finds no version without it.
+4. Tap **Add**, then **Install**.
+
+</details>
+
+<h3 id="install-the-apk">Or: the APK by hand</h3>
+
 1. Open [the releases page](https://github.com/karOS555/FocusForcePlus/releases) and download the `.apk` file of the newest release, at the top.
 2. Open the file on your phone. The first time, Android asks whether to allow installs from this source. Allow it.
 3. The setup guide walks you through the permissions and says what each one is for.
 
-FocusForce+ needs Android 8.0 or newer.
-
 > [!WARNING]
-> **Play Protect may block the install.** The message reads "App blocked to protect your device", and it has no "Install anyway".
+> **Play Protect blocks this on many phones.** The message reads "App blocked to protect your device", and it has no "Install anyway".
 >
-> This is not about FocusForce+ in particular. In more and more countries, Google blocks every APK from outside an app store that contains an accessibility service, and the app blocker needs one. It stays this way until the app is in an app store.
+> It is a false alarm. Google blocks every APK from outside an app store that contains an accessibility service, and the app blocker needs one. It says nothing about what this app does.
 >
-> Until then, one of these gets it installed:
+> The simple way around is Obtainium, above. If you want the plain APK anyway:
 >
 > 1. **Pause the scan for the install.** Play Store > your profile picture > **Play Protect** > the gear > switch off **Scan apps with Play Protect**. Install the APK, then **switch the scan back on right away**.
-> 2. **Install over USB.** With Android's platform tools on a computer: `adb install FocusForcePlus-v0.9.4-beta.apk`. Play Protect stays on.
+> 2. **Or install over USB.** With Android's platform tools on a computer: `adb install FocusForcePlus-v0.9.4-beta.apk`. Play Protect stays on.
 >
-> Check your download first: `SHA256SUMS.txt` is attached to every release. An update can run into the same block.
+> Check your download first: `SHA256SUMS.txt` is attached to every release. An update by hand can run into the same block.
 
 > [!IMPORTANT]
 > Blocking needs an accessibility service. Daily limits need usage access. Focus needs Do Not Disturb access. You grant these in Android's own settings, and the setup guide takes you there. Calendar and tasks apps are optional and only ask when you switch them on.
 
 <h3 id="updates">Updates</h3>
 
-The app has no internet access, so it can't check for updates itself. There are two ways:
-
-- **By hand:** **Settings > About > Check for updates** opens the releases page.
-- **Automatic:** [Obtainium](https://github.com/ImranR98/Obtainium) watches this repository and installs new versions for you.
-
-<div align="center">
-
-<a href="https://github.com/ImranR98/Obtainium">
-<img src="https://img.shields.io/badge/Get_updates_via-Obtainium-1a3a6b?style=for-the-badge&logoColor=white" alt="Get updates via Obtainium"/>
-</a>
-
-</div>
-
-> [!TIP]
-> Install Obtainium, then add `https://github.com/karOS555/FocusForcePlus` as a source. While the app is in beta, switch on **Include prereleases** there, or Obtainium finds no version.
+- **With Obtainium:** nothing to do. It finds new versions and installs them.
+- **Without it:** the app can't check by itself, because it has no internet access. **Settings > About > Check for updates** opens the releases page.
 
 ---
 

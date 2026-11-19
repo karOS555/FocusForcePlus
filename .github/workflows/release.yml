@@ -90,19 +90,20 @@ jobs:
             need more structure than most apps assume. Everything stays on the device:
             no account, no tracking, and no internet permission at all.
 
-            **Install:** download the `.apk` below and open it on your phone. Android
-            asks permission to install from this source the first time. Minimum Android
-            version is 8.0.
+            **Install:** the recommended way is
+            [Obtainium](https://github.com/karOS555/FocusForcePlus#install-with-obtainium).
+            Play Protect lets the install through, and Obtainium keeps the app up to date.
+            Or download the `.apk` below and open it on your phone; Android asks permission
+            to install from this source the first time. Minimum Android version is 8.0.
 
-            **If Play Protect blocks it** ("App blocked to protect your device"): Google
-            blocks every APK from outside an app store that contains an accessibility
-            service, and the app blocker needs one. The
-            [install notes](https://github.com/karOS555/FocusForcePlus#install) say how to
-            get it installed anyway.
+            **If Play Protect blocks the plain APK** ("App blocked to protect your device"):
+            that is a false alarm. Google blocks every APK from outside an app store that
+            contains an accessibility service, and the app blocker needs one. The
+            [install notes](https://github.com/karOS555/FocusForcePlus#install-the-apk) say
+            how to get it installed anyway.
 
             **Updates:** the app cannot check for them itself, because it has no internet
-            access. [Obtainium](https://github.com/ImranR98/Obtainium) can watch this
-            repository and update the app for you.
+            access. Obtainium does it for you.
 
             **Verify your download:** `SHA256SUMS.txt` is attached. Check it with
             `sha256sum -c SHA256SUMS.txt`.
