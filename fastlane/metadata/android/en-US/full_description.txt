@@ -8,7 +8,7 @@ Routines start with a real alarm and give every step its own timer. Run over and
 
 Todos get pushier with their priority. Low is one notification. Medium comes up on screen and comes back a couple of times. High rings, and rings again every few minutes; ticking it off takes a confirmation and a swipe along a path. Todos without a date come back at set times each day. Checklists, repeating todos and a trash.
 
-Lists for shopping and packing. Type several items at once, with amounts, sorted into sections in the order of your shop. A todo or a routine step can carry a list, so the packing list shows up while you pack.
+Lists in two kinds. A shopping list sorts what you type by aisle on its own, keeps what you bought before one tap away, and has a big tick-off view for the shop. A checklist is for the same things every time, like packing: ticked items stay, and it starts over. A todo or a routine step can carry a list.
 
 The blocker closes apps always, after a daily limit, or on a schedule, overnight included, and during routines, focus sessions and calendar events. Several apps can share one limit. An optional service keeps Instagram and YouTube usable but leaves Reels and Shorts as soon as they open.
 

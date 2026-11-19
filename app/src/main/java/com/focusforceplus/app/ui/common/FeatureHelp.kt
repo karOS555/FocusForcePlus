@@ -162,36 +162,45 @@ object FeatureHelpContent {
     val LISTS = FeatureHelp(
         key = "lists",
         title = "How lists work",
-        intro = "Lists are for things you collect rather than do at a set time: shopping, " +
-            "packing, what to take to work. They work together with todos and routines.",
+        intro = "Lists are for things you gather rather than do at a set time. There are two " +
+            "kinds, and you choose when you make one: a shopping list and a checklist.",
         sections = listOf(
             HelpSection(
-                "Adding fast",
-                "Type several items at once, separated by commas. An amount you type, like " +
-                    "\"2 milk\" or \"flour 500 g\", shows up next to the item. Things you " +
-                    "added before come back as suggestions.",
+                "A shopping list",
+                "Type what you need, several things at once if you like: \"milk, 2 bread, " +
+                    "flour 500 g\". The amount shows next to the item, and common things go to " +
+                    "their aisle on their own. What you bought before waits under \"Buy again\" " +
+                    "for one tap.",
             ),
             HelpSection(
-                "Sections",
-                "Long-press an item to put it into a section, like Produce or Dairy. It goes " +
-                    "there again next time on its own. Order the sections the way you walk " +
-                    "through your shop from the menu.",
+                "In the shop",
+                "\"Go shopping\" shows only what is left, aisle by aisle, in big rows, and keeps " +
+                    "the screen on. A tap puts an item in the basket. \"Done shopping\" takes " +
+                    "what is in the basket off the list; what you did not get stays.",
             ),
             HelpSection(
-                "Reminders",
-                "\"Remind me\" in the menu makes a todo for the list. When it rings, the " +
-                    "open items are right there on the alarm to tick off.",
+                "Your way through the shop",
+                "\"Aisles\" lets you drag the aisles into the order of your shop, and the list " +
+                    "follows it. Press and hold an item to move it to another aisle; it goes " +
+                    "there again next time.",
             ),
             HelpSection(
-                "Lists in routines",
-                "A routine step can carry a list, like a packing list for \"Pack the bag\". " +
-                    "While the step runs, its items are on screen to tick off, and \"Start " +
-                    "fresh\" unticks them for the next time.",
+                "A checklist",
+                "For the same things every time: packing, leaving the house, the gym bag. " +
+                    "Ticked items stay where they are, the top shows how far along you are, and " +
+                    "\"Start over\" unticks everything for the next time. A few ready-made ones " +
+                    "come with their items.",
             ),
             HelpSection(
-                "Shopping mode and sharing",
-                "Shopping mode keeps the screen on in the shop. Share sends the open items " +
-                    "as text, by section. Duplicate makes a fresh copy, e.g. for the next trip.",
+                "Reminders and routines",
+                "\"Remind me\" makes a todo for the list. When it rings, the open items are " +
+                    "right there on the alarm to tick off. A routine step can carry a list too, " +
+                    "like a packing list for \"Pack the bag\".",
+            ),
+            HelpSection(
+                "Sharing and pasting",
+                "\"Share\" sends the open items as text. A list someone sends you can be " +
+                    "pasted into the field as it is: every line becomes an item.",
             ),
         ),
     )

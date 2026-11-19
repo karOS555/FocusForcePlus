@@ -62,12 +62,12 @@ It is made for brains that need more structure than most apps assume: ADHD, habi
 
 ### Routines and lists
 
-**Routines** start with a real alarm and give every step its own timer. Run over and the timer keeps counting and reminds you. Each routine has its own number of snoozes, its own heads-up before the start, and can block apps and switch on Do Not Disturb while it runs. **Lists** are for shopping and packing: type several items at once, with amounts ("2 milk"), sorted into sections in the order you walk through the shop. A todo can carry a list, and so can a routine step, like a packing list for "Pack the bag".
+**Routines** start with a real alarm and give every step its own timer. Run over and the timer keeps counting and reminds you. Each routine has its own number of snoozes, its own heads-up before the start, and can block apps and switch on Do Not Disturb while it runs. **Lists** come in two kinds. A shopping list takes several things at once ("milk, 2 bread, flour 500 g"), sorts them by aisle on its own, keeps what you bought before one tap away, and turns into a big tick-off view in the shop that keeps the screen on. A checklist is for the same things every time, like packing: ticked items stay, and it starts over for the next trip. A todo can carry a list, and so can a routine step, like a packing list for "Pack the bag".
 
 <p align="center">
 <a href="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="30%" alt="A routine step counting down"></a>
 &nbsp;
-<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png" width="30%" alt="A grocery list with sections, amounts and its reminder"></a>
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png" width="30%" alt="A shopping list sorted by aisle, with amounts, things to buy again and its reminder"></a>
 </p>
 
 ### Blocking, focus and sleep

@@ -9,18 +9,21 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -44,6 +47,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.focusforceplus.app.data.db.entity.ListEntity
+import com.focusforceplus.app.data.db.entity.ListKind
 import com.focusforceplus.app.ui.common.IconPickerButton
 import com.focusforceplus.app.ui.common.RoutineIcons
 import com.focusforceplus.app.ui.components.DeleteDialog
@@ -53,6 +57,7 @@ import com.focusforceplus.app.ui.components.FfChip
 import com.focusforceplus.app.ui.components.FfTextField
 import com.focusforceplus.app.ui.components.IconCircle
 import com.focusforceplus.app.ui.components.ListRow
+import com.focusforceplus.app.ui.components.PrimaryButton
 import com.focusforceplus.app.ui.components.RowDivider
 import com.focusforceplus.app.ui.theme.FfTheme
 
@@ -91,8 +96,8 @@ fun ListsScreen(
             EmptyState(
                 icon = Icons.AutoMirrored.Filled.FormatListBulleted,
                 title = "No lists yet",
-                text = "For things you buy or pack again and again. Ticked items stay on the " +
-                    "list, so next time it is a few taps instead of typing it all again.",
+                text = "Two kinds. A shopping list sorts what you add by aisle and remembers it for " +
+                    "next time. A checklist is for what you pack or check again and again.",
                 actionLabel = "Create a list",
                 onAction = { creating = true },
                 modifier = Modifier
@@ -114,17 +119,14 @@ fun ListsScreen(
                         if (index > 0) RowDivider()
                         ListRow(
                             title = row.list.name,
-                            subtitle = when {
-                                row.total == 0 -> "Empty"
-                                row.open == 0 -> "All ${row.total} ticked"
-                                else -> "${row.open} of ${row.total} to go"
-                            },
+                            subtitle = row.summary,
                             onClick = { onOpenList(row.list.id) },
                             onLongClick = { menuFor = row.list },
                             leading = {
                                 IconCircle(
                                     icon = RoutineIcons.find(row.list.iconKey)?.vector
-                                        ?: Icons.AutoMirrored.Filled.FormatListBulleted,
+                                        ?: if (row.list.isChecklist) Icons.AutoMirrored.Filled.FormatListBulleted
+                                        else Icons.Filled.ShoppingCart,
                                 )
                             },
                             trailing = {
@@ -150,13 +152,10 @@ fun ListsScreen(
     }
 
     if (creating) {
-        ListNameDialog(
-            title = "New list",
-            confirmLabel = "Create",
-            showTemplates = true,
-            onConfirm = { name, icon ->
+        NewListSheet(
+            onCreate = { name, icon, kind, template ->
                 creating = false
-                viewModel.create(name, icon, onOpenList)
+                viewModel.create(name, icon, kind, template, onOpenList)
             },
             onDismiss = { creating = false },
         )
@@ -209,8 +208,95 @@ fun ListsScreen(
     }
 }
 
-/** Name and icon of a list, with a few ready-made ones when creating. */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * A new list: first what it is for, because that decides how it behaves, then a
+ * name, with a few ready-made ones to start from.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun NewListSheet(
+    onCreate: (name: String, iconKey: String?, kind: String, template: ListTemplate?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = FfTheme.colors
+    var kind by remember { mutableStateOf(ListKind.SHOPPING) }
+    var name by remember { mutableStateOf("") }
+    var icon by remember { mutableStateOf<String?>(null) }
+    var template by remember { mutableStateOf<ListTemplate?>(null) }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = colors.surfaceVariant,
+    ) {
+        Column(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text("New list", style = MaterialTheme.typography.titleLarge, color = colors.text)
+            KindPicker(
+                kind = kind,
+                onPick = {
+                    kind = it
+                    // A template of the other kind no longer fits.
+                    if (template?.kind != it) template = null
+                },
+            )
+            Column {
+                Text("Start from", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+                Spacer(Modifier.height(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LIST_TEMPLATES.filter { it.kind == kind }.forEach { option ->
+                        FfChip(
+                            label = option.name,
+                            selected = template == option,
+                            onClick = {
+                                template = option
+                                name = option.name
+                                icon = option.iconKey
+                            },
+                        )
+                    }
+                }
+                template?.takeIf { it.items.isNotEmpty() }?.let { chosen ->
+                    val count = chosen.items.sumOf { it.second.size }
+                    Text(
+                        "Comes with $count items you can change.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconPickerButton(selectedKey = icon, size = 52.dp, onSelect = { icon = it })
+                Spacer(Modifier.padding(start = 10.dp))
+                FfTextField(
+                    value = name,
+                    onValueChange = { name = it.take(60) },
+                    label = "Name",
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done,
+                    ),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            PrimaryButton(
+                text = "Create",
+                onClick = { onCreate(name, icon, kind, template) },
+                enabled = name.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** Name and icon of a list. */
 @Composable
 internal fun ListNameDialog(
     title: String,
@@ -219,7 +305,6 @@ internal fun ListNameDialog(
     onDismiss: () -> Unit,
     initialName: String = "",
     initialIcon: String? = null,
-    showTemplates: Boolean = false,
 ) {
     val colors = FfTheme.colors
     var name by remember { mutableStateOf(initialName) }
@@ -243,23 +328,6 @@ internal fun ListNameDialog(
                         ),
                         modifier = Modifier.weight(1f),
                     )
-                }
-                if (showTemplates) {
-                    Spacer(Modifier.height(14.dp))
-                    Text("Or start from", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
-                    Spacer(Modifier.height(6.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LIST_TEMPLATES.forEach { template ->
-                            FfChip(
-                                label = template.name,
-                                selected = name == template.name,
-                                onClick = {
-                                    name = template.name
-                                    icon = template.iconKey
-                                },
-                            )
-                        }
-                    }
                 }
             }
         },

@@ -4,6 +4,7 @@ import com.focusforceplus.app.data.db.dao.ListCounts
 import com.focusforceplus.app.data.db.dao.ListDao
 import com.focusforceplus.app.data.db.entity.ListEntity
 import com.focusforceplus.app.data.db.entity.ListItemEntity
+import com.focusforceplus.app.data.db.entity.ListKind
 import com.focusforceplus.app.data.db.entity.ListSuggestionEntity
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -25,17 +26,52 @@ class ListRepository @Inject constructor(
 
     fun getCounts(): Flow<List<ListCounts>> = listDao.getCounts()
 
-    suspend fun createList(name: String, iconKey: String?): Long =
-        listDao.insertList(
+    /**
+     * Makes a list. A shopping list starts with the aisles in the order of a
+     * common way through a shop; [starter] fills a checklist from a template,
+     * section by section (a null section name means "no section").
+     */
+    suspend fun createList(
+        name: String,
+        iconKey: String?,
+        kind: String = ListKind.SHOPPING,
+        starter: List<Pair<String?, List<String>>> = emptyList(),
+    ): Long {
+        val now = System.currentTimeMillis()
+        val sections = if (kind == ListKind.SHOPPING) ListCatalog.AISLES else starter.mapNotNull { it.first }
+        val id = listDao.insertList(
             ListEntity(
-                name = name.trim(),
+                name = name.trim().take(60),
                 iconKey = iconKey,
                 sortOrder = listDao.maxListSortOrder() + 1,
-                createdAt = System.currentTimeMillis(),
+                createdAt = now,
+                sectionOrder = sections.joinToString("\n").ifBlank { null },
+                kind = kind,
             )
         )
+        var order = 0
+        listDao.insertItems(
+            starter.flatMap { (section, items) ->
+                items.map { text ->
+                    ListItemEntity(listId = id, text = text, sortOrder = order++, createdAt = now, section = section)
+                }
+            }
+        )
+        return id
+    }
 
     suspend fun updateList(list: ListEntity) = listDao.updateList(list)
+
+    /**
+     * Turns a list into the other kind. A list that becomes a shopping list gets
+     * the aisles it does not have yet, behind its own sections.
+     */
+    suspend fun setKind(listId: Long, kind: String) {
+        val list = listDao.getListById(listId) ?: return
+        if (list.kind == kind) return
+        val sections = if (kind == ListKind.SHOPPING) (list.sections + ListCatalog.AISLES).distinct() else list.sections
+        listDao.updateList(list.copy(kind = kind, sectionOrder = sections.joinToString("\n").ifBlank { null }))
+    }
 
     // ── Items ─────────────────────────────────────────────────────────────────
 
@@ -46,17 +82,25 @@ class ListRepository @Inject constructor(
     /**
      * Adds an item and remembers it for the suggestions. An amount in the text
      * ("2 milk", "flour 500 g") becomes the item's quantity. The item goes into the
-     * section it was in last time. Adding something that is already on the list
-     * and ticked simply unticks it, which is what "milk again" means on a
-     * shopping list.
+     * section it was in last time; on a shopping list, something new goes to the
+     * aisle it is usually found in ([ListCatalog]). Adding something that is
+     * already on the list and ticked simply unticks it, which is what "milk again"
+     * means on a shopping list.
      */
     suspend fun addItem(listId: Long, rawText: String, note: String? = null) {
         val parsed = ListText.parse(rawText)
-        val text = parsed.text.take(120)
+        val text = ListText.tidy(parsed.text.take(120))
         if (text.isEmpty()) return
         val now = System.currentTimeMillis()
         val key = text.lowercase()
         val known = listDao.getSuggestion(listId, key)
+        val list = listDao.getListById(listId)
+        // What the user decided for this item wins; the catalogue is the first guess.
+        val section = known?.section
+            ?: if (known == null && list != null && !list.isChecklist) ListCatalog.aisleFor(text) else null
+        if (section != null && list != null && section !in list.sections) {
+            listDao.updateList(list.copy(sectionOrder = (list.sections + section).joinToString("\n")))
+        }
         val existing = listDao.getItemsOnce(listId).firstOrNull { it.text.lowercase() == key }
         if (existing != null) {
             listDao.updateItem(
@@ -75,14 +119,14 @@ class ListRepository @Inject constructor(
                     note = note?.trim()?.ifBlank { null },
                     sortOrder = listDao.maxItemSortOrder(listId) + 1,
                     createdAt = now,
-                    section = known?.section,
+                    section = section,
                     quantity = parsed.quantity,
                 )
             )
         }
         listDao.upsertSuggestion(
             known?.copy(text = text, useCount = known.useCount + 1, lastUsedAt = now)
-                ?: ListSuggestionEntity(listId = listId, key = key, text = text, lastUsedAt = now)
+                ?: ListSuggestionEntity(listId = listId, key = key, text = text, lastUsedAt = now, section = section)
         )
     }
 
@@ -104,6 +148,12 @@ class ListRepository @Inject constructor(
                 listDao.updateList(list.copy(sectionOrder = (list.sections + clean).joinToString("\n")))
             }
         }
+    }
+
+    /** Puts the sections into a new order, e.g. the way through the shop. */
+    suspend fun setSectionOrder(listId: Long, order: List<String>) {
+        val list = listDao.getListById(listId) ?: return
+        listDao.updateList(list.copy(sectionOrder = order.distinct().joinToString("\n").ifBlank { null }))
     }
 
     /** Moves a section one place up (-1) or down (+1), e.g. to follow the shop. */
@@ -180,9 +230,35 @@ class ListRepository @Inject constructor(
 
     suspend fun uncheckAll(listId: Long) = listDao.uncheckAll(listId)
 
+    /** Unticks everything and returns what was ticked, so it can be put back. */
+    suspend fun startOver(listId: Long): List<Long> {
+        val ticked = listDao.getItemsOnce(listId).filter { it.isChecked }.map { it.id }
+        listDao.uncheckAll(listId)
+        return ticked
+    }
+
+    suspend fun tickAgain(itemIds: List<Long>) {
+        if (itemIds.isNotEmpty()) listDao.checkAll(itemIds, System.currentTimeMillis())
+    }
+
     suspend fun deleteItem(itemId: Long) = listDao.deleteItem(itemId)
 
     suspend fun deleteChecked(listId: Long) = listDao.deleteChecked(listId)
+
+    /**
+     * The shopping is done: what is in the basket leaves the list (it stays under
+     * "Buy again"). Returns what was removed, so it can be put back.
+     */
+    suspend fun emptyBasket(listId: Long): List<ListItemEntity> {
+        val bought = listDao.getItemsOnce(listId).filter { it.isChecked }
+        listDao.deleteChecked(listId)
+        return bought
+    }
+
+    /** Puts items back as they were (after an undo). */
+    suspend fun restoreItems(items: List<ListItemEntity>) {
+        if (items.isNotEmpty()) listDao.insertItems(items)
+    }
 
     // ── Suggestions ───────────────────────────────────────────────────────────
 

@@ -26,6 +26,7 @@ import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.db.entity.FocusSessionEntity
 import com.focusforceplus.app.data.db.entity.ListEntity
 import com.focusforceplus.app.data.db.entity.ListItemEntity
+import com.focusforceplus.app.data.db.entity.ListKind
 import com.focusforceplus.app.data.db.entity.ListSuggestionEntity
 import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineEntity
@@ -553,6 +554,7 @@ class BackupManager @Inject constructor(
         put("createdAt", l.createdAt)
         putNullable("deletedAt", l.deletedAt)
         putNullable("sectionOrder", l.sectionOrder)
+        put("kind", l.kind)
     }
 
     private fun listFromJson(o: JSONObject) = ListEntity(
@@ -563,6 +565,7 @@ class BackupManager @Inject constructor(
         createdAt = o.getLong("createdAt"),
         deletedAt = o.optLongOrNull("deletedAt"),
         sectionOrder = o.optStringOrNull("sectionOrder"),
+        kind = if (o.optString("kind") == ListKind.CHECKLIST) ListKind.CHECKLIST else ListKind.SHOPPING,
     )
 
     private fun listItemJson(i: ListItemEntity) = JSONObject().apply {

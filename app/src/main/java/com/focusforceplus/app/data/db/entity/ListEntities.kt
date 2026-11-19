@@ -6,6 +6,24 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
+ * What a list is for, which decides how it behaves. Stored as text: never rename
+ * the values.
+ */
+object ListKind {
+    /**
+     * Things that run out and get bought again. Sorted by aisle, ticked items go
+     * into the basket, and they leave the list when the shopping is done.
+     */
+    const val SHOPPING = "shopping"
+
+    /**
+     * The same things every time: packing, leaving the house. Ticked items stay
+     * where they are, and the whole list starts over for the next time.
+     */
+    const val CHECKLIST = "checklist"
+}
+
+/**
  * A reusable list: groceries, a packing list, things to bring to the office.
  *
  * Unlike a todo, a list is never "done". Its items get ticked off, cleared, and
@@ -24,8 +42,12 @@ data class ListEntity(
     val deletedAt: Long? = null,
     /** The order of the list's sections, one name per line, e.g. the aisles of a shop. */
     val sectionOrder: String? = null,
+    /** [ListKind.SHOPPING] or [ListKind.CHECKLIST]. */
+    val kind: String = ListKind.SHOPPING,
 ) {
     val sections: List<String> get() = sectionOrder?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+
+    val isChecklist: Boolean get() = kind == ListKind.CHECKLIST
 }
 
 @Entity(

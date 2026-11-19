@@ -1,6 +1,7 @@
 package com.focusforceplus.app.debug
 
 import com.focusforceplus.app.data.db.entity.ListItemEntity
+import com.focusforceplus.app.data.db.entity.ListKind
 import com.focusforceplus.app.data.db.entity.ListEntity
 import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
@@ -130,7 +131,7 @@ class DebugSeedReceiver : BroadcastReceiver() {
             db.listDao().deleteAllLists()
 
             val workBag = db.listDao().insertList(
-                ListEntity(name = "Work bag", iconKey = "work", sortOrder = 2, createdAt = now)
+                ListEntity(name = "Work bag", iconKey = "work", sortOrder = 2, createdAt = now, kind = ListKind.CHECKLIST)
             )
             listOf("Laptop", "Charger", "Keys", "Lunch box", "Water bottle").forEachIndexed { i, text ->
                 db.listDao().insertItem(ListItemEntity(listId = workBag, text = text, sortOrder = i, createdAt = now))
@@ -293,23 +294,35 @@ class DebugSeedReceiver : BroadcastReceiver() {
         }
 
         val lists = ep.lists()
+        // The aisles come from the catalogue, as they would for anyone typing these.
         val groceries = lists.createList("Groceries", "shopping_cart")
         listOf(
-            "Tomatoes 500 g" to "Produce", "Bananas" to "Produce", "2 Milk" to "Dairy", "6 Eggs" to "Dairy",
-            "Bread" to "Bakery", "Coffee" to "Pantry", "Oat flakes" to "Pantry",
-        ).forEach { (text, section) ->
-            lists.addItem(groceries, text)
-            lists.getItemsOnce(groceries).last().let { lists.setSection(it, section) }
-        }
-        lists.getItemsOnce(groceries).filter { it.text == "Bananas" }.forEach { lists.setChecked(it.id, true) }
+            "Tomatoes 500 g", "Bananas", "2 Milk", "6 Eggs", "Bread", "Coffee", "Oats", "Butter",
+            "Toilet paper", "Toothpaste",
+        ).forEach { lists.addItem(groceries, it) }
+        lists.getItemsOnce(groceries).filter { it.text == "Bananas" || it.text == "Butter" }
+            .forEach { lists.setChecked(it.id, true) }
+        // Bought before and not on the list now: what "Buy again" offers.
+        listOf("Apples", "Yogurt", "Rice", "Olive oil", "Cheese").forEach { lists.addItem(groceries, it) }
+        lists.getItemsOnce(groceries).filter { it.text in setOf("Apples", "Yogurt", "Rice", "Olive oil", "Cheese") }
+            .forEach { lists.deleteItem(it.id) }
         engine.save(
             TodoEntity(
                 title = "Do the weekly shop", iconKey = "shopping_cart", priority = 1,
                 dueDateTime = later(today(17, 30)), listId = groceries, createdAt = now,
             )
         )
-        val packing = lists.createList("Weekend trip", "train")
-        listOf("Charger", "Toothbrush", "Rain jacket", "Tickets").forEach { lists.addItem(packing, it) }
+        val packing = lists.createList(
+            "Weekend trip", "train", ListKind.CHECKLIST,
+            listOf(
+                "Papers and money" to listOf("Tickets", "Wallet", "Keys"),
+                "Clothes" to listOf("T-shirts", "Socks", "Rain jacket", "Sleepwear"),
+                "Bathroom" to listOf("Toothbrush", "Toothpaste", "Deodorant"),
+                "Tech" to listOf("Phone charger", "Headphones"),
+            ),
+        )
+        lists.getItemsOnce(packing).filter { it.text in setOf("Tickets", "Wallet", "T-shirts", "Socks", "Toothbrush") }
+            .forEach { lists.setChecked(it.id, true) }
 
         ep.rearmer().rearmAll()
         Log.i(TAG, "sample data written")

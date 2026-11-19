@@ -193,6 +193,55 @@ private enum class ButtonLabel {
     OnGlass,
 }
 
+/**
+ * A small labelled action in a row of them: what a screen offers besides its one
+ * main button, in plain sight instead of behind a menu.
+ */
+@Composable
+fun ActionPill(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    selected: Boolean = false,
+) {
+    val colors = FfTheme.colors
+    val shape = RoundedCornerShape(percent = 50)
+    val content = when {
+        !enabled -> colors.textFaint
+        selected -> colors.onPrimary
+        else -> colors.onContainer
+    }
+    Row(
+        modifier = modifier
+            .then(
+                when {
+                    colors.isAero -> Modifier.liquidGlass(
+                        shape,
+                        tint = if (selected) colors.primary.copy(alpha = AERO_FILL) else colors.surface.copy(alpha = 0.24f),
+                    )
+                    selected -> Modifier.background(colors.primary, shape)
+                    else -> Modifier.background(colors.container, shape)
+                }
+            )
+            .clip(shape)
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { role = Role.Button }
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(shadow = null),
+            color = content,
+            maxLines = 1,
+        )
+    }
+}
+
 /** The round button of a list page that adds a new entry. */
 @Composable
 fun FfFab(

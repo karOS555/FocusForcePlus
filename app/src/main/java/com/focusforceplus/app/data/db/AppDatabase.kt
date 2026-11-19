@@ -167,10 +167,11 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /** Sections and amounts on lists, and lists on routine steps. */
+        /** Sections, amounts and kinds of lists, and lists on routine steps. */
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE lists ADD COLUMN sectionOrder TEXT")
+                db.execSQL("ALTER TABLE lists ADD COLUMN kind TEXT NOT NULL DEFAULT 'shopping'")
                 db.execSQL("ALTER TABLE list_items ADD COLUMN section TEXT")
                 db.execSQL("ALTER TABLE list_items ADD COLUMN quantity TEXT")
                 db.execSQL("ALTER TABLE list_suggestions ADD COLUMN section TEXT")

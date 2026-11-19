@@ -457,7 +457,11 @@ private class GlassNode(
                     )
                 }
             }
-            drawRect(tint)
+            // On a sheet or dialog there is no picture to show through, only a plain
+            // surface: a coloured button is then nearly solid, or its light label
+            // would sit on something almost as light.
+            val solid = (backdrop == null || clear == null) && tint.alpha >= 0.5f
+            drawRect(if (solid) tint.copy(alpha = 0.94f) else tint)
             drawRect(LiquidDepth)
             // Light pools along the lower edge, where it leaves the glass.
             val pool = liquidPool ?: Brush.radialGradient(

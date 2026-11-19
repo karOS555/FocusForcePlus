@@ -147,7 +147,7 @@ fun StepperRow(
 }
 
 @Composable
-private fun StepButton(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
+internal fun StepButton(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
     val colors = FfTheme.colors
     Box(
         modifier = Modifier

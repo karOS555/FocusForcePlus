@@ -87,6 +87,9 @@ interface ListDao {
     @Query("UPDATE list_items SET isChecked = 0, checkedAt = NULL WHERE listId = :listId")
     suspend fun uncheckAll(listId: Long)
 
+    @Query("UPDATE list_items SET isChecked = 1, checkedAt = :at WHERE id IN (:ids)")
+    suspend fun checkAll(ids: List<Long>, at: Long)
+
     @Query("DELETE FROM list_items WHERE id = :id")
     suspend fun deleteItem(id: Long)
 
