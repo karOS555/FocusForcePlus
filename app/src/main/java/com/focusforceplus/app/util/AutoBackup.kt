@@ -171,8 +171,10 @@ class AutoBackup @Inject constructor(
     companion object {
         const val UNIQUE_NAME = "auto_backup"
         private const val CHANNEL_BACKUP = "backup_status"
-        private const val NOTIFICATION_ID_FAILED = 970_001
-        private const val RC_OPEN = 970_002
+        // Not 970_001: that id belongs to the sleep wind-down notice, and one would
+        // replace the other.
+        private const val NOTIFICATION_ID_FAILED = 980_001
+        private const val RC_OPEN = 980_002
         const val FILE_PREFIX = "focusforceplus-backup-"
         const val FILE_SUFFIX = ".json"
 

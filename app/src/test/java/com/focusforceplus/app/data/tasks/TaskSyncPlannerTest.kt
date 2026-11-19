@@ -127,4 +127,47 @@ class TaskSyncPlannerTest {
         assertEquals(1, TaskSyncPlanner.fromRemotePriority(0))
         assertEquals(0, TaskSyncPlanner.fromRemotePriority(7))
     }
+
+    // A todo holds less than a task: what was shortened on the way in is not an edit.
+
+    @Test
+    fun `a title that was cut for the todo is not pushed back over the long one`() {
+        val long = "x".repeat(500)
+        val there = fields(title = long)
+        // What pulling it made of it here, with the fingerprint of the task as it came.
+        val here = fields(title = long.take(SyncFields.MAX_TITLE))
+        val local = LocalTask(1, 10, there.fingerprint(), here, inTrash = false)
+        assertEquals(emptyList<SyncAction>(), TaskSyncPlanner.plan(listOf(local), listOf(RemoteTask(10, there)), setOf(10)))
+    }
+
+    @Test
+    fun `a task without a title and its todo agree`() {
+        val there = fields(title = "  ")
+        val here = fields(title = SyncFields.NO_TITLE)
+        val local = LocalTask(1, 10, there.fingerprint(), here, inTrash = false)
+        assertEquals(emptyList<SyncAction>(), TaskSyncPlanner.plan(listOf(local), listOf(RemoteTask(10, there)), setOf(10)))
+    }
+
+    @Test
+    fun `after a backup was put back, todos find their tasks again instead of doubling them`() {
+        // The todos come in without links, and the list of tasks seen before is empty.
+        val rent = fields(title = "Pay rent")
+        val mum = fields(title = "Call mum")
+        val plan = TaskSyncPlanner.plan(
+            listOf(LocalTask(1, null, null, rent, false), LocalTask(2, null, null, mum, false)),
+            listOf(RemoteTask(30, rent), RemoteTask(31, mum)),
+            emptySet(),
+        )
+        assertEquals(
+            listOf(SyncAction.Link(1, 30, rent.fingerprint()), SyncAction.Link(2, 31, mum.fingerprint())),
+            plan,
+        )
+        // With the old list kept, both would have been sent as new tasks.
+        val doubled = TaskSyncPlanner.plan(
+            listOf(LocalTask(1, null, null, rent, false), LocalTask(2, null, null, mum, false)),
+            listOf(RemoteTask(30, rent), RemoteTask(31, mum)),
+            setOf(30, 31),
+        )
+        assertEquals(listOf(SyncAction.PushNew(1, rent), SyncAction.PushNew(2, mum)), doubled)
+    }
 }

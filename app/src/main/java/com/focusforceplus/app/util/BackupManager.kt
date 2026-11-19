@@ -37,6 +37,7 @@ import com.focusforceplus.app.data.repository.SleepRepository
 import com.focusforceplus.app.data.repository.SleepSchedule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -83,7 +84,12 @@ class BackupManager @Inject constructor(
     private val todoReminders: TodoReminderEngine,
     private val focusAlarmHelper: FocusAlarmHelper,
     private val alarmRearmer: AlarmRearmer,
-    private val calendarRepository: com.focusforceplus.app.data.calendar.CalendarRepository,
+    private val calendarMirror: com.focusforceplus.app.data.calendar.CalendarTodoMirror,
+    private val taskSync: com.focusforceplus.app.data.tasks.TaskSync,
+    private val blockerLocks: com.focusforceplus.app.compliance.BlockerLocks,
+    private val tamperGuard: com.focusforceplus.app.compliance.TamperProtectionGuard,
+    private val routineRegistry: com.focusforceplus.app.service.ActiveRoutineRegistry,
+    private val focusRegistry: com.focusforceplus.app.service.FocusSessionRegistry,
 ) {
     companion object {
         const val BACKUP_VERSION = 3
@@ -146,6 +152,7 @@ class BackupManager @Inject constructor(
      * never destroys existing data.
      */
     suspend fun importFrom(uri: Uri): String = withContext(Dispatchers.IO) {
+        refusalToImport()?.let { throw IllegalStateException(it) }
         val text = context.contentResolver.openInputStream(uri)?.use { input ->
             val out = java.io.ByteArrayOutputStream()
             val buffer = ByteArray(64 * 1024)
@@ -190,63 +197,75 @@ class BackupManager @Inject constructor(
         val settings = root.optJSONObject("settings")
         val sleep = root.optJSONObject("sleep")?.let { sleepFromJson(it) }
 
-        // Keep what is here now, so a wrong file can be undone (Settings > Data).
-        // Written to a new file first, so a failure never leaves half a copy.
-        runCatching {
-            val copy = java.io.File(context.filesDir, BEFORE_IMPORT_FILE)
-            val tmp = java.io.File(context.filesDir, "$BEFORE_IMPORT_FILE.tmp")
-            tmp.writeText(buildBackup().first.toString())
-            if (!tmp.renameTo(copy)) {
-                copy.delete()
-                tmp.renameTo(copy)
+        // From here on nothing may stop half way. The alarms of the old data are
+        // taken down below, and they have to be put back whatever happens next:
+        // when an insert fails, and also when the screen that started the import
+        // is left while it runs.
+        withContext(NonCancellable) {
+            // Keep what is here now, so a wrong file can be undone (Settings > Data).
+            // Written to a new file first, so a failure never leaves half a copy.
+            runCatching {
+                val copy = java.io.File(context.filesDir, BEFORE_IMPORT_FILE)
+                val tmp = java.io.File(context.filesDir, "$BEFORE_IMPORT_FILE.tmp")
+                tmp.writeText(buildBackup().first.toString())
+                if (!tmp.renameTo(copy)) {
+                    copy.delete()
+                    tmp.renameTo(copy)
+                }
+            }
+
+            // Cancel alarms of the data that is about to be replaced.
+            routineDao.getAllOnce().forEach { alarmHelper.cancelRoutineAlarms(it.id) }
+            todoReminders.pauseAll()
+            focusSessionDao.getAllOnce().forEach { focusAlarmHelper.cancelSessionAlarms(it.id) }
+
+            try {
+                // Task sync and the calendar mirror both act on todos by their id.
+                // Neither runs while the todos are swapped, and both start over
+                // afterwards: the todos that come in carry no links.
+                taskSync.whileTodosAreReplaced {
+                    calendarMirror.whileTodosAreReplaced {
+                        // Replace atomically: a failing insert rolls everything back.
+                        db.withTransaction {
+                            routineTaskDao.deleteAll()
+                            routineDao.deleteAll()
+                            todoDao.deleteAll()
+                            blockedAppDao.deleteAll()
+                            blockerGroupDao.deleteAll()
+                            focusSessionDao.deleteAll()
+                            routineCompletionDao.deleteAll()
+                            focusCompletionDao.deleteAll()
+                            listDao.deleteAllItems()
+                            listDao.deleteAllSuggestions()
+                            listDao.deleteAllLists()
+
+                            routines.forEach { routineDao.insert(it) }
+                            routineTaskDao.insertAll(tasks)
+                            todos.forEach { todoDao.insert(it) }
+                            blockedApps.forEach { blockedAppDao.insert(it) }
+                            blockerGroups.forEach { blockerGroupDao.insert(it) }
+                            focusSessions.forEach { focusSessionDao.insert(it) }
+                            routineCompletions.forEach { routineCompletionDao.insert(it) }
+                            focusCompletions.forEach { focusCompletionDao.insert(it) }
+                            lists.forEach { listDao.insertList(it) }
+                            listDao.insertItems(listItems)
+                            listSuggestions.forEach { listDao.upsertSuggestion(it) }
+                        }
+                    }
+                }
+
+                // Settings live in DataStore, outside the Room transaction. They are
+                // applied after the data landed, so a failed import never leaves
+                // half-applied settings.
+                settings?.let { applySettings(it) }
+                sleep?.let { sleepRepository.saveSchedule(it) }
+            } finally {
+                // Alarms for what is in the app now: the imported data with its
+                // reminder times, sleep schedule and module switches, or the old
+                // data when the import failed.
+                alarmRearmer.rearmAll()
             }
         }
-        // Calendar events made for the todos that are about to go; removed once the
-        // new data is in, so a failed import changes nothing there either.
-        val oldEvents = todoDao.getAllOnce().mapNotNull { it.calendarEventId?.takeIf { id -> id > 0 } }
-
-        // Cancel alarms of the data that is about to be replaced.
-        routineDao.getAllOnce().forEach { alarmHelper.cancelRoutineAlarms(it.id) }
-        todoReminders.pauseAll()
-        focusSessionDao.getAllOnce().forEach { focusAlarmHelper.cancelSessionAlarms(it.id) }
-
-        // Replace atomically — a failing insert rolls everything back.
-        db.withTransaction {
-            routineTaskDao.deleteAll()
-            routineDao.deleteAll()
-            todoDao.deleteAll()
-            blockedAppDao.deleteAll()
-            blockerGroupDao.deleteAll()
-            focusSessionDao.deleteAll()
-            routineCompletionDao.deleteAll()
-            focusCompletionDao.deleteAll()
-            listDao.deleteAllItems()
-            listDao.deleteAllSuggestions()
-            listDao.deleteAllLists()
-
-            routines.forEach { routineDao.insert(it) }
-            routineTaskDao.insertAll(tasks)
-            todos.forEach { todoDao.insert(it) }
-            blockedApps.forEach { blockedAppDao.insert(it) }
-            blockerGroups.forEach { blockerGroupDao.insert(it) }
-            focusSessions.forEach { focusSessionDao.insert(it) }
-            routineCompletions.forEach { routineCompletionDao.insert(it) }
-            focusCompletions.forEach { focusCompletionDao.insert(it) }
-            lists.forEach { listDao.insertList(it) }
-            listDao.insertItems(listItems)
-            listSuggestions.forEach { listDao.upsertSuggestion(it) }
-        }
-
-        oldEvents.forEach { runCatching { calendarRepository.deleteEvent(it) } }
-
-        // Settings live in DataStore, outside the Room transaction. They are applied
-        // after the data landed so a failed import never leaves half-applied settings.
-        settings?.let { applySettings(it) }
-        sleep?.let { sleepRepository.saveSchedule(it) }
-
-        // Re-arm alarms for the imported data, with the restored reminder times,
-        // sleep schedule and module switches, not the ones set before.
-        alarmRearmer.rearmAll()
 
         buildString {
             append("Imported ${routines.size} routines, ${todos.size} todos, ${lists.size} lists, ")
@@ -257,6 +276,30 @@ class BackupManager @Inject constructor(
                 else -> append(".\nThis backup predates settings export, so your current settings were kept.")
             }
         }
+    }
+
+    /**
+     * Why a backup cannot be put back right now, or null when it can.
+     *
+     * An import replaces every rule, routine and schedule. That could take away a
+     * lock Invincible Mode is holding (Golden Rule #11), end a session that is
+     * running, or move the Tamper Protection window, so it waits for the moments
+     * those changes would have to wait for when made by hand. Undoing an import
+     * goes the same way.
+     */
+    private suspend fun refusalToImport(): String? {
+        if (routineRegistry.activeRoutineId.value != null) {
+            return "A routine is running. Finish it before you put a backup back."
+        }
+        if (focusRegistry.activeSession.value != null) {
+            return "A focus session is running. Let it end before you put a backup back."
+        }
+        val state = blockerLocks.state()
+        if (state.heldRules > 0 || (state.sleepRunning && state.sleep.invincibleMode)) {
+            return "Invincible Mode is holding a block right now. Put the backup back once that has ended."
+        }
+        val verdict = tamperGuard.checkProtectedChange()
+        return if (verdict.allowed) null else verdict.message
     }
 
     /** True while the data from before the last import is still kept. */
@@ -640,8 +683,9 @@ class BackupManager @Inject constructor(
         put("nagMedium", nagJson(settingsRepository.nagPolicy(1).first()))
         put("todoRingSeconds", settingsRepository.todoRingSeconds.first())
         put("trashRetentionDays", settingsRepository.trashRetentionDays.first())
-        settingsRepository.themeJson.first()?.let { put("theme", it) }
-        settingsRepository.savedThemesJson.first()?.let { put("savedThemes", it) }
+        // Written also when there is none, so undoing an import can go back to that.
+        putNullable("theme", settingsRepository.themeJson.first())
+        putNullable("savedThemes", settingsRepository.savedThemesJson.first())
         // Calendar ids are local to this phone; which groups block during events is not.
         put("calendarOnHome", settingsRepository.calendarOnHome.first())
         put("calendarBlockGroups", JSONArray(settingsRepository.calendarBlockGroups.first().toList()))
@@ -716,7 +760,8 @@ class BackupManager @Inject constructor(
         if (o.has("todoRingSeconds")) settingsRepository.saveTodoRingSeconds(o.getInt("todoRingSeconds"))
         if (o.has("trashRetentionDays")) settingsRepository.saveTrashRetentionDays(o.getInt("trashRetentionDays"))
         if (o.has("theme")) {
-            ThemeSpec.fromJson(o.optString("theme"))?.let { settingsRepository.saveThemeJson(it.toJson()) }
+            if (o.isNull("theme")) settingsRepository.saveThemeJson(null)
+            else ThemeSpec.fromJson(o.optString("theme"))?.let { settingsRepository.saveThemeJson(it.toJson()) }
         }
         if (o.has("calendarOnHome")) settingsRepository.saveCalendarOnHome(o.optBoolean("calendarOnHome", true))
         o.optJSONArray("calendarBlockGroups")?.let { arr ->
@@ -725,7 +770,8 @@ class BackupManager @Inject constructor(
             )
         }
         if (o.has("savedThemes")) {
-            val themes = ThemeSpec.listFromJson(o.optString("savedThemes")).take(ThemeSpec.MAX_SAVED)
+            val themes = (if (o.isNull("savedThemes")) emptyList() else ThemeSpec.listFromJson(o.optString("savedThemes")))
+                .take(ThemeSpec.MAX_SAVED)
             settingsRepository.saveSavedThemesJson(if (themes.isEmpty()) null else ThemeSpec.listToJson(themes))
         }
         if (o.has("externalStarts")) settingsRepository.saveExternalStartsAllowed(o.optBoolean("externalStarts", false))

@@ -63,6 +63,10 @@ interface TodoDao {
     @Query("UPDATE todos SET calendarEventId = :eventId WHERE id = :id")
     suspend fun setCalendarEventId(id: Long, eventId: Long?)
 
+    /** Forgets every link to a calendar event, without touching the calendar. */
+    @Query("UPDATE todos SET calendarEventId = NULL WHERE calendarEventId IS NOT NULL")
+    suspend fun clearCalendarEventIds()
+
     /** Every todo, done and in the trash too: what the task sync compares. */
     @Query("SELECT * FROM todos")
     fun observeEverything(): Flow<List<TodoEntity>>
@@ -99,9 +103,14 @@ interface TodoDao {
     @Query("DELETE FROM todos WHERE deletedAt IS NOT NULL AND deletedAt < :before")
     suspend fun purgeTrashedBefore(before: Long)
 
-    /** Auto-clean of the Done list: old completed todos go to the trash, not away. */
+    /**
+     * Auto-clean of the Done list: old completed todos go to the trash, not away.
+     * They lose their link to a synced task on the way. A todo in the trash removes
+     * its task in the tasks app, which is right when the user deletes it, but not
+     * for tidying up here: the finished task stays there.
+     */
     @Query(
-        "UPDATE todos SET deletedAt = :now " +
+        "UPDATE todos SET deletedAt = :now, taskSyncId = NULL, taskSyncHash = NULL " +
             "WHERE isCompleted = 1 AND deletedAt IS NULL AND completedAt < :before"
     )
     suspend fun trashCompletedBefore(before: Long, now: Long)

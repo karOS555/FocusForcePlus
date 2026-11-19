@@ -13,8 +13,14 @@ data class SyncFields(
     val priority: Int,
     val note: String?,
 ) {
+    /**
+     * Both sides in the form a todo can hold. A todo's title is cut at
+     * [MAX_TITLE] characters and is never empty, so a longer or empty title in the
+     * tasks app must compare as equal to what was made of it here. Otherwise the
+     * shortened copy would look like an edit and be written back over the original.
+     */
     fun normalized() = copy(
-        title = title.trim(),
+        title = title.trim().take(MAX_TITLE).ifEmpty { NO_TITLE },
         due = due?.let { it / 60_000L * 60_000L },
         priority = priority.coerceIn(0, 2),
         note = note?.trim()?.ifEmpty { null },
@@ -30,6 +36,11 @@ data class SyncFields(
             hash *= 0x100000001b3L
         }
         return java.lang.Long.toHexString(hash)
+    }
+
+    companion object {
+        const val MAX_TITLE = 200
+        const val NO_TITLE = "(No title)"
     }
 }
 

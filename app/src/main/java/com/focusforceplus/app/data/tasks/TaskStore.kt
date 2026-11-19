@@ -116,10 +116,21 @@ class TaskStore(private val context: Context, private val app: TaskApp) {
         context.contentResolver.insert(tasksUri, values)?.let { ContentUris.parseId(it) }
     }.getOrNull()
 
-    /** [allDay]: the task had a date without a time there; it keeps that while ours is 09:00. */
-    fun update(taskId: Long, fields: SyncFields, allDay: Boolean = false): Boolean = runCatching {
-        context.contentResolver.update(ContentUris.withAppendedId(tasksUri, taskId), values(fields, allDay), null, null) > 0
-    }.getOrDefault(false)
+    /**
+     * Writes [fields] over the task. With [current] (what the task says now, as
+     * read by [tasks]) only the parts that differ are written. A todo knows less
+     * than a task: three priorities for nine, done or not for four states, a title
+     * of limited length. Writing everything back would flatten what the tasks app
+     * holds every time one field changes here.
+     *
+     * [allDay]: the task had a date without a time there; it keeps that while ours is 09:00.
+     */
+    fun update(taskId: Long, fields: SyncFields, current: SyncFields? = null, allDay: Boolean = false): Boolean =
+        runCatching {
+            val values = values(fields, allDay, current)
+            values.size() == 0 ||
+                context.contentResolver.update(ContentUris.withAppendedId(tasksUri, taskId), values, null, null) > 0
+        }.getOrDefault(false)
 
     fun delete(taskId: Long): Boolean = runCatching {
         context.contentResolver.delete(ContentUris.withAppendedId(tasksUri, taskId), null, null) > 0
@@ -138,29 +149,37 @@ class TaskStore(private val context: Context, private val app: TaskApp) {
         awaitClose { if (registered) context.contentResolver.unregisterContentObserver(observer) }
     }
 
-    private fun values(fields: SyncFields, allDay: Boolean = false) = ContentValues().apply {
+    /** The columns to write; with [current], only those whose value differs from it. */
+    private fun values(fields: SyncFields, allDay: Boolean = false, current: SyncFields? = null) = ContentValues().apply {
         val n = fields.normalized()
-        put("title", n.title)
-        if (n.note != null) put("description", n.note) else putNull("description")
-        val dateOnly = n.due?.takeIf { allDay }?.let { localNineToUtcMidnight(it) }
-        if (dateOnly != null) {
-            put("due", dateOnly)
-            put("tz", "UTC")
-            put("is_allday", 1)
-        } else if (n.due != null) {
-            put("due", n.due)
-            put("tz", TimeZone.getDefault().id)
-            put("is_allday", 0)
-        } else {
-            putNull("due")
+        val old = current?.normalized()
+        if (old == null || old.title != n.title) put("title", n.title)
+        if (old == null || old.note != n.note) {
+            if (n.note != null) put("description", n.note) else putNull("description")
         }
-        put("priority", TaskSyncPlanner.toRemotePriority(n.priority))
-        if (n.done) {
-            put("status", STATUS_COMPLETED)
-            put("completed", System.currentTimeMillis())
-        } else {
-            put("status", STATUS_NEEDS_ACTION)
-            putNull("completed")
+        if (old == null || old.due != n.due) {
+            val dateOnly = n.due?.takeIf { allDay }?.let { localNineToUtcMidnight(it) }
+            if (dateOnly != null) {
+                put("due", dateOnly)
+                put("tz", "UTC")
+                put("is_allday", 1)
+            } else if (n.due != null) {
+                put("due", n.due)
+                put("tz", TimeZone.getDefault().id)
+                put("is_allday", 0)
+            } else {
+                putNull("due")
+            }
+        }
+        if (old == null || old.priority != n.priority) put("priority", TaskSyncPlanner.toRemotePriority(n.priority))
+        if (old == null || old.done != n.done) {
+            if (n.done) {
+                put("status", STATUS_COMPLETED)
+                put("completed", System.currentTimeMillis())
+            } else {
+                put("status", STATUS_NEEDS_ACTION)
+                putNull("completed")
+            }
         }
     }
 

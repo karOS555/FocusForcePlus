@@ -45,8 +45,12 @@ class AlarmRearmer @Inject constructor(
         if (on(AppModule.FOCUS)) runCatching {
             focusAlarmHelper.rescheduleAll(focusRepository.getAllSessions().first())
         }
-        if (on(AppModule.SLEEP)) runCatching {
-            sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
+        // Sleep alarms are not tied to rows that come and go, so nothing else
+        // would take them down when the module turns out to be off (a backup that
+        // was made with Sleep switched off).
+        runCatching {
+            if (on(AppModule.SLEEP)) sleepAlarmHelper.scheduleAll(sleepRepository.schedule.first())
+            else sleepAlarmHelper.cancelAll()
         }
         // A reboot during the night can swallow the wake-up; make sure DND and the
         // sleep notification don't outlive the night they belong to.

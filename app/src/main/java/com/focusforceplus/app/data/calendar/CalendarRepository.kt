@@ -165,7 +165,7 @@ class CalendarRepository @Inject constructor(
                                 location = c.getString(7)?.takeIf { it.isNotBlank() },
                                 busy = c.getInt(8) != CalendarContract.Events.AVAILABILITY_FREE &&
                                     c.getInt(9) != CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED,
-                                fromTodo = c.getString(11) == TODO_MARKER,
+                                fromTodo = c.getString(11)?.contains(TODO_MARKER) == true,
                             )
                         )
                     }
@@ -200,44 +200,96 @@ class CalendarRepository @Inject constructor(
 
     // ── Todos in a calendar ──────────────────────────────────────────────────
 
-    /** What a todo's event in the calendar says now; null when it is gone. */
-    data class StoredEvent(val calendarId: Long, val title: String, val start: Long, val deleted: Boolean)
+    /**
+     * What an event in the calendar says now. [ours] is true when it carries
+     * FocusForce+'s marker: only such an event may be changed or deleted.
+     */
+    data class StoredEvent(
+        val calendarId: Long,
+        val title: String,
+        val start: Long,
+        val deleted: Boolean,
+        val ours: Boolean,
+    )
 
-    suspend fun storedEvents(ids: Collection<Long>): Map<Long, StoredEvent> = withContext(Dispatchers.IO) {
-        if (!canRead() || ids.isEmpty()) return@withContext emptyMap()
-        val projection = arrayOf(
-            CalendarContract.Events._ID,
-            CalendarContract.Events.CALENDAR_ID,
-            CalendarContract.Events.TITLE,
-            CalendarContract.Events.DTSTART,
-            CalendarContract.Events.DELETED,
-        )
+    private val storedProjection = arrayOf(
+        CalendarContract.Events._ID,
+        CalendarContract.Events.CALENDAR_ID,
+        CalendarContract.Events.TITLE,
+        CalendarContract.Events.DTSTART,
+        CalendarContract.Events.DELETED,
+        CalendarContract.Events.DESCRIPTION,
+    )
+
+    private fun readStored(selection: String, args: Array<String>?): Map<Long, StoredEvent>? =
         runCatching {
-            context.contentResolver.query(
-                CalendarContract.Events.CONTENT_URI,
-                projection,
-                "${CalendarContract.Events._ID} IN (${ids.joinToString(",")})",
-                null,
-                null,
-            )?.use { c ->
-                buildMap {
-                    while (c.moveToNext()) {
-                        put(c.getLong(0), StoredEvent(c.getLong(1), c.getString(2).orEmpty(), c.getLong(3), c.getInt(4) == 1))
+            context.contentResolver.query(CalendarContract.Events.CONTENT_URI, storedProjection, selection, args, null)
+                ?.use { c ->
+                    buildMap {
+                        while (c.moveToNext()) {
+                            put(
+                                c.getLong(0),
+                                StoredEvent(
+                                    calendarId = c.getLong(1),
+                                    title = c.getString(2).orEmpty(),
+                                    start = c.getLong(3),
+                                    deleted = c.getInt(4) == 1,
+                                    ours = c.getString(5)?.contains(TODO_MARKER) == true,
+                                ),
+                            )
+                        }
                     }
                 }
-            }.orEmpty()
-        }.getOrDefault(emptyMap())
+        }.getOrNull()
+
+    /**
+     * The events with these ids that still exist. Null means the calendar could not
+     * be read, which is not the same as "they are gone".
+     */
+    suspend fun storedEvents(ids: Collection<Long>): Map<Long, StoredEvent>? = withContext(Dispatchers.IO) {
+        if (!canRead()) return@withContext null
+        if (ids.isEmpty()) return@withContext emptyMap()
+        readStored("${CalendarContract.Events._ID} IN (${ids.joinToString(",")})", null)
+    }
+
+    /** Events in [calendarId] that FocusForce+ made for todos, by their marker. */
+    suspend fun todoEvents(calendarId: Long): Map<Long, StoredEvent>? = withContext(Dispatchers.IO) {
+        if (!canRead()) return@withContext null
+        readStored(
+            "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DESCRIPTION} LIKE ? AND " +
+                "${CalendarContract.Events.DELETED} = 0",
+            arrayOf(calendarId.toString(), "%$TODO_MARKER%"),
+        )
+    }
+
+    /** Whether this calendar is still there; null when that cannot be told. */
+    suspend fun calendarExists(calendarId: Long): Boolean? = withContext(Dispatchers.IO) {
+        if (!canRead()) return@withContext null
+        runCatching {
+            context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                arrayOf(CalendarContract.Calendars._ID),
+                "${CalendarContract.Calendars._ID} = ?",
+                arrayOf(calendarId.toString()),
+                null,
+            )?.use { it.count > 0 }
+        }.getOrNull()
     }
 
     /** Adds a half-hour event for a todo; it shows the user as free. */
     suspend fun insertTodoEvent(calendarId: Long, title: String, start: Long): Long? = withContext(Dispatchers.IO) {
         if (!canWrite()) return@withContext null
         runCatching {
-            context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, todoValues(calendarId, title, start))
-                ?.let { ContentUris.parseId(it) }
+            val values = todoValues(calendarId, title, start).apply {
+                put(CalendarContract.Events.DESCRIPTION, TODO_MARKER)
+                put(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_FREE)
+                put(CalendarContract.Events.HAS_ALARM, 0)
+            }
+            context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)?.let { ContentUris.parseId(it) }
         }.getOrNull()
     }
 
+    /** Moves or renames a todo's event. A note the user added to it stays. */
     suspend fun updateTodoEvent(eventId: Long, calendarId: Long, title: String, start: Long): Boolean =
         withContext(Dispatchers.IO) {
             if (!canWrite()) return@withContext false
@@ -261,27 +313,9 @@ class CalendarRepository @Inject constructor(
     private fun todoValues(calendarId: Long, title: String, start: Long) = ContentValues().apply {
         put(CalendarContract.Events.CALENDAR_ID, calendarId)
         put(CalendarContract.Events.TITLE, title)
-        put(CalendarContract.Events.DESCRIPTION, TODO_MARKER)
         put(CalendarContract.Events.DTSTART, start)
         put(CalendarContract.Events.DTEND, start + TODO_EVENT_MINUTES * 60_000L)
         put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
-        put(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_FREE)
-        put(CalendarContract.Events.HAS_ALARM, 0)
-    }
-
-    /** Events in [calendarId] that FocusForce+ made for todos, by their marker. */
-    suspend fun todoEventIds(calendarId: Long): Set<Long> = withContext(Dispatchers.IO) {
-        if (!canRead()) return@withContext emptySet()
-        runCatching {
-            context.contentResolver.query(
-                CalendarContract.Events.CONTENT_URI,
-                arrayOf(CalendarContract.Events._ID),
-                "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DESCRIPTION} = ? AND " +
-                    "${CalendarContract.Events.DELETED} = 0",
-                arrayOf(calendarId.toString(), TODO_MARKER),
-                null,
-            )?.use { c -> buildSet { while (c.moveToNext()) add(c.getLong(0)) } }.orEmpty()
-        }.getOrDefault(emptySet())
     }
 
     companion object {

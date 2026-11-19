@@ -85,6 +85,7 @@ class TaskSync @Inject constructor(
         if (lists.none { it.id == target.listId }) return TaskSyncStatus(now, "The list is gone in ${app.label}", ok = false)
         val rows = store.tasks(target.listId) ?: return TaskSyncStatus(now, "${app.label} could not be read", ok = false)
         val allDay = rows.filter { it.allDay }.map { it.task.id }.toSet()
+        val there = rows.associate { it.task.id to it.task.fields }
 
         val all = todos.getAllOnce()
         val local = all.filter { it.taskSyncId != null || (!it.isCompleted && it.deletedAt == null) }.map { it.toLocalTask() }
@@ -111,7 +112,9 @@ class TaskSync @Inject constructor(
                         todos.setTaskSync(action.localId, id, action.fields.fingerprint())
                         pushed++
                     }
-                    is SyncAction.PushUpdate -> if (store.update(action.remoteId, action.fields, action.remoteId in allDay)) {
+                    is SyncAction.PushUpdate -> if (
+                        store.update(action.remoteId, action.fields, there[action.remoteId], action.remoteId in allDay)
+                    ) {
                         todos.setTaskSync(action.localId, action.remoteId, action.fields.fingerprint())
                         pushed++
                     }
@@ -155,7 +158,7 @@ class TaskSync @Inject constructor(
         val due = fields.due
         val id = engine.save(
             TodoEntity(
-                title = fields.title.take(200).ifBlank { "(No title)" },
+                title = fields.normalized().title,
                 description = fields.note,
                 dueDateTime = due,
                 priority = fields.priority,
@@ -172,7 +175,7 @@ class TaskSync @Inject constructor(
     private suspend fun pullUpdate(localId: Long, fields: SyncFields) {
         val todo = todos.getTodoById(localId) ?: return
         val changed = todo.copy(
-            title = fields.title.take(200).ifBlank { todo.title },
+            title = fields.normalized().title,
             description = fields.note,
             dueDateTime = fields.due,
             priority = fields.priority,
@@ -195,11 +198,29 @@ class TaskSync @Inject constructor(
     /** Switches to another list: links to the old one are forgotten first. */
     suspend fun connect(target: TaskSyncTarget) {
         mutex.withLock {
-            todos.clearTaskSync()
-            settings.saveTaskSyncSeen(emptySet())
-            settings.saveTaskSyncTarget(target)
+            // Picking the list that is connected already changes nothing; forgetting
+            // its links would only make the next pass match everything again by name.
+            if (settings.taskSyncTarget.first() != target) {
+                todos.clearTaskSync()
+                settings.saveTaskSyncSeen(emptySet())
+                settings.saveTaskSyncTarget(target)
+            }
         }
         syncNow()
+    }
+
+    /**
+     * Runs [block], which replaces every todo at once (a backup being put back), with
+     * no sync pass in between. The todos that come in carry no links, so afterwards
+     * the list of tasks seen before is forgotten too. The next pass then finds each
+     * open todo's task by title and time and links them again; with the old list
+     * kept, those tasks would count as known but unlinked, and every todo would be
+     * sent as a second task.
+     */
+    suspend fun <T> whileTodosAreReplaced(block: suspend () -> T): T = mutex.withLock {
+        val result = block()
+        settings.saveTaskSyncSeen(emptySet())
+        result
     }
 
     private fun TodoEntity.toLocalTask() = LocalTask(

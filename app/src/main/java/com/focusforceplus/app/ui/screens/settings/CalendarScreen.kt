@@ -80,6 +80,7 @@ data class CalendarUiState(
 class CalendarViewModel @Inject constructor(
     private val calendar: CalendarRepository,
     private val settings: SettingsRepository,
+    private val mirror: com.focusforceplus.app.data.calendar.CalendarTodoMirror,
     blockerRepository: BlockerRepository,
 ) : ViewModel() {
 
@@ -112,7 +113,8 @@ class CalendarViewModel @Inject constructor(
 
     fun setIds(ids: Set<Long>?) = viewModelScope.launch { settings.saveCalendarIds(ids) }
 
-    fun setTodoTarget(id: Long?) = viewModelScope.launch { settings.saveCalendarTodoTarget(id) }
+    // Through the mirror: it removes the events from the calendar used until now.
+    fun setTodoTarget(id: Long?) = viewModelScope.launch { mirror.setTarget(id) }
 
     fun toggleBlockGroup(name: String) = viewModelScope.launch {
         val now = uiState.value.blockGroups
