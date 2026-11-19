@@ -1,6 +1,7 @@
 package com.focusforceplus.app.ui.navigation
 
 import androidx.compose.ui.graphics.RectangleShape
+import com.focusforceplus.app.ui.theme.GlassEdges
 import com.focusforceplus.app.ui.theme.aeroGlass
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -72,6 +73,11 @@ import kotlinx.coroutines.launch
 private const val VISIBLE_WHEN_SCROLLING = 5.3f
 private val DOCK_HEIGHT = 64.dp
 private val EDGE_WIDTH = 22.dp
+private val AERO_DOCK_SHAPE = RoundedCornerShape(26.dp)
+
+/** The tint of the bar's glass in the Aero style; the arrow at its edge uses it too. */
+@Composable
+private fun dockGlass() = FfTheme.colors.surface.copy(alpha = 0.42f)
 private const val GITHUB_URL = "https://github.com/karOS555/FocusForcePlus"
 
 /**
@@ -107,8 +113,13 @@ fun Dock(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
+            // Aero: a piece of glass floating over the photo, not a band across it.
+            .then(if (colors.isAero) Modifier.padding(horizontal = 12.dp).padding(top = 4.dp) else Modifier)
             .height(DOCK_HEIGHT)
-            .then(if (colors.isAero) Modifier.aeroGlass(RectangleShape, tint = colors.surface.copy(alpha = 0.50f)) else Modifier.background(colors.dock)),
+            .then(
+                if (colors.isAero) Modifier.aeroGlass(AERO_DOCK_SHAPE, tint = dockGlass()).clip(AERO_DOCK_SHAPE)
+                else Modifier.background(colors.dock)
+            ),
     ) {
         val scrolls = itemCount > 5
         val itemWidth: Dp = if (scrolls) maxWidth / VISIBLE_WHEN_SCROLLING else maxWidth / itemCount
@@ -232,7 +243,14 @@ private fun DockItem(
                 .width(52.dp)
                 .height(28.dp)
                 .clip(CircleShape)
-                .background(if (selected) colors.container else androidx.compose.ui.graphics.Color.Transparent),
+                .background(
+                    when {
+                        !selected -> androidx.compose.ui.graphics.Color.Transparent
+                        // Aero: a drop of the button colour in the glass.
+                        colors.isAero -> colors.primary.copy(alpha = if (colors.isDark) 0.30f else 0.18f)
+                        else -> colors.container
+                    }
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
@@ -270,7 +288,12 @@ private fun DockEdge(
             modifier = Modifier
                 .width(EDGE_WIDTH)
                 .fillMaxHeight()
-                .background(colors.dock)
+                // Aero: the same glass as the bar under it, so it covers the entries
+                // scrolling past without showing as a box of its own.
+                .then(
+                    if (colors.isAero) Modifier.aeroGlass(RectangleShape, tint = dockGlass(), edges = GlassEdges.None)
+                    else Modifier.background(colors.dock)
+                )
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
@@ -293,7 +316,8 @@ fun DockFooter(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (colors.isAero) Modifier.aeroGlass(RectangleShape, tint = colors.surface.copy(alpha = 0.50f)) else Modifier.background(colors.dock))
+            // Aero: under the floating bar, straight on the photo.
+            .then(if (colors.isAero) Modifier else Modifier.background(colors.dock))
             .windowInsetsPadding(WindowInsets.navigationBars)
             .height(20.dp),
         horizontalArrangement = Arrangement.Center,
@@ -303,7 +327,8 @@ fun DockFooter(
             text = "Free & open source · karOS555",
             fontSize = 10.sp,
             lineHeight = 12.sp,
-            color = colors.textFaint,
+            // On the photo itself in the Aero style, where the faint colour gets lost.
+            color = if (colors.isAero) colors.textSecondary else colors.textFaint,
             maxLines = 1,
         )
         FooterLink("Source") { uriHandler.openUri(GITHUB_URL) }

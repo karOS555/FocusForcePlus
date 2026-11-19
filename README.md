@@ -84,7 +84,7 @@ It is made for brains that need more structure than most apps assume: ADHD, habi
 
 ### Make it yours
 
-- Six themes or your own colours, saved under a name. **Aero** is a real Frutiger Aero style: frosted glass, glossy see-through buttons and a summer photo of a green hill with soap bubbles behind everything.
+- Six themes or your own colours, saved under a name. **Aero** is a real Frutiger Aero style: clear frosted glass, glossy see-through buttons and an underwater photo full of rising bubbles behind everything.
 - Choose which modules sit in the bottom bar, in which order, or switch a module off.
 - Widgets for today, quick focus and a list to tick off.
 - Your calendar on Home, todos with a date in it, and blocking during events.
@@ -204,7 +204,7 @@ The code is written from scratch, but some ideas come from these projects:
 - [Curbox / DigiPaws](https://github.com/nethical6/digipaws) by nethical6, for blocking ideas
 - [Routinery](https://play.google.com/store/apps/details?id=com.routinery.routinery), for how a running routine should feel
 
-The photo behind the Aero style, also in its screenshot, is ["Wandern am Untreusee 20240608 HOF7926"](https://commons.wikimedia.org/wiki/File:Wandern_am_Untreusee_20240608_HOF7926_RAW-Export.png) by PantheraLeo1359531, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), cropped and scaled, with bubbles drawn over it in the app.
+The photo behind the Aero style, also in its screenshot, is ["M1-1P7230624"](https://commons.wikimedia.org/wiki/File:M1-1P7230624_(29825802718).jpg) by TauchSport_Steininger, used under [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/), cropped, scaled and colour-graded, with a few bubbles drawn over it in the app.
 
 Icons in this README are from [Lucide](https://github.com/lucide-icons/lucide), used under the ISC License.
 

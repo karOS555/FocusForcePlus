@@ -1,6 +1,6 @@
 package com.focusforceplus.app.ui.screens.sleep
 
-import androidx.compose.foundation.background
+import com.focusforceplus.app.ui.theme.ffBar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -296,7 +296,7 @@ fun SleepScreen(
             if (changed) {
                 Column(
                     Modifier
-                        .background(colors.bar)
+                        .ffBar()
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                 ) {
                     PrimaryButton(text = "Save changes", onClick = viewModel::save, modifier = Modifier.fillMaxWidth())

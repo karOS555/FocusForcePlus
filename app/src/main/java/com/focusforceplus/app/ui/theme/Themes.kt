@@ -23,7 +23,7 @@ data class ThemeSpec(
     /** Links and active icons. */
     val accent: Color,
     val text: Color,
-    /** FLAT, or AERO: glass cards, glossy buttons and a summer photo behind everything. */
+    /** FLAT, or AERO: glass cards, glossy buttons and an underwater photo behind everything. */
     val style: ThemeStyle = ThemeStyle.FLAT,
 ) {
     val isDark: Boolean get() = background.luminance() < 0.4f
@@ -43,7 +43,7 @@ data class ThemeSpec(
             text = text,
             textSecondary = mix(text, background, 0.14f),
             textMuted = mix(text, background, if (aero) (if (dark) 0.30f else 0.24f) else if (dark) 0.40f else 0.36f),
-            textFaint = mix(text, background, if (aero) (if (dark) 0.46f else 0.40f) else if (dark) 0.58f else 0.54f),
+            textFaint = mix(text, background, if (aero) (if (dark) 0.42f else 0.32f) else if (dark) 0.58f else 0.54f),
             outline = mix(surface, text, if (dark) 0.20f else 0.24f),
             divider = mix(surface, text, if (dark) 0.07f else 0.09f),
             primary = primary,
@@ -116,9 +116,12 @@ object ThemePresets {
     val FOREST = ThemeSpec("Forest", Color(0xFF060A08), Color(0xFF0F1713), Color(0xFF15803D), Color(0xFF4ADE80), Color(0xFFDCEBE1))
     val EMBER = ThemeSpec("Ember", Color(0xFF0B0706), Color(0xFF1A1210), Color(0xFFC2410C), Color(0xFFFB923C), Color(0xFFF1E4DC))
     val PAPER = ThemeSpec("Paper", Color(0xFFF4F5F7), Color(0xFFFFFFFF), Color(0xFF1D4ED8), Color(0xFF1D4ED8), Color(0xFF111827))
-    /** Frutiger Aero: glass, gloss, bubbles and green hills under a bright sky. */
+    /**
+     * Frutiger Aero: clear glass and glossy buttons over sunlit water full of bubbles.
+     * The accent is a deep teal, so links stay readable on the light blue glass.
+     */
     val AERO = ThemeSpec(
-        "Aero", Color(0xFFE6F4FB), Color(0xFFFFFFFF), Color(0xFF0284C7), Color(0xFF0E6E8C), Color(0xFF0C2A3A),
+        "Aero", Color(0xFFE6F4FB), Color(0xFFFFFFFF), Color(0xFF0284C7), Color(0xFF075E80), Color(0xFF0C2A3A),
         style = ThemeStyle.AERO,
     )
 

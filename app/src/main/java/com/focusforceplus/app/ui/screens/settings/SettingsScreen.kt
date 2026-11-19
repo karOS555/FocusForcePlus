@@ -506,7 +506,7 @@ fun SettingsScreen(
                         RowDivider()
                         LinkRow(
                             title = "Photo in the Aero style",
-                            subtitle = "${AeroPhoto.TITLE}, ${AeroPhoto.LICENSE}, cropped",
+                            subtitle = "${AeroPhoto.TITLE}, ${AeroPhoto.LICENSE}, ${AeroPhoto.CHANGES}",
                             onClick = { openUrl(context, AeroPhoto.SOURCE) },
                         )
                         RowDivider()

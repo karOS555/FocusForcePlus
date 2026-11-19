@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import com.focusforceplus.app.R
 import com.focusforceplus.app.ui.theme.FfDimens
 import com.focusforceplus.app.ui.theme.FfTheme
+import com.focusforceplus.app.ui.theme.ffBar
 import kotlinx.coroutines.launch
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
@@ -214,7 +215,7 @@ fun FormScaffold(
         bottomBar = {
             Column(
                 Modifier
-                    .background(colors.bar)
+                    .ffBar()
                     .navigationBarsPadding()
                     .imePadding(),
             ) {

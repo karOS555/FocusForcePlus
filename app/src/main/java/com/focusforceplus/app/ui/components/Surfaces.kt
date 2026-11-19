@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.components
 
+import com.focusforceplus.app.ui.theme.GlassEdges
 import com.focusforceplus.app.ui.theme.aeroGlass
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -41,6 +42,9 @@ import com.focusforceplus.app.ui.theme.FfType
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 
+/** How much of its colour Aero glass keeps: the rest is the photo showing through. */
+private const val AERO_TINT = 0.34f
+
 /**
  * The one card of the app: flat, no border, no shadow. Everything that groups
  * content sits on this, so a screen never mixes outlined boxes with filled ones.
@@ -56,8 +60,8 @@ fun FfCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // Aero: frosted glass over the photo, lightly tinted with the card colour.
-            .then(if (glass) Modifier.aeroGlass(FfShapes.card, tint = color.copy(alpha = color.alpha * 0.42f)) else Modifier)
+            // Aero: glass over the photo, lightly tinted with the card colour.
+            .then(if (glass) Modifier.aeroGlass(FfShapes.card, tint = color.copy(alpha = color.alpha * AERO_TINT)) else Modifier)
             .clip(FfShapes.card)
             .then(if (glass) Modifier else Modifier.background(color))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
@@ -151,15 +155,21 @@ fun ListRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // Aero: a stack of rows is one piece of glass, lit at the top.
+            // Aero: a stack of rows is one piece of glass, lit at the top, its rim
+            // running around the whole stack.
             .then(
                 when {
                     position == RowPosition.InCard -> Modifier
                     colors.isAero -> Modifier.aeroGlass(
                         shape,
-                        tint = colors.surface.copy(alpha = colors.surface.alpha * 0.42f),
+                        tint = colors.surface.copy(alpha = colors.surface.alpha * AERO_TINT),
                         sheen = position == RowPosition.First || position == RowPosition.Single,
-                        edge = position == RowPosition.Single,
+                        edges = when (position) {
+                            RowPosition.Single -> GlassEdges.All
+                            RowPosition.First -> GlassEdges.Top
+                            RowPosition.Last -> GlassEdges.Bottom
+                            else -> GlassEdges.Sides
+                        },
                     )
                     else -> Modifier
                 }

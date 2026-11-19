@@ -226,7 +226,7 @@ fun AppearanceScreen(
                     RowDivider()
                     SwitchRow(
                         title = "Aero style",
-                        subtitle = "Glass cards, glossy buttons and a summer photo with bubbles behind everything.",
+                        subtitle = "Clear glass, glossy buttons and an underwater photo full of bubbles behind everything.",
                         checked = spec.style == ThemeStyle.AERO,
                         onCheckedChange = { on ->
                             viewModel.use(spec.copy(style = if (on) ThemeStyle.AERO else ThemeStyle.FLAT).named(spec.name))
@@ -411,7 +411,7 @@ private fun ThemeTile(
     val colors = FfTheme.colors
     Column(
         modifier = modifier
-            .aeroGlass(RoundedCornerShape(14.dp), tint = colors.surface.copy(alpha = 0.42f))
+            .aeroGlass(RoundedCornerShape(14.dp), tint = colors.surface.copy(alpha = 0.34f))
             .clip(RoundedCornerShape(14.dp))
             .border(
                 width = if (selected) 2.dp else 1.dp,
@@ -426,9 +426,10 @@ private fun ThemeTile(
                 .fillMaxWidth()
                 .then(
                     if (spec.style == ThemeStyle.AERO) {
+                        // The water of the Aero photo, light near the surface.
                         Modifier.background(
                             androidx.compose.ui.graphics.Brush.verticalGradient(
-                                listOf(spec.primary, spec.background, Color(0xFF98DE58)),
+                                listOf(Color(0xFF97E1F5), Color(0xFF4BBCE7), Color(0xFF3897D2)),
                             )
                         )
                     } else Modifier.background(spec.background)

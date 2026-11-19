@@ -51,12 +51,12 @@ data class AppColors(
     val error: Color,
     val warning: Color,
     val success: Color,
-    /** FLAT, or AERO: glass cards, glossy buttons and a drawn sky (see ffBackdrop). */
+    /** FLAT, or AERO: glass cards, glossy buttons and a photo behind everything (see ffBackdrop). */
     val style: ThemeStyle = ThemeStyle.FLAT,
 ) {
     val isAero: Boolean get() = style == ThemeStyle.AERO
 
-    /** What a screen fills itself with: see-through in Aero, so the sky shows. */
+    /** What a screen fills itself with: see-through in Aero, so the photo shows. */
     val screen: Color get() = if (isAero) Color.Transparent else background
 
     /** A bar over scrolling content (a scrolled top bar, a sticky footer). */

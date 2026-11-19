@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.components
 
+import com.focusforceplus.app.ui.theme.AeroPill
+import com.focusforceplus.app.ui.theme.GlassEdges
 import com.focusforceplus.app.ui.theme.aeroGlass
 import com.focusforceplus.app.ui.theme.glossyFill
 import androidx.compose.animation.animateColorAsState
@@ -75,21 +77,30 @@ fun PrimaryButton(
     containerColor: Color = FfTheme.colors.primary,
     contentColor: Color = FfTheme.colors.onPrimary,
 ) {
-    val gloss = FfTheme.colors.isAero && enabled && !loading
+    val aero = FfTheme.colors.isAero
+    val shape = if (aero) AeroPill else FfShapes.button
     Button(
         onClick = onClick,
         modifier = modifier
             .height(FfDimens.buttonHeight)
-            // Aero: coloured glass, the frosted backdrop showing through the colour.
-            .then(if (gloss) Modifier.aeroGlass(FfShapes.button, tint = Color.Transparent, sheen = false) else Modifier)
-            .glossyFill(containerColor, FfShapes.button, gloss),
+            // Aero: a pill of coloured glass with the backdrop showing through, or
+            // clear glass while it cannot be pressed.
+            .then(
+                when {
+                    !aero -> Modifier
+                    enabled -> Modifier
+                        .aeroGlass(shape, tint = Color.Transparent, sheen = false)
+                        .glossyFill(containerColor, shape, enabled = true)
+                    else -> Modifier.aeroGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.22f), sheen = false, edges = GlassEdges.All)
+                }
+            ),
         enabled = enabled && !loading,
-        shape = FfShapes.button,
+        shape = shape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (gloss) Color.Transparent else containerColor,
+            containerColor = if (aero) Color.Transparent else containerColor,
             contentColor = contentColor,
-            disabledContainerColor = FfTheme.colors.surfaceHigh,
-            disabledContentColor = FfTheme.colors.textFaint,
+            disabledContainerColor = if (aero) Color.Transparent else FfTheme.colors.surfaceHigh,
+            disabledContentColor = if (aero && loading) contentColor else FfTheme.colors.textFaint,
         ),
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
@@ -113,18 +124,20 @@ fun TonalButton(
     icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
-    val glass = FfTheme.colors.isAero && enabled
+    val aero = FfTheme.colors.isAero
+    val shape = if (aero) AeroPill else FfShapes.button
     Button(
         onClick = onClick,
         modifier = modifier
             .height(FfDimens.buttonHeight)
-            .then(if (glass) Modifier.aeroGlass(FfShapes.button, tint = FfTheme.colors.surface.copy(alpha = 0.40f)) else Modifier),
+            // Aero: a pill of clear glass, lit from above.
+            .then(if (aero) Modifier.aeroGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.28f)) else Modifier),
         enabled = enabled,
-        shape = FfShapes.button,
+        shape = shape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (glass) Color.Transparent else FfTheme.colors.container,
+            containerColor = if (aero) Color.Transparent else FfTheme.colors.container,
             contentColor = FfTheme.colors.onContainer,
-            disabledContainerColor = FfTheme.colors.surfaceVariant,
+            disabledContainerColor = if (aero) Color.Transparent else FfTheme.colors.surfaceVariant,
             disabledContentColor = FfTheme.colors.textFaint,
         ),
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -140,19 +153,24 @@ fun OutlineButton(
     enabled: Boolean = true,
     contentColor: Color = FfTheme.colors.text,
 ) {
-    val glass = FfTheme.colors.isAero && enabled
+    val aero = FfTheme.colors.isAero
+    val shape = if (aero) AeroPill else FfShapes.button
     OutlinedButton(
         onClick = onClick,
         modifier = modifier
             .height(FfDimens.buttonHeight)
-            .then(if (glass) Modifier.aeroGlass(FfShapes.button, tint = FfTheme.colors.surface.copy(alpha = 0.22f)) else Modifier),
+            // Aero: barely tinted glass; its rim is the outline.
+            .then(
+                if (aero) Modifier.aeroGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.10f), sheen = false, edges = GlassEdges.All)
+                else Modifier
+            ),
         enabled = enabled,
-        shape = FfShapes.button,
+        shape = shape,
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = contentColor,
             disabledContentColor = FfTheme.colors.textFaint,
         ),
-        border = if (glass) null else androidx.compose.foundation.BorderStroke(1.dp, FfTheme.colors.outline),
+        border = if (aero) null else androidx.compose.foundation.BorderStroke(1.dp, FfTheme.colors.outline),
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) { ButtonContent(text, icon) }
 }
@@ -343,8 +361,12 @@ fun SearchField(
         modifier = modifier
             .fillMaxWidth()
             .height(46.dp)
+            .then(
+                if (colors.isAero) Modifier.aeroGlass(FfShapes.field, tint = colors.surface.copy(alpha = 0.40f), sheen = false, edges = GlassEdges.All)
+                else Modifier
+            )
             .clip(FfShapes.field)
-            .background(colors.surface),
+            .then(if (colors.isAero) Modifier else Modifier.background(colors.surface)),
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.text),
         cursorBrush = SolidColor(colors.accent),

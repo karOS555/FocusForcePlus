@@ -1,5 +1,7 @@
 package com.focusforceplus.app
 
+import androidx.compose.ui.unit.dp
+import com.focusforceplus.app.ui.theme.aeroFadeOut
 import com.focusforceplus.app.ui.theme.ffBackdrop
 import android.Manifest
 import android.content.Intent
@@ -357,7 +359,9 @@ private fun AppContent(
             // from being applied a second time by every screen's own Scaffold.
             modifier         = Modifier
                 .padding(innerPadding)
-                .consumeWindowInsets(innerPadding),
+                .consumeWindowInsets(innerPadding)
+                // Aero: lists fade out above the floating bar instead of being cut off.
+                .then(if (!hideChrome && navConfig != null) Modifier.aeroFadeOut(14.dp) else Modifier),
             startDestination = if (onboardingCompleted) AppModule.HOME.route
                                else OnboardingRoutes.ONBOARDING,
         )

@@ -92,7 +92,7 @@ fun FocusForceTheme(
 /**
  * Aero: every text style with the soft glow Aero gave text on glass, a halo in the
  * light of the day (or the dark of a dark theme) behind the letters. Over the photo
- * it is what keeps text readable on cloud, sky and grass alike; on a plain surface
+ * it is what keeps text readable on bright water and bubbles alike; on a plain surface
  * it does not show.
  */
 private fun androidx.compose.material3.Typography.glowing(dark: Boolean): androidx.compose.material3.Typography {

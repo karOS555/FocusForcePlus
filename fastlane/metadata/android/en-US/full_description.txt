@@ -30,7 +30,7 @@ Tamper Protection: if you turn it on, loosening your own lock settings only work
 
 MAKE IT YOURS
 
-Choose which modules appear in the bottom bar and in which order. Six themes, two of them light, or your own colours, including a real Frutiger Aero style: frosted glass over a summer photo, with bubbles. Optional: your calendar, and two-way sync with OpenTasks or Tasks.org, which reaches CalDAV servers through DAVx5. Share text from other apps to make todos or list items. Start focus or a routine from Tasker, a shortcut or an NFC tag (off until you switch it on). Back up everything into a folder every night.
+Choose which modules appear in the bottom bar and in which order. Six themes, two of them light, or your own colours, including a real Frutiger Aero style: clear glass over an underwater photo full of bubbles. Optional: your calendar, and two-way sync with OpenTasks or Tasks.org, which reaches CalDAV servers through DAVx5. Share text from other apps to make todos or list items. Start focus or a routine from Tasker, a shortcut or an NFC tag (off until you switch it on). Back up everything into a folder every night.
 
 A NOTE ON HEALTH
 
@@ -38,4 +38,4 @@ FocusForce+ is a self-help tool for focus and habits. It is not a medical device
 
 CREDITS
 
-The photo in the Aero style is "Wandern am Untreusee" by PantheraLeo1359531 (Wikimedia Commons), CC BY 4.0, cropped and scaled.
+The photo in the Aero style is "M1-1P7230624" by TauchSport_Steininger (Flickr, via Wikimedia Commons), CC BY 2.0, cropped, scaled and colour-graded.
