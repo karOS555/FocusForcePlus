@@ -61,7 +61,7 @@ class BlockerRepository @Inject constructor(
     suspend fun updateGroup(group: BlockerGroupEntity) = blockerGroupDao.update(group)
 
     suspend fun deleteGroup(group: BlockerGroupEntity) {
-        blockerGroupDao.clearMembership(group.name)
+        blockedAppDao.getAllOnce().filter { it.groupName == group.name }.forEach { leaveGroup(it) }
         blockerGroupDao.delete(group)
     }
 
@@ -70,4 +70,19 @@ class BlockerRepository @Inject constructor(
             blockedAppDao.update(it.copy(groupName = groupName))
         }
     }
+
+    /**
+     * Takes an app out of its block. A rule that was only there as a member, with no
+     * limit and no schedule of its own, goes with it: left behind it would count as
+     * a plain "always blocked" rule and block the app around the clock, which is
+     * the opposite of taking it out.
+     */
+    suspend fun leaveGroup(rule: BlockedAppEntity) {
+        val ownRule = rule.dailyLimitMinutes != null ||
+            (rule.windowStartMinutes != null && rule.windowEndMinutes != null)
+        if (ownRule) blockedAppDao.update(rule.copy(groupName = null)) else blockedAppDao.delete(rule)
+    }
+
+    /** Moves every member of [from] over to [to]; used when a block is renamed. */
+    suspend fun renameGroupMembers(from: String, to: String) = blockedAppDao.renameGroup(from, to)
 }

@@ -1,10 +1,8 @@
 package com.focusforceplus.app.util
 
-import com.focusforceplus.app.compliance.TamperProtectionGuard
+import com.focusforceplus.app.compliance.BlockerLocks
 import com.focusforceplus.app.compliance.dayCodeFor
-import com.focusforceplus.app.compliance.isRuleLocked
 import com.focusforceplus.app.compliance.isSleepWindowActive
-import com.focusforceplus.app.data.repository.BlockerRepository
 import com.focusforceplus.app.data.repository.FocusRepository
 import com.focusforceplus.app.data.repository.NavRepository
 import com.focusforceplus.app.data.repository.RoutineRepository
@@ -34,7 +32,6 @@ class ModuleController @Inject constructor(
     private val navRepository: NavRepository,
     private val routineRepository: RoutineRepository,
     private val focusRepository: FocusRepository,
-    private val blockerRepository: BlockerRepository,
     private val sleepRepository: SleepRepository,
     private val alarmHelper: AlarmHelper,
     private val focusAlarmHelper: FocusAlarmHelper,
@@ -43,7 +40,7 @@ class ModuleController @Inject constructor(
     private val alarmRearmer: AlarmRearmer,
     private val activeRoutineRegistry: ActiveRoutineRegistry,
     private val focusSessionRegistry: FocusSessionRegistry,
-    private val tamperGuard: TamperProtectionGuard,
+    private val blockerLocks: BlockerLocks,
 ) {
     /** Returns null on success, or the reason the change was refused. */
     suspend fun setModuleOn(module: AppModule, on: Boolean): String? {
@@ -70,7 +67,8 @@ class ModuleController @Inject constructor(
                 "A focus session is running. Let it end before switching focus off."
             } else null
 
-        AppModule.BLOCKER -> blockerRefusal()
+        // The same answer as the blocker's own master switch gives.
+        AppModule.BLOCKER -> blockerLocks.refusalToStopBlocking()
 
         AppModule.SLEEP -> {
             val schedule = sleepRepository.schedule.first()
@@ -84,22 +82,6 @@ class ModuleController @Inject constructor(
         }
 
         else -> null
-    }
-
-    private suspend fun blockerRefusal(): String? {
-        val cal = Calendar.getInstance()
-        val minutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-        val rules = blockerRepository.getAllAppsOnce()
-        val locked = rules.count { isRuleLocked(it, minutes) }
-        if (locked > 0) {
-            return "$locked blocking rule(s) are locked by Invincible Mode right now. " +
-                "They release at midnight or at the end of their window."
-        }
-        if (rules.any { it.invincibleMode && it.isBlocked }) {
-            val verdict = tamperGuard.checkProtectedChange()
-            if (!verdict.allowed) return verdict.message
-        }
-        return null
     }
 
     private suspend fun pause(module: AppModule) {

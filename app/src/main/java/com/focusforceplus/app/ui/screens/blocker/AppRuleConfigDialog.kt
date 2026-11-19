@@ -13,6 +13,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -90,6 +92,9 @@ internal fun AppRuleConfigDialog(
         FormScaffold(
             title = row.appName,
             onClose = close,
+            // A dialog is a window of its own: without the backdrop the Aero style,
+            // whose screens are see-through, would show the page below through it.
+            modifier = Modifier.fillMaxSize().ffBackdrop(),
             primaryLabel = if (row.rule == null) "Save block" else "Save changes",
             onPrimary = { onSave(result()) },
             primaryEnabled = !locked,

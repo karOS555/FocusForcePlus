@@ -19,6 +19,7 @@ import com.focusforceplus.app.ui.screens.blocker.BlockedAppActivity
 import com.focusforceplus.app.util.BlockerNotificationHelper
 import com.focusforceplus.app.util.InstalledAppsHelper
 import com.focusforceplus.app.util.UsageTracker
+import com.focusforceplus.app.ui.navigation.AppModule
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +56,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     @Inject lateinit var usageTracker: UsageTracker
     @Inject lateinit var installedAppsHelper: InstalledAppsHelper
     @Inject lateinit var blockerNotificationHelper: BlockerNotificationHelper
+    @Inject lateinit var navRepository: com.focusforceplus.app.data.repository.NavRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -71,6 +73,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         /** Groups that block while a busy calendar event is on. */
         val calendarGroups: Set<String> = emptySet(),
         val calendarIds: Set<Long>? = null,
+        /** The Sleep module is switched on; off means the night blocks nothing. */
+        val sleepModuleOn: Boolean = true,
     )
 
     @Volatile private var snapshot = BlockerSnapshot()
@@ -102,11 +106,16 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     sleepRepository.schedule,
                     ::Triple,
                 ),
-                settingsRepository.blockerEnabled,
+                // A module that is switched off does nothing in the background, and
+                // that includes blocking: the master switch only counts while the
+                // Blocker module is on.
+                combine(settingsRepository.blockerEnabled, navRepository.config) { enabled, nav ->
+                    (enabled && nav.isOn(AppModule.BLOCKER)) to nav.isOn(AppModule.SLEEP)
+                },
                 settingsRepository.blockDuringRoutines,
                 settingsRepository.blockDuringFocus,
                 combine(settingsRepository.calendarBlockGroups, settingsRepository.calendarIds, ::Pair),
-            ) { (apps, groups, sleep), enabled, duringRoutines, duringFocus, (calendarGroups, calendarIds) ->
+            ) { (apps, groups, sleep), (enabled, sleepModuleOn), duringRoutines, duringFocus, (calendarGroups, calendarIds) ->
                 BlockerSnapshot(
                     rulesByPackage = apps
                         .filter { it.isBlocked }
@@ -122,6 +131,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     sleep = sleep,
                     calendarGroups = calendarGroups,
                     calendarIds = calendarIds,
+                    sleepModuleOn = sleepModuleOn,
                 )
             }.collect { fresh ->
                 val calendarNewlyOn = snapshot.calendarGroups.isEmpty() && fresh.calendarGroups.isNotEmpty()
@@ -218,7 +228,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 isGroupScheduleActive(group, minutesOfDay(), todayCode())
 
             // Sleep mode blocks the selected groups during the sleep window.
-            val sleepApplies = snap.sleep.enabled &&
+            val sleepApplies = snap.sleepModuleOn && snap.sleep.enabled &&
                 ruleGroupName != null &&
                 ruleGroupName in snap.sleep.blockedGroups &&
                 isSleepWindowActive(

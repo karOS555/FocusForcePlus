@@ -18,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.focusforceplus.app.ui.theme.ffBackdrop
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -207,11 +208,15 @@ class ListWidgetConfigActivity : ComponentActivity() {
         }
         setContent {
             FocusForceTheme {
-                PickList(
-                    lists = lists,
-                    onPick = { list -> pick(appWidgetId, list) },
-                    onBack = ::finish,
-                )
+                // An activity of its own needs its own backdrop: in the Aero style
+                // the screens are see-through and rely on what is drawn behind them.
+                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().ffBackdrop()) {
+                    PickList(
+                        lists = lists,
+                        onPick = { list -> pick(appWidgetId, list) },
+                        onBack = ::finish,
+                    )
+                }
             }
         }
     }

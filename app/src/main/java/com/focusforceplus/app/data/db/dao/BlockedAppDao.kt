@@ -47,6 +47,9 @@ interface BlockedAppDao {
     suspend fun updateException(id: Long, untilMillis: Long, usedToday: Int)
 
     // Backup / restore
+    @Query("UPDATE blocked_apps SET groupName = :to WHERE groupName = :from")
+    suspend fun renameGroup(from: String, to: String)
+
     @Query("DELETE FROM blocked_apps")
     suspend fun deleteAll()
 }

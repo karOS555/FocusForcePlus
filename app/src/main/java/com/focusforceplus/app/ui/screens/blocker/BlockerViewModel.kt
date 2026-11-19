@@ -106,6 +106,8 @@ class BlockerViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val installedAppsHelper: InstalledAppsHelper,
     private val tamperGuard: TamperProtectionGuard,
+    private val locks: com.focusforceplus.app.compliance.BlockerLocks,
+    private val groupReferences: com.focusforceplus.app.util.BlockGroupReferences,
 ) : ViewModel() {
 
     private val _installedApps = MutableStateFlow<List<InstalledApp>>(emptyList())
@@ -294,19 +296,9 @@ class BlockerViewModel @Inject constructor(
     fun setBlockerEnabled(enabled: Boolean) {
         viewModelScope.launch {
             if (!enabled) {
-                val rules = repository.getAllAppsOnce()
-                val locked = rules.count { isRuleLocked(it, minutesOfDay()) }
-                if (locked > 0) {
-                    _message.value = "Blocking cannot be paused: $locked rule(s) are locked by " +
-                        "Invincible Mode right now."
+                locks.refusalToStopBlocking()?.let {
+                    _message.value = it
                     return@launch
-                }
-                if (rules.any { it.invincibleMode && it.isBlocked }) {
-                    val verdict = tamperGuard.checkProtectedChange()
-                    if (!verdict.allowed) {
-                        _message.value = verdict.message
-                        return@launch
-                    }
                 }
             }
             settingsRepository.saveBlockerEnabled(enabled)
@@ -329,15 +321,15 @@ class BlockerViewModel @Inject constructor(
                         isBlocked = true,
                     )
                 )
-                rule.isBlocked && isRuleLocked(rule, minutesOfDay()) ->
-                    _message.value = lockedMessage()
-                rule.isBlocked && rule.invincibleMode -> {
-                    // Turning an invincible rule off is a protected change (TP).
-                    val verdict = tamperGuard.checkProtectedChange()
-                    if (verdict.allowed) repository.updateApp(rule.copy(isBlocked = false))
-                    else _message.value = verdict.message
+                rule.isBlocked -> {
+                    // Switching a rule off frees the app: not while Invincible Mode
+                    // holds it (its own, its block's, or a running session's), and
+                    // with Tamper Protection only inside the window.
+                    val refusal = locks.refusalToFree(rule)
+                    if (refusal == null) repository.updateApp(rule.copy(isBlocked = false))
+                    else _message.value = refusal
                 }
-                else -> repository.updateApp(rule.copy(isBlocked = !rule.isBlocked))
+                else -> repository.updateApp(rule.copy(isBlocked = true))
             }
         }
     }
@@ -353,6 +345,16 @@ class BlockerViewModel @Inject constructor(
             if (existing != null && isRuleLocked(existing, minutesOfDay())) {
                 _message.value = lockedMessage()
                 return@launch
+            }
+            // Switching it off or taking it out of its block frees the app, which
+            // a locked block or a running invincible session does not allow.
+            val frees = existing != null && existing.isBlocked &&
+                (!updated.isBlocked || updated.groupName != existing.groupName)
+            if (frees) {
+                locks.refusalToFree(existing!!)?.let {
+                    _message.value = it
+                    return@launch
+                }
             }
             // Weakening an invincible rule is a protected change (TP window only).
             if (existing != null && weakensInvincibleRule(existing, updated)) {
@@ -380,37 +382,30 @@ class BlockerViewModel @Inject constructor(
 
     fun deleteRule(rule: BlockedAppEntity) {
         viewModelScope.launch {
-            if (isRuleLocked(rule, minutesOfDay())) {
-                _message.value = lockedMessage()
+            locks.refusalToFree(rule)?.let {
+                _message.value = it
                 return@launch
-            }
-            if (rule.invincibleMode) {
-                val verdict = tamperGuard.checkProtectedChange()
-                if (!verdict.allowed) {
-                    _message.value = verdict.message
-                    return@launch
-                }
             }
             repository.deleteApp(rule)
         }
     }
 
-    /** Enables/disables every unlocked rule of [group] (locked rules are skipped). */
+    /**
+     * A block's own switch. Switching it off frees every app in it, so it is
+     * refused while Invincible Mode holds the block or one of its apps (Golden
+     * Rule #11), and with Tamper Protection it only works inside the window.
+     */
     fun setGroupBlocked(group: String, blocked: Boolean) {
         viewModelScope.launch {
-            var skipped = 0
-            repository.getAllAppsOnce()
-                .filter { it.groupName == group }
-                .forEach { rule ->
-                    if (isRuleLocked(rule, minutesOfDay()) && !blocked) {
-                        skipped++
-                    } else if (rule.isBlocked != blocked) {
-                        repository.updateApp(rule.copy(isBlocked = blocked))
-                    }
+            if (!blocked) {
+                locks.refusalToFreeGroup(group)?.let {
+                    _message.value = it
+                    return@launch
                 }
-            if (skipped > 0) {
-                _message.value = "$skipped rule(s) stayed on — they are locked by Invincible Mode until their natural end."
             }
+            repository.getAllAppsOnce()
+                .filter { it.groupName == group && it.isBlocked != blocked }
+                .forEach { rule -> repository.updateApp(rule.copy(isBlocked = blocked)) }
         }
     }
 
@@ -464,44 +459,49 @@ class BlockerViewModel @Inject constructor(
                     return@launch
                 }
             }
-            // While locked, membership must not change either (would free members).
-            val currentMembers = repository.getAllAppsOnce().filter { it.groupName == originalName }
-            val existingLocked = existing != null && isGroupLocked(
-                existing,
-                currentMembers.sumOf { it.usedTodayMinutes },
-                isGroupScheduleActive(existing, minutesOfDay(), todayCode()),
-            )
-            if (existingLocked) {
-                val leaving = currentMembers.any { it.packageName !in memberPackages }
-                if (leaving) {
-                    val verdict = tamperGuard.checkProtectedChange()
-                    if (!verdict.allowed) {
-                        _message.value = verdict.message
-                        return@launch
-                    }
+            // An app that leaves a block is freed: not while Invincible Mode holds
+            // it (the block's lock, or a running session that blocks this block).
+            // That goes for the apps taken out of this block, and for apps that
+            // are moved here out of another one.
+            val allRules = repository.getAllAppsOnce()
+            val currentMembers = if (existing == null) emptyList() else allRules.filter { it.groupName == existing.name }
+            val leaving = currentMembers.filter { it.packageName !in memberPackages } +
+                allRules.filter { it.packageName in memberPackages && it.groupName != null && it.groupName != existing?.name }
+            for (rule in leaving) {
+                locks.refusalToFree(rule)?.let {
+                    _message.value = it
+                    return@launch
                 }
             }
 
+            val renamed = existing != null && existing.name != trimmed
+            if ((existing == null || renamed) && repository.getGroupByName(trimmed) != null) {
+                _message.value = "A block named \"$trimmed\" already exists."
+                return@launch
+            }
             if (existing == null) {
                 val id = repository.insertGroup(desired)
                 if (id == -1L) {
-                    _message.value = "A group named \"$trimmed\" already exists."
+                    _message.value = "A block named \"$trimmed\" already exists."
                     return@launch
                 }
             } else {
                 repository.updateGroup(desired.copy(id = existing.id))
-                // Handle rename: move members to the new name.
-                if (existing.name != trimmed) {
-                    currentMembers.forEach { repository.setAppGroup(it.packageName, trimmed) }
+                if (renamed) {
+                    // Its apps move to the new name, and so does everything that
+                    // names this block: sleep mode, focus sessions, routines and
+                    // the calendar setting would otherwise stop blocking it.
+                    repository.renameGroupMembers(existing.name, trimmed)
+                    groupReferences.rename(existing.name, trimmed)
+                    if (_selectedGroup.value == existing.name) _selectedGroup.value = trimmed
                 }
             }
 
             // Sync membership to the desired set.
-            val effectiveOldName = existing?.let { if (it.name != trimmed) trimmed else it.name } ?: trimmed
-            val nowMembers = repository.getAllAppsOnce().filter { it.groupName == effectiveOldName }
+            val nowMembers = repository.getAllAppsOnce().filter { it.groupName == trimmed }
             // Remove apps no longer selected.
             nowMembers.filter { it.packageName !in memberPackages }
-                .forEach { repository.setAppGroup(it.packageName, null) }
+                .forEach { repository.leaveGroup(it) }
             // Add newly selected apps.
             memberPackages.forEach { pkg ->
                 val rule = repository.getByPackageName(pkg)
@@ -524,12 +524,10 @@ class BlockerViewModel @Inject constructor(
 
     fun deleteGroup(groupRow: BlockerGroupRow, onDeleted: () -> Unit = {}) {
         viewModelScope.launch {
-            if (groupRow.locked) {
-                val verdict = tamperGuard.checkProtectedChange()
-                if (!verdict.allowed) {
-                    _message.value = verdict.message
-                    return@launch
-                }
+            // Deleting a block frees its apps, like its switch does.
+            locks.refusalToFreeGroup(groupRow.group.name)?.let {
+                _message.value = it
+                return@launch
             }
             repository.deleteGroup(groupRow.group)
             if (_selectedGroup.value == groupRow.group.name) _selectedGroup.value = null
