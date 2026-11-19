@@ -1,43 +1,41 @@
-WARUM ES DIESE APP GIBT
+FocusForce+ vereint Routinen, To-dos, Listen, eine App-Sperre, Fokus- und Schlaf-Modus in einer App, mit Erinnerungen, die sich nicht einfach wegwischen lassen. Gemacht für Menschen, deren Pläne zerfallen, sobald die Motivation nachlässt, zum Beispiel mit ADHS. Alles bleibt auf deinem Handy: kein Konto, keine Cloud, keine Werbung und keine Internet-Berechtigung. Die Oberfläche der App ist auf Englisch.
 
-Ich habe sie in erster Linie für mich selbst gebaut.
+WAS SIE KANN
 
-Ich bin ständig zwischen Routinen-App, To-do-App und Blocker gesprungen, und keine hat mich an irgendetwas gehalten, sobald die Motivation weg war. Alles war ein Vorschlag, den man wegwischen konnte. Also habe ich gebaut, was ich eigentlich wollte: eine App, in der eine Routine einen richtig weckt, eine Aufgabe nicht klammheimlich verschwindet, und "nur noch fünf Minuten" erst an etwas vorbei muss.
+Der Startbildschirm zeigt deinen Tag in einer Liste: wie viel geschafft ist, was als Nächstes kommt, dann Routinen, To-dos und Kalendertermine nach Uhrzeit.
 
-Ich benutze sie jeden Tag. Wenn dein Kopf ähnlich funktioniert wie meiner, passt sie vielleicht auch zu dir.
+Routinen starten mit einem echten Wecker und geben jedem Schritt einen eigenen Timer. Überziehst du, zählt der Timer weiter und erinnert dich. Snoozes, Verschieben und die Vorwarnung stellst du pro Routine ein.
 
-WAS SIE IST
+To-dos werden mit ihrer Priorität hartnäckiger. Niedrig ist eine Benachrichtigung. Mittel kommt auf den Bildschirm und meldet sich ein paar Mal wieder. Hoch klingelt alle paar Minuten erneut; zum Abhaken braucht es eine Bestätigung und einen Wisch entlang eines Pfads. To-dos ohne Termin kommen täglich zu festen Zeiten wieder.
 
-FocusForce+ steckt fünf Dinge, die sonst in fünf Apps leben, in eine einzige: strenge Routinen, einen hartnäckigen To-do-Planer, eine App-Sperre, einen Fokus-Modus und einen Schlaf-Modus. Sie lässt dich nicht aus deinen eigenen Plänen heraus, sobald die Motivation nachgibt.
+Listen in zwei Arten. Eine Einkaufsliste sortiert von selbst nach Abteilungen, hält bereit, was du schon einmal gekauft hast, und hat eine große Abhak-Ansicht für den Laden. Eine Checkliste ist für das, was jedes Mal gleich ist, etwa Packen: Abgehaktes bleibt stehen, und sie beginnt wieder von vorn.
 
-Sie richtet sich an Menschen, deren Kopf mehr Struktur braucht, als die meisten Apps voraussetzen: ADHS, Schwierigkeiten mit den eigenen Gewohnheiten, oder schlicht zu viele Stunden, die ans Handy gehen.
+Die Sperre schließt Apps immer, nach einem Tageslimit oder nach Zeitplan, auch über Nacht, sowie während Routinen, Fokus-Sitzungen und Kalenderterminen. Mehrere Apps können sich ein Limit teilen. Ein optionaler Dienst lässt Instagram und YouTube nutzbar, verlässt aber Reels und Shorts, sobald sie aufgehen.
 
-Alles bleibt auf deinem Gerät. Kein Konto, keine Cloud, keine Werbung, kein Tracking. Die App fragt nicht einmal nach Internetzugriff.
+Fokus stellt das Handy für eine feste Zeit stumm und sperrt die Apps, die du auswählst. Vorzeitig beenden fragt erst nach und lässt dich dann warten.
 
-WAS DRIN IST
+Schlaf erinnert ans Runterkommen, hält die Nacht ruhig, schließt Apps bis zum Morgen und kann zum Zubettgehen und Aufstehen eine Routine starten.
 
-Routinen. Mehrstufige Routinen mit echtem Wecker zur Startzeit, Countdown für jeden Schritt und Vorwarnung, bevor einer endet. Läuft ein Schritt über, zählt der Timer ins Negative weiter und erinnert dich weiter.
+Dazu: Statistik über die letzten sieben Tage und Widgets für den heutigen Tag, Schnell-Fokus und eine Liste.
 
-To-dos. Ein Planer, der nichts durchrutschen lässt. Aufgaben mit Uhrzeit wecken dich wie eine Routine, Aufgaben ohne Termin tauchen mehrmals am Tag auf, überfällige bleiben angeheftet, bis du sie erledigst.
+WIE SIE DICH BEI DER STANGE HÄLT
 
-App-Sperre. Sperre ablenkende Apps über ein Tageslimit, ein festes Zeitfenster (auch über Nacht) oder automatisch während Routinen und Fokus-Sitzungen. Fasse Apps zu Gruppen mit gemeinsamem Limit, Sperrplan und Regeln zusammen.
+Speed Bumps: Bevor du ein To-do abhakst, snoozt, verschiebst, Fokus vorzeitig beendest oder eine Sperre pausierst, kann die App nachfragen, dich warten lassen oder dir eine kleine Aufgabe geben. Die Mischung bestimmst du, und ein Schalter stellt alle ab.
 
-Fokus-Modus. Eine Sitzung, die "Nicht stören" einschaltet, Benachrichtigungen stumm schaltet und die Apps oder Gruppen deiner Wahl sperrt. Sofort starten oder planen.
+Der Invincible Mode gilt pro Eintrag: Sperre eine einzelne Routine, Fokus-Sitzung oder App-Sperre, bis sie von selbst endet.
 
-Schlaf-Modus. Ein nächtlicher Zeitplan: Erinnerung zum Runterkommen, "Nicht stören" und ablenkende Apps außer Reichweite bis zum Morgen. Zubettgehen und Aufstehen können je eine Routine auslösen, und auf Wunsch legt er Ersatzwecker in der Uhren-App deines Handys an, damit Aufwachen nie von dieser App abhängt.
+Reibung, keine Falle: Die Wartezeit eines Speed Bumps beträgt höchstens eine Minute, Erinnerungen klingeln nie endlos, und du kannst die App jederzeit deinstallieren.
 
-Startseite und Statistiken. Dein Tag auf einen Blick, dazu eine Wochenansicht mit abgeschlossenen Routinen und Fokus-Minuten.
+Manipulationsschutz: Ist er an, lassen sich deine eigenen Sperreinstellungen nur in einem kurzen täglichen Zeitfenster lockern.
 
-WAS SIE UNTERSCHEIDET
+MACH SIE ZU DEINER
 
-Der Invincible Mode gilt pro Funktion, nicht als ein großer Schalter. Du schaltest ihn für die einzelne Routine, Fokus-Sitzung oder Sperrregel ein, auf die du dich festlegen willst: das Morgentraining festnageln, alles andere flexibel lassen. Solange etwas Invincibles läuft, kannst du es nicht aus einem Impuls heraus abbrechen.
-
-Es ist Reibung, keine Falle. Du kannst die App jederzeit über die Android-Einstellungen deinstallieren, ein Zurücksetzen auf Werkseinstellungen funktioniert immer. Es geht nicht darum, dich auszusperren, sondern darum, das Umgehen lästig genug zu machen, dass die Schlecht-Tag-Version von dir es nicht aus einem dummen Grund tut.
-
-Manipulationsschutz. Ist er aktiv, lassen sich deine eigenen Sperreinstellungen nur in einem kurzen täglichen Zeitfenster lockern, das du festlegst. So kannst du nicht in einem schwachen Moment alles panisch abschalten.
-
-Wirklich lokal. Gar keine Internet-Berechtigung. Deine Daten können das Gerät nicht verlassen, weil die App keine Möglichkeit hat, sie zu senden. Alles lässt sich als JSON-Datei exportieren und importieren.
+Wähle, welche Module in der unteren Leiste stehen. Sechs Themes, zwei davon hell, oder eigene Farben, dazu ein echter Frutiger-Aero-Stil: Glas über Sommerhimmel, grüner Wiese und Seifenblasen. Optional: dein Kalender und ein Abgleich mit OpenTasks oder Tasks.org, der über DAVx5 auch CalDAV-Server erreicht. Teile Text aus anderen Apps, starte Fokus oder eine Routine aus Tasker oder per NFC-Tag, und sichere jede Nacht alles in einen Ordner.
 
 HINWEIS ZUR GESUNDHEIT
 
-FocusForce+ ist ein Selbsthilfe-Werkzeug für Fokus und Gewohnheiten. Es ist kein Medizinprodukt und dient nicht der Diagnose, Behandlung, Heilung oder Vorbeugung von ADHS oder einer anderen Erkrankung, und es ersetzt keine professionelle Betreuung. Wenn es dir schwerfällt, sprich bitte mit einer qualifizierten Fachperson.
+FocusForce+ ist ein Selbsthilfe-Werkzeug für Fokus und Gewohnheiten. Es ist kein Medizinprodukt, dient nicht der Diagnose, Behandlung, Heilung oder Vorbeugung von ADHS oder einer anderen Erkrankung und ersetzt keine professionelle Betreuung. Wenn es dir schwerfällt, sprich bitte mit einer qualifizierten Fachperson.
+
+BILDNACHWEIS
+
+Das Bild im Aero-Stil ist aus Fotos von Lee Ann Ratledge (CC BY 4.0), Marco Rosanova (CC BY 3.0), Sam Renold Joshua (CC0) und der NASA (gemeinfrei) zusammengesetzt, alle von Wikimedia Commons, zugeschnitten und umgefärbt, mit eingezeichneten Blasen und Licht.
