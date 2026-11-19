@@ -163,7 +163,9 @@ class TodoNotifications @Inject constructor(
             append(since?.let(::formatMoment) ?: "today")
             when {
                 nextRingAt != null -> append(" · rings again ${formatClock(nextRingAt)}")
-                todo.nagCount == TodoEntity.NAG_DISMISSED -> append(" · dismissed for now")
+                // Dismissed, reopened, restored, or already overdue when it came in:
+                // in every case it now waits for the next daily reminder.
+                todo.nagCount == TodoEntity.NAG_DISMISSED -> append(" · quiet until the next daily reminder")
             }
         }
         val builder = base(todo, CHANNEL_OPEN)
