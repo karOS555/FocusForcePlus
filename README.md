@@ -9,7 +9,9 @@
 
 # FocusForce+
 
-### Routines, todos, lists, an app blocker, focus and sleep mode in one Android app, with reminders you can't just swipe away.
+### The all-in-one app for ADHD brains
+
+Routines, todos, lists, an app blocker, focus and sleep mode in one Android app.<br/>With reminders you can't just swipe away.
 
 <br/>
 
@@ -40,39 +42,138 @@
 > [!NOTE]
 > FocusForce+ is in public beta. If something breaks or feels wrong on your phone, please [open an issue](../../issues).
 
+<h2 id="in-short"><sub><img src="docs/readme/icons/lightbulb.svg" height="24" width="24" alt=""></sub> In short</h2>
+
+- **One app instead of six.** Routines, todos, lists, blocker, focus and sleep work together. A routine can block your apps. A todo can carry your shopping list.
+- **It holds you to your plan.** Reminders come back. Snoozing, skipping and quitting early take a small task first, like solving a sum.
+- **It stays on your phone.** No account, no cloud, no ads. The app has no internet permission.
+- **Free and open source.** Built by one person who uses it every day.
+
 <h2 id="why-i-built-it"><sub><img src="docs/readme/icons/user-round.svg" height="24" width="24" alt=""></sub> Why I built it</h2>
 
-**I built FocusForce+ for myself.** Every routine app, todo app and blocker I tried stopped working for me the moment motivation dipped, because everything in them could be swiped away, snoozed forever or switched off in two taps. So I wrote the app I needed: reminders that come back, routines that start with a real alarm, blocks that hold, and a little friction in front of every way out. I use it every day.
+**I built FocusForce+ for myself.** Every routine app, todo app and blocker I tried stopped working the moment my motivation dipped. I could swipe everything away, snooze forever, or switch it off in two taps.
 
-It is made for brains that need more structure than most apps assume: ADHD, habits that run away with you, or too many hours lost to the phone. If yours works anything like mine, it might fit you too.
+So I wrote the app I needed. I use it every day.
 
-<h2 id="what-it-does"><sub><img src="docs/readme/icons/smartphone.svg" height="24" width="24" alt=""></sub> What it does</h2>
+It is made for brains that need more structure than most apps assume: ADHD, habits that run away with you, or too many hours lost to the phone. If yours works like mine, it might fit you too.
 
-### Your day, in one place
+<h2 id="how-it-holds-you-to-it"><sub><img src="docs/readme/icons/lock-keyhole.svg" height="24" width="24" alt=""></sub> How it holds you to it</h2>
 
-**Home** answers "what now?": how much of today is done, what is up next with a Start or Done button right there, and then routines, todos and calendar events in one list by time. **Todos** get pushier with their priority. Low is one notification, medium comes up on screen and comes back a couple of times, high rings and rings again. Ticking one off takes a confirmation and a swipe along a path. Todos without a date come back at set times each day.
+Most apps let you swipe, snooze or switch off. FocusForce+ puts a small hurdle in front of every way out.
+
+<p align="center">
+<a href="docs/readme/shots/sum.png"><img src="docs/readme/shots/sum.png" width="30%" alt="A ringing routine alarm asks for a sum before it can be snoozed"></a>
+&nbsp;
+<a href="docs/readme/shots/blocked.png"><img src="docs/readme/shots/blocked.png" width="30%" alt="YouTube is blocked because a focus session is running"></a>
+&nbsp;
+<a href="docs/readme/shots/invincible.png"><img src="docs/readme/shots/invincible.png" width="30%" alt="A focus session in invincible mode that runs to the end"></a>
+</p>
+
+| | What it does |
+|---|---|
+| **Speed bumps** | Before you snooze, skip, quit early or pause a block, the app can ask again, make you wait, or give you a small task: hold a button, drag a slider, trace a path or solve a sum. |
+| **Blocking that follows your day** | Start a routine or a focus session and your apps close with it. Sleep time and calendar events do the same. |
+| **Invincible mode** | Lock one routine, one focus session or one block. It then runs to the end. The rest of your phone stays free. |
+| **Reminders that come back** | Swipe an important todo away and it returns. A high-priority todo rings again every few minutes. |
+| **Tamper Protection** | Switch it on, and you can only loosen your locks in a short daily window. You pick the time. |
+
+<p align="center">
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="30%" alt="A high-priority todo alarm that is only done after a swipe along a path"></a>
+&nbsp;
+<a href="docs/readme/shots/speedbumps.png"><img src="docs/readme/shots/speedbumps.png" width="30%" alt="The speed bump settings, with a mix for each action"></a>
+&nbsp;
+<a href="docs/readme/shots/tamper.png"><img src="docs/readme/shots/tamper.png" width="30%" alt="Tamper Protection switched on, with its daily window"></a>
+</p>
+
+**You decide how strict it is.** Every speed bump can be changed, for each action and even for a single todo or routine. One switch turns them all off.
+
+> [!TIP]
+> **Friction, not a trap.** A speed bump takes a minute at most. No alarm rings forever. You can always uninstall the app in Android's settings. The point is to stop the reflex, not to lock you out of your phone.
+
+<h2 id="what-is-inside"><sub><img src="docs/readme/icons/smartphone.svg" height="24" width="24" alt=""></sub> What is inside</h2>
+
+<h3 id="home-and-todos"><sub><img src="docs/readme/icons/house.svg" height="20" width="20" alt=""></sub> Home and todos</h3>
+
+**Home** answers one question: what now?
+
+- How much of today is done, and what is up next, with **Start** or **Done** right there.
+- Routines, todos and calendar events in **one list**, sorted by time.
+
+**Todos** get louder with their priority.
+
+| Priority | What happens |
+|---|---|
+| Low | One quiet notification. |
+| Medium | Comes up on screen and comes back a couple of times. |
+| High | Rings like an alarm, and rings again every few minutes. Ticking it off takes a confirmation and a swipe along a path. |
+
+- **Todos without a date** come back at set times each day, so they don't sink to the bottom of a list.
+- Checklists inside a todo, repeating todos, and a trash for mistakes.
 
 <p align="center">
 <a href="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="30%" alt="Home with today's progress, what is up next, and routines, todos and calendar events in one list"></a>
 &nbsp;
-<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="30%" alt="A high-priority todo alarm with the path slider"></a>
-&nbsp;
 <a href="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="30%" alt="The todo list grouped by today, later and no date"></a>
 </p>
 
-### Routines and lists
+<h3 id="routines"><sub><img src="docs/readme/icons/alarm-clock.svg" height="20" width="20" alt=""></sub> Routines</h3>
 
-**Routines** start with a real alarm and give every step its own timer. Run over and the timer keeps counting and reminds you. Each routine has its own number of snoozes, its own heads-up before the start, and can block apps and switch on Do Not Disturb while it runs. **Lists** come in two kinds. A shopping list takes several things at once ("milk, 2 bread, flour 500 g"), sorts them by aisle on its own, keeps what you bought before one tap away, and turns into a big tick-off view in the shop that keeps the screen on. A checklist is for the same things every time, like packing: ticked items stay, and it starts over for the next trip. A todo can carry a list, and so can a routine step, like a packing list for "Pack the bag".
+A routine is a list of steps. Each step has its own timer.
+
+- **Starts with a real alarm,** full screen, like an alarm clock.
+- **One step at a time.** Run over, and the timer keeps counting and reminds you.
+- **Snoozing costs a sum.** You set how many snoozes each routine gets.
+- Can **block apps** and switch on **Do Not Disturb** while it runs.
+- A step can carry a list, like a packing list for "Pack the bag".
+- Duplicate a routine, or copy steps from another one.
 
 <p align="center">
-<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="30%" alt="A routine step counting down"></a>
+<a href="docs/readme/shots/routine-alarm.png"><img src="docs/readme/shots/routine-alarm.png" width="30%" alt="A routine's alarm with Start, Snooze and Move"></a>
 &nbsp;
-<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png" width="30%" alt="A shopping list sorted by aisle, with amounts, things to buy again and its reminder"></a>
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="30%" alt="A routine step counting down"></a>
 </p>
 
-### Blocking, focus and sleep
+<h3 id="lists"><sub><img src="docs/readme/icons/list-checks.svg" height="20" width="20" alt=""></sub> Lists</h3>
 
-**The blocker** closes apps always, after a daily limit, on a schedule, or while a routine, a focus session or a calendar event is on. Several apps can share one limit, and you can keep Instagram and YouTube but skip Reels and Shorts. **Focus** silences the phone and blocks apps for a set time; ending early asks first and then makes you wait. **Sleep** reminds you to wind down, keeps the night quiet, closes apps until morning, and can start a routine at bedtime and at wake-up.
+Two kinds, because shopping and packing work differently.
+
+**Shopping list**
+
+- Type several things at once: `milk, 2 bread, flour 500 g`.
+- **Sorts itself by aisle.** It knows common groceries in English and German.
+- **Buy again:** what you bought before is one tap away.
+- **A view for the shop:** only what is left, in big rows, with the screen kept on.
+
+**Checklist**
+
+- For the same things every time, like packing or leaving the house.
+- Ticked items stay, and the top shows how far you are.
+- **Start over** resets it for the next trip.
+
+Both can remind you with a todo, be shared as text, and undo what you removed.
+
+<p align="center">
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png" width="30%" alt="A shopping list sorted by aisle, with amounts, things to buy again and its reminder"></a>
+&nbsp;
+<a href="docs/readme/shots/shopping.png"><img src="docs/readme/shots/shopping.png" width="30%" alt="The view for the shop: what is left, aisle by aisle, in big rows"></a>
+&nbsp;
+<a href="docs/readme/shots/checklist.png"><img src="docs/readme/shots/checklist.png" width="30%" alt="A packing checklist with its progress and Start over"></a>
+</p>
+
+<h3 id="blocker-focus-and-sleep"><sub><img src="docs/readme/icons/ban.svg" height="20" width="20" alt=""></sub> Blocker, focus and sleep</h3>
+
+**The blocker** closes the apps you pick:
+
+- **always**, after a **daily limit**, or on a **schedule**, overnight too
+- while a **routine**, a **focus session** or a **calendar event** is on
+- with **one shared limit** for several apps, like 60 minutes for all social media
+- or only **Reels and Shorts**, while the rest of Instagram and YouTube keeps working
+
+Need an app anyway? "5 more minutes" is there a couple of times a day, after a short wait.
+
+**Focus** silences the phone and blocks apps for a set time. Ending early asks first, then makes you wait.
+
+**Sleep** reminds you to wind down, keeps the night quiet and closes apps until morning. It can start a routine at bedtime and at wake-up.
 
 <p align="center">
 <a href="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="30%" alt="The blocker with blocks and the Reels and Shorts switches"></a>
@@ -82,46 +183,50 @@ It is made for brains that need more structure than most apps assume: ADHD, habi
 <a href="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png" width="30%" alt="Sleep mode with bedtime, wake-up and linked routines"></a>
 </p>
 
-### Make it yours
+<h3 id="statistics-widgets-and-themes"><sub><img src="docs/readme/icons/chart-column.svg" height="20" width="20" alt=""></sub> Statistics, widgets and themes</h3>
 
-- Six themes or your own colours, saved under a name. **Aero** is a real Frutiger Aero style: glass cards and liquid glass buttons over a summer sky, a green meadow and soap bubbles.
-- Choose which modules sit in the bottom bar, in which order, or switch a module off.
-- Widgets for today, quick focus and a list to tick off.
-- Your calendar on Home, todos with a date in it, and blocking during events.
-- Two-way sync with OpenTasks or Tasks.org, and with DAVx5 from there to Nextcloud or any CalDAV server.
-- Share text from any app to make a todo or list items; `focusforceplus://` links start things from Tasker, shortcuts or NFC tags (off until you switch them on).
-- A backup into a folder every night, a file by hand, and an import you can undo.
+- **Statistics** compare your last seven days with the seven before: focus time, routines, todos and screen time, with streaks.
+- **Widgets** put today, quick focus and a list on your home screen.
+- **Themes:** six ready-made ones, two of them light, or your own colours. **Aero** is a real Frutiger Aero style: glass cards and liquid glass buttons over a summer sky, a green meadow and soap bubbles.
 
 <p align="center">
-<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/9.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/9.png" width="30%" alt="Home in a light custom theme with glass cards"></a>
+<a href="docs/readme/shots/stats.png"><img src="docs/readme/shots/stats.png" width="30%" alt="Statistics for the last seven days with streaks and a chart of focus time"></a>
+&nbsp;
+<a href="docs/readme/shots/widgets.png"><img src="docs/readme/shots/widgets.png" width="30%" alt="The Today and Quick focus widgets on a home screen"></a>
+&nbsp;
+<a href="fastlane/metadata/android/en-US/images/phoneScreenshots/9.png"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/9.png" width="30%" alt="Home in the Aero theme with glass cards over a sky and a meadow"></a>
 </p>
 
-Everything stays on your phone. There is no account, no cloud, and the app has no internet permission.
+<h3 id="and-more"><sub><img src="docs/readme/icons/plug.svg" height="20" width="20" alt=""></sub> And more</h3>
 
-<h2 id="how-it-holds-you-to-it"><sub><img src="docs/readme/icons/lock-keyhole.svg" height="24" width="24" alt=""></sub> How it holds you to it</h2>
+| | |
+|---|---|
+| **Your own bar** | Choose which modules sit in the bottom bar and in which order, or switch a module off. |
+| **Calendar** | Today's events on Home, todos with a date in a calendar you pick, and blocking during events. |
+| **Tasks apps** | Two-way sync with OpenTasks or Tasks.org. With DAVx5 it reaches Nextcloud and any CalDAV server. |
+| **Sharing** | Share text from any app to make a todo or list items. |
+| **Start links** | `focusforceplus://` links start focus or a routine from Tasker, shortcuts or NFC tags. Off until you switch them on. |
+| **Backups** | Every night into a folder you choose, or one file by hand. An import can be undone. |
 
-**Speed bumps.** Before you tick off a todo, snooze it, push a routine back, stop it or a focus session early, or pause a block, the app can ask again, make you wait, or give you a small task: hold a button, drag a slider or a path with two bends, or solve a sum. You pick the mix for each of these, and a single todo or routine can have its own. One switch turns them all off.
-
-**Invincible mode, one item at a time.** Lock a single routine, focus session or block instead of the whole phone. Until it ends on its own, it can't be cancelled or weakened.
-
-**Friction, not a trap.** The wait in a speed bump is a minute at most, a reminder never rings forever, and you can always uninstall the app from Android settings. The point is to stop the reflex, not to lock you out of your phone.
-
-**Tamper Protection.** If you turn it on, loosening your own lock settings only works in a short daily window you choose.
+Everything stays on your phone. There is no account and no cloud, and the app has no internet permission.
 
 <h2 id="install"><sub><img src="docs/readme/icons/download.svg" height="24" width="24" alt=""></sub> Install</h2>
 
 1. Open [the releases page](https://github.com/karOS555/FocusForcePlus/releases) and download the `.apk` file of the newest release, at the top.
-2. Open it on your phone. The first time, Android asks whether to allow installs from this source. Allow it.
-3. The setup guide walks you through the permissions each part needs and explains what each one is for.
+2. Open the file on your phone. The first time, Android asks whether to allow installs from this source. Allow it.
+3. The setup guide walks you through the permissions and says what each one is for.
 
 FocusForce+ needs Android 8.0 or newer.
 
 > [!IMPORTANT]
-> Blocking needs an accessibility service, daily limits need usage access, and focus needs Do Not Disturb access. You grant these in Android's own settings. The setup guide takes you there and says what each one does and does not do. Calendar and tasks apps are optional and ask only when you switch them on.
+> Blocking needs an accessibility service. Daily limits need usage access. Focus needs Do Not Disturb access. You grant these in Android's own settings, and the setup guide takes you there. Calendar and tasks apps are optional and only ask when you switch them on.
 
-### Updates
+<h3 id="updates">Updates</h3>
 
-The app has no internet access, so it can't check for updates itself. Either open **Settings > About > Check for updates**, which opens the releases page, or let [Obtainium](https://github.com/ImranR98/Obtainium) watch this repository and install new versions for you.
+The app has no internet access, so it can't check for updates itself. There are two ways:
+
+- **By hand:** **Settings > About > Check for updates** opens the releases page.
+- **Automatic:** [Obtainium](https://github.com/ImranR98/Obtainium) watches this repository and installs new versions for you.
 
 <div align="center">
 
@@ -177,7 +282,15 @@ The app has no internet access, so it can't check for updates itself. Either ope
 
 The app collects nothing and sends nothing. There is no analytics, no crash reporting and no ad SDK, and it has no internet permission.
 
-Each permission belongs to one feature. The blocking service only learns which app you opened and reads nothing on the screen. The optional Reels and Shorts service only works inside Instagram and YouTube and only looks for their short-video player. Usage access measures app time for limits and statistics. Do Not Disturb access is for focus, sleep and routines. Calendar and tasks access are optional and only touch the calendar and the list you pick.
+Each permission belongs to one feature:
+
+| Permission | What it is for |
+|---|---|
+| Accessibility, for the blocker | Only learns which app you opened. It reads nothing on the screen. |
+| Accessibility, for Reels and Shorts (optional) | Only works inside Instagram and YouTube, and only looks for their short-video player. |
+| Usage access | Measures app time for limits and statistics. |
+| Do Not Disturb access | For focus, sleep and routines. |
+| Calendar and tasks (optional) | Only the calendar and the list you pick. |
 
 All details are in [PRIVACY.md](PRIVACY.md).
 
@@ -222,7 +335,7 @@ FocusForce+ is a self-help tool for focus and habits. It is not a medical device
 
 <h2 id="if-it-helps-you"><sub><img src="docs/readme/icons/star.svg" height="24" width="24" alt=""></sub> If it helps you</h2>
 
-The app never phones home, so I can't tell whether anyone uses it. If it does something for you, a star on the repository or an [issue](../../issues) is the only way I find out, whether it's a bug, an idea or one line saying it works.
+The app never phones home, so I can't tell whether anyone uses it. If it does something for you, a star on the repository or an [issue](../../issues) is the only way I find out. A bug, an idea, or one line saying it works: all of it helps.
 
 <br/>
 
