@@ -13,6 +13,7 @@ import com.focusforceplus.app.data.repository.SleepRepository
 import com.focusforceplus.app.data.repository.SleepSchedule
 import com.focusforceplus.app.util.SleepAlarmHelper
 import com.focusforceplus.app.util.SleepNotificationHelper
+import com.focusforceplus.app.ui.navigation.AppModule
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,7 @@ class SleepReceiver : BroadcastReceiver() {
     @Inject lateinit var routineRepository: RoutineRepository
     @Inject lateinit var sleepAlarmHelper: SleepAlarmHelper
     @Inject lateinit var notifHelper: SleepNotificationHelper
+    @Inject lateinit var navRepository: com.focusforceplus.app.data.repository.NavRepository
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
@@ -156,12 +158,17 @@ class SleepReceiver : BroadcastReceiver() {
      */
     private suspend fun fireLinkedRoutine(context: Context, routineId: Long, bedtime: Boolean) {
         if (routineId == 0L) return
-        val routine = runCatching { routineRepository.getRoutineById(routineId).first() }.getOrNull()
+        // Routines switched off as a module stay quiet, also when sleep mode asks.
+        if (!runCatching { navRepository.isModuleOn(AppModule.ROUTINES) }.getOrDefault(true)) return
+        val routine = runCatching { routineRepository.getRoutineIncludingTrashed(routineId) }.getOrNull()
         if (routine == null) {
             if (bedtime) sleepRepository.setBedtimeRoutineId(0L)
             else sleepRepository.setMorningRoutineId(0L)
             return
         }
+        // In the trash it does not ring, but it keeps its place here: restoring it
+        // brings the link back with it.
+        if (routine.deletedAt != null) return
         context.sendBroadcast(
             Intent(context, RoutineAlarmReceiver::class.java).apply {
                 putExtra("routineId", routineId)

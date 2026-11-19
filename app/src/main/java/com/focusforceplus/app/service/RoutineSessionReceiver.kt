@@ -16,9 +16,10 @@ class RoutineSessionReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_COMPLETE_TASK -> RoutineForegroundService.completeTask(context)
             ACTION_ADD_TIME -> RoutineForegroundService.addTime(context, ADD_TIME_MINUTES)
-            // The service refuses this while the routine is invincible, so the
-            // action is safe to expose even if a stale notification still shows it.
-            ACTION_CANCEL -> RoutineForegroundService.cancel(context)
+            // The service refuses this while the routine is invincible or a speed
+            // bump stands in front of stopping, so the action is safe to expose even
+            // if a stale notification still shows it.
+            ACTION_CANCEL -> RoutineForegroundService.cancelFromNotification(context)
         }
     }
 

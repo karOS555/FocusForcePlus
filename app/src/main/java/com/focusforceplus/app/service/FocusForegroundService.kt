@@ -291,7 +291,13 @@ class FocusForegroundService : Service() {
 
     private fun applyDnd(enableDnd: Boolean, blockNotifications: Boolean) {
         appliedFilter = null
-        if (!enableDnd && !blockNotifications) return
+        if (!enableDnd && !blockNotifications) {
+            // A session that was cut off (a force stop) may have left its Do Not
+            // Disturb behind. This one wants none, and nothing else would ever put
+            // it back once this session's snapshot has replaced the old one.
+            Dnd.release(this, Dnd.FOCUS)
+            return
+        }
         val filter = if (blockNotifications) NotificationManager.INTERRUPTION_FILTER_NONE
                      else NotificationManager.INTERRUPTION_FILTER_PRIORITY
         // Without access this degrades gracefully: the session runs without DND.

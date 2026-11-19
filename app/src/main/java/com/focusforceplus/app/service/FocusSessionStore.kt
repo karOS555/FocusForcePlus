@@ -169,7 +169,11 @@ class FocusSessionRecovery @Inject constructor(
         store.clear()
     }
 
-    /** A check shortly after the session's end, in case nothing is left to end it. */
+    /**
+     * A check right after the session's end. With the screen off the phone sleeps
+     * and the service's own countdown with it, so this alarm is what ends a session
+     * on time; and when the service is gone, it is what cleans up after it.
+     */
     fun scheduleCheck(endsAtMillis: Long) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val at = endsAtMillis + CHECK_DELAY_MILLIS
@@ -192,6 +196,7 @@ class FocusSessionRecovery @Inject constructor(
     )
 
     private companion object {
-        const val CHECK_DELAY_MILLIS = 30_000L
+        /** Just past the end, so the session is certain to see its time as up. */
+        const val CHECK_DELAY_MILLIS = 1_000L
     }
 }

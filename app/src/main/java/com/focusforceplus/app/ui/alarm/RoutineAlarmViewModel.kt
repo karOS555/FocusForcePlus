@@ -37,7 +37,14 @@ data class AlarmUiState(
     val snoozeGuard: Guard = Guard.NONE,
     val rescheduleGuard: Guard = Guard.NONE,
     val startMinutes: Int = 0,
+    /** How long before the start this routine's heads-up comes. */
+    val preAlarmMinutes: Int = 15,
 ) {
+    /**
+     * What "Snooze" on the heads-up means: once more when the routine starts, so
+     * as long as this routine's own heads-up time and not a fixed quarter of an hour.
+     */
+    val headsUpSnoozeMinutes: Int get() = preAlarmMinutes.takeIf { it > 0 } ?: 15
     val canSnooze: Boolean get() = snoozeCount < maxSnoozeCount
     val canReschedule: Boolean get() = rescheduleCount < maxRescheduleCount
     val remainingSnoozes: Int get() = maxSnoozeCount - snoozeCount
@@ -75,6 +82,7 @@ class RoutineAlarmViewModel @Inject constructor(
                 it.copy(
                     routineName        = routine.name,
                     startMinutes       = routine.startTimeHour * 60 + routine.startTimeMinute,
+                    preAlarmMinutes    = routine.preAlarmMinutes,
                     routineDescription = routine.description,
                     routineIconKey     = routine.iconKey,
                     invincibleMode     = routine.invincibleMode,

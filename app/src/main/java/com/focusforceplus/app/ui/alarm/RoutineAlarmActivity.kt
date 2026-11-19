@@ -360,9 +360,14 @@ private fun RoutineAlarmScreen(
 
             if (isPreAlarm) {
                 OutlineButton(
-                    text = if (state.canSnooze) "Snooze 15 min · ${state.remainingSnoozes} left" else "No snoozes left",
+                    text = if (state.canSnooze) {
+                        "Snooze ${state.headsUpSnoozeMinutes} min · ${state.remainingSnoozes} left"
+                    } else {
+                        "No snoozes left"
+                    },
                     onClick = {
-                        if (state.snoozeGuard.isNone) onSnooze(15) else gateFor = RoutineDeferral.SNOOZE
+                        if (state.snoozeGuard.isNone) onSnooze(state.headsUpSnoozeMinutes)
+                        else gateFor = RoutineDeferral.SNOOZE
                     },
                     enabled = state.canSnooze,
                     modifier = Modifier.fillMaxWidth(),
@@ -416,8 +421,9 @@ private fun RoutineAlarmScreen(
             subject = state.routineName,
             onPassed = {
                 gateFor = null
-                // The heads-up screen snoozes by a fixed 15 minutes.
-                if (isPreAlarm && deferral == RoutineDeferral.SNOOZE) onSnooze(15) else pickerFor = deferral
+                // The heads-up screen snoozes until the start, without a picker.
+                if (isPreAlarm && deferral == RoutineDeferral.SNOOZE) onSnooze(state.headsUpSnoozeMinutes)
+                else pickerFor = deferral
             },
             onDismiss = { gateFor = null },
         )

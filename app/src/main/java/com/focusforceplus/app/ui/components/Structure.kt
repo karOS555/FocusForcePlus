@@ -409,11 +409,17 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     destructive: Boolean = false,
-    dismissLabel: String = "Cancel",
+    /** Null leaves the second button out: a notice with one way to close it. */
+    dismissLabel: String? = "Cancel",
+    /**
+     * Back, or a tap next to the dialog. The same as the second button unless that
+     * button does something of its own that must never happen by accident.
+     */
+    onBack: () -> Unit = onDismiss,
 ) {
     val colors = FfTheme.colors
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = onBack,
         containerColor = colors.surfaceVariant,
         titleContentColor = colors.text,
         textContentColor = colors.textSecondary,
@@ -428,13 +434,15 @@ fun ConfirmDialog(
                 )
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    dismissLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.textSecondary,
-                )
+        dismissButton = dismissLabel?.let { label ->
+            {
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.textSecondary,
+                    )
+                }
             }
         },
     )

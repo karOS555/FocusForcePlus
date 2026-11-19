@@ -346,6 +346,19 @@ fun ActiveRoutineScreen(
                 viewModel.cancelSession()
                 onBack()
             },
+            // Back or a tap next to the dialog is not "Just stop": the routine goes on.
+            onBack = viewModel::dismissCancel,
+        )
+    }
+
+    if (s.otherRoutineRunning) {
+        ConfirmDialog(
+            title = "Another routine is running",
+            message = "Only one routine runs at a time. Finish or stop the one that is running first.",
+            confirmLabel = "OK",
+            onConfirm = viewModel::dismissOtherRoutineNotice,
+            onDismiss = viewModel::dismissOtherRoutineNotice,
+            dismissLabel = null,
         )
     }
 

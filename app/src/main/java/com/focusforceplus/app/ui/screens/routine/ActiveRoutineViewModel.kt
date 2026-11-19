@@ -76,6 +76,8 @@ data class ActiveRoutineUiState(
     val isCompleted: Boolean = false,
     val completionStats: CompletionStats? = null,
     val isLoading: Boolean = true,
+    /** Start was pressed while another routine is running. */
+    val otherRoutineRunning: Boolean = false,
 ) {
     val currentTask: RoutineTaskEntity? get() = tasks.getOrNull(currentTaskIndex)
     val canSnooze: Boolean
@@ -244,8 +246,16 @@ class ActiveRoutineViewModel @Inject constructor(
     // ── Timer control (delegated to the service) ─────────────────────────────
 
     fun startRoutine() {
+        // One routine at a time; the service would ignore this start anyway.
+        val running = registry.activeRoutineId.value
+        if (running != null && running != routineId) {
+            _uiState.update { it.copy(otherRoutineRunning = true) }
+            return
+        }
         RoutineForegroundService.start(context, routineId)
     }
+
+    fun dismissOtherRoutineNotice() = _uiState.update { it.copy(otherRoutineRunning = false) }
 
     fun completeCurrentTask() {
         RoutineForegroundService.completeTask(context)

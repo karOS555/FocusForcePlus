@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.data.repository.SleepRepository
+import com.focusforceplus.app.service.RoutineForegroundService
 import com.focusforceplus.app.util.AlarmSoundPolicy
 import com.focusforceplus.app.util.BlockerNotificationHelper
 import com.focusforceplus.app.util.FocusNotificationHelper
@@ -92,13 +93,36 @@ class FocusForcePlusApp : Application() {
         appScope.launch {
             kotlinx.coroutines.delay(10_000L)
             focusRecovery.resolveIfOrphaned()
-            // A routine that holds Do Not Disturb but neither runs nor waits to be
-            // picked up again (no snapshot) was stopped from outside: put it back.
             val dnd = com.focusforceplus.app.util.Dnd
-            if (dnd.holds(this@FocusForcePlusApp, dnd.ROUTINE) && routineSessionStore.load() == null &&
-                activeRoutineRegistry.activeSession.value == null
-            ) {
-                dnd.release(this@FocusForcePlusApp, dnd.ROUTINE)
+            if (activeRoutineRegistry.activeSession.value == null) {
+                // A routine that was running when the process went away for good. A
+                // force stop also removes the alarm that would have brought the
+                // service back, so nothing else picks this up: its snapshot and its
+                // Do Not Disturb would stay for ever. Carry on if it is recent,
+                // otherwise end it and say so.
+                val waiting = routineSessionStore.load()
+                if (waiting != null) {
+                    val recent = System.currentTimeMillis() - waiting.taskEndWallMillis < ROUTINE_RESUME_LIMIT_MILLIS
+                    val resumed = recent && runCatching {
+                        startForegroundService(
+                            android.content.Intent(this@FocusForcePlusApp, RoutineForegroundService::class.java)
+                                .setAction(RoutineForegroundService.ACTION_TASK_END_CHECK)
+                        )
+                    }.isSuccess
+                    if (!resumed) {
+                        routineSessionStore.clear()
+                        dnd.release(this@FocusForcePlusApp, dnd.ROUTINE)
+                        runCatching {
+                            notificationHelper.showNotification(
+                                NotificationHelper.NOTIFICATION_ID_INTERRUPTED,
+                                notificationHelper.buildSessionInterruptedNotification(waiting.routineName),
+                            )
+                        }
+                    }
+                } else if (dnd.holds(this@FocusForcePlusApp, dnd.ROUTINE)) {
+                    // Holds Do Not Disturb but neither runs nor waits: stopped from outside.
+                    dnd.release(this@FocusForcePlusApp, dnd.ROUTINE)
+                }
             }
             // Android 15+: the app's own Do Not Disturb mode never stays on with
             // nothing holding it (older versions could leave it on for good).
@@ -162,5 +186,13 @@ class FocusForcePlusApp : Application() {
                 .setInitialDelay(1, TimeUnit.HOURS)
                 .build(),
         )
+    }
+
+    private companion object {
+        /**
+         * A routine whose current step ended longer ago than this is not carried on
+         * after the app comes back; it is ended as interrupted instead.
+         */
+        const val ROUTINE_RESUME_LIMIT_MILLIS = 60 * 60_000L
     }
 }

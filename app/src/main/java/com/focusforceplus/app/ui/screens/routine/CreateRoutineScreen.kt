@@ -38,11 +38,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -486,40 +488,49 @@ private fun StepList(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         tasks.forEachIndexed { index, task ->
-            StepCard(
-                index = index,
-                task = task,
-                templates = templates,
-                lists = lists,
-                dragging = index == draggingIndex,
-                dragOffsetY = if (index == draggingIndex) draggingOffsetY else 0f,
-                onDragStart = { draggingIndex = index; draggingOffsetY = 0f },
-                onDrag = { deltaY ->
-                    draggingOffsetY += deltaY
-                    val myTop = (tops[index] ?: 0f) + draggingOffsetY
-                    val myCenter = myTop + (heights[index] ?: 0f) / 2f
-                    val target = tasks.indices.firstOrNull { i ->
-                        i != index && run {
-                            val top = tops[i] ?: return@firstOrNull false
-                            val height = heights[i] ?: return@firstOrNull false
-                            myCenter in top..(top + height)
+            // Keyed by the step, so its card (and the finger on its handle) moves
+            // along when the step changes places. Without the key the card stayed
+            // at its position, got another step, and the drag ended after one slot.
+            key(task.tempId) {
+                StepCard(
+                    index = index,
+                    task = task,
+                    templates = templates,
+                    lists = lists,
+                    dragging = index == draggingIndex,
+                    dragOffsetY = if (index == draggingIndex) draggingOffsetY else 0f,
+                    onDragStart = { draggingIndex = index; draggingOffsetY = 0f },
+                    onDrag = { deltaY ->
+                        // Where the dragged step is now, not where its drag began.
+                        val from = draggingIndex
+                        if (from in tasks.indices) {
+                            draggingOffsetY += deltaY
+                            val myTop = (tops[from] ?: 0f) + draggingOffsetY
+                            val myCenter = myTop + (heights[from] ?: 0f) / 2f
+                            val target = tasks.indices.firstOrNull { i ->
+                                i != from && run {
+                                    val top = tops[i] ?: return@firstOrNull false
+                                    val height = heights[i] ?: return@firstOrNull false
+                                    myCenter in top..(top + height)
+                                }
+                            }
+                            if (target != null) {
+                                onSwap(from, target)
+                                draggingIndex = target
+                                draggingOffsetY = 0f
+                            }
                         }
-                    }
-                    if (target != null) {
-                        onSwap(index, target)
-                        draggingIndex = target
-                        draggingOffsetY = 0f
-                    }
-                },
-                onDragEnd = { draggingIndex = -1; draggingOffsetY = 0f },
-                onPositioned = { top, height ->
-                    tops[index] = top
-                    heights[index] = height
-                },
-                onUpdate = onUpdate,
-                onDelete = onDelete,
-                onTemplate = { onTemplate(task.tempId, it) },
-            )
+                    },
+                    onDragEnd = { draggingIndex = -1; draggingOffsetY = 0f },
+                    onPositioned = { top, height ->
+                        tops[index] = top
+                        heights[index] = height
+                    },
+                    onUpdate = onUpdate,
+                    onDelete = onDelete,
+                    onTemplate = { onTemplate(task.tempId, it) },
+                )
+            }
         }
     }
 }
@@ -545,6 +556,11 @@ private fun StepCard(
     var showNote by rememberSaveable(task.tempId) { mutableStateOf(task.notes.isNotEmpty()) }
     var pickList by remember { mutableStateOf(false) }
     var nameFocused by remember { mutableStateOf(false) }
+    // The drag outlives recompositions: it has to call what is current, not what
+    // was passed in when the finger went down (the step's position changes).
+    val currentDragStart by rememberUpdatedState(onDragStart)
+    val currentDrag by rememberUpdatedState(onDrag)
+    val currentDragEnd by rememberUpdatedState(onDragEnd)
 
     // Steps from other routines that match what is being typed.
     val query = task.name.trim()
@@ -572,12 +588,12 @@ private fun StepCard(
                         .size(40.dp)
                         .pointerInput(task.tempId) {
                             detectDragGesturesAfterLongPress(
-                                onDragStart = { onDragStart() },
-                                onDragEnd = { onDragEnd() },
-                                onDragCancel = { onDragEnd() },
+                                onDragStart = { currentDragStart() },
+                                onDragEnd = { currentDragEnd() },
+                                onDragCancel = { currentDragEnd() },
                                 onDrag = { change, amount ->
                                     change.consume()
-                                    onDrag(amount.y)
+                                    currentDrag(amount.y)
                                 },
                             )
                         },

@@ -30,7 +30,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -57,6 +59,7 @@ class RoutineForegroundService : Service() {
     @Inject lateinit var activeRoutineRegistry: ActiveRoutineRegistry
     @Inject lateinit var repository: RoutineRepository
     @Inject lateinit var sessionStore: RoutineSessionStore
+    @Inject lateinit var settingsRepository: com.focusforceplus.app.data.repository.SettingsRepository
     /** App-lifetime scope: the history write must survive this service stopping. */
     @Inject lateinit var applicationScope: CoroutineScope
 
@@ -79,6 +82,13 @@ class RoutineForegroundService : Service() {
     private var lastNagAtOvertimeSeconds: Int = 0
     private var completed: Boolean = false
 
+    /**
+     * Whether stopping early has no speed bump in front of it. Only then may the
+     * notification offer "Cancel": a button there would be the way around it.
+     */
+    private var cancelDirect: Boolean = false
+    private var guardJob: Job? = null
+
     private var ringtone: Ringtone? = null
     private var vibrator: Vibrator? = null
 
@@ -87,12 +97,17 @@ class RoutineForegroundService : Service() {
             ACTION_START -> {
                 val id = intent.getLongExtra(EXTRA_ROUTINE_ID, 0L)
                 if (id == 0L) { stopIfIdle(); return START_NOT_STICKY }
-                // A redelivered start after a process kill must resume, not restart.
-                if (flags and START_FLAG_REDELIVERY != 0) {
-                    startForegroundPlaceholder()
-                    restoreOrStop()
-                } else {
-                    startSession(id)
+                when {
+                    // A redelivered start after a process kill must resume, not restart.
+                    flags and START_FLAG_REDELIVERY != 0 -> {
+                        startForegroundPlaceholder()
+                        restoreOrStop()
+                    }
+                    // One routine at a time. Starting another one must not end the
+                    // one that is running: that would be a way around its stop
+                    // speed bump, and around Invincible Mode.
+                    routineId != 0L && !completed -> Unit
+                    else -> startSession(id)
                 }
             }
             ACTION_COMPLETE_TASK -> if (routineId != 0L) completeCurrentTask()
@@ -103,6 +118,11 @@ class RoutineForegroundService : Service() {
                 // Invincible sessions have no early exit (defense in depth — the UI
                 // already hides the cancel affordances).
                 if (!invincible) endSession()
+            }
+            ACTION_CANCEL_FROM_NOTIFICATION -> {
+                // An old notification may still show the button after a speed bump
+                // was switched on; then the stop has to go through the app.
+                if (!invincible && cancelDirect) endSession()
             }
             ACTION_TASK_END_CHECK -> {
                 if (routineId == 0L) {
@@ -120,9 +140,24 @@ class RoutineForegroundService : Service() {
 
     // ── Session lifecycle ─────────────────────────────────────────────────────
 
+    /** Follows the speed bump setting, so the notification never offers a way around it. */
+    private fun watchStopGuard() {
+        if (guardJob != null) return
+        guardJob = serviceScope.launch {
+            settingsRepository.guardSettings
+                .map { it[com.focusforceplus.app.compliance.GuardSlot.ROUTINE_END].isNone }
+                .distinctUntilChanged()
+                .collect { direct ->
+                    cancelDirect = direct
+                    if (routineId != 0L && tasks.isNotEmpty() && !completed) updateOngoingNotification()
+                }
+        }
+    }
+
     private fun startSession(id: Long) {
         routineId = id
         completed = false
+        watchStopGuard()
         startForegroundPlaceholder()
         serviceScope.launch {
             val routine = repository.getRoutineById(id).first()
@@ -143,6 +178,7 @@ class RoutineForegroundService : Service() {
     private fun restoreOrStop() {
         val snapshot = sessionStore.load()
         if (snapshot == null) { stopIfIdle(); return }
+        watchStopGuard()
         serviceScope.launch {
             val routine = repository.getRoutineById(snapshot.routineId).first()
             val loadedTasks = repository.getTasksForRoutine(snapshot.routineId).first()
@@ -498,6 +534,7 @@ class RoutineForegroundService : Service() {
             chipSeconds = if (inOvertime) overtimeSeconds() else remainingSeconds(),
             invincible = invincible,
             iconKey = routineIconKey,
+            cancelDirect = cancelDirect,
         ))
     }
 
@@ -558,6 +595,7 @@ class RoutineForegroundService : Service() {
         const val ACTION_COMPLETE_TASK  = "com.focusforceplus.app.ROUTINE_SESSION_COMPLETE_TASK"
         const val ACTION_ADD_TIME       = "com.focusforceplus.app.ROUTINE_SESSION_ADD_TIME"
         const val ACTION_CANCEL         = "com.focusforceplus.app.ROUTINE_SESSION_CANCEL"
+        const val ACTION_CANCEL_FROM_NOTIFICATION = "com.focusforceplus.app.ROUTINE_SESSION_CANCEL_NOTIFICATION"
         const val ACTION_TASK_END_CHECK = "com.focusforceplus.app.ROUTINE_SESSION_TASK_END_CHECK"
 
         private const val EXTRA_ROUTINE_ID = "routineId"
@@ -590,7 +628,11 @@ class RoutineForegroundService : Service() {
             )
         }
 
+        /** Stops the run; for the app, after its speed bump has been passed. */
         fun cancel(context: Context) = command(context, ACTION_CANCEL)
+
+        /** The notification's Cancel button: only works while no speed bump is set. */
+        fun cancelFromNotification(context: Context) = command(context, ACTION_CANCEL_FROM_NOTIFICATION)
 
         private fun command(context: Context, action: String) {
             runCatching {

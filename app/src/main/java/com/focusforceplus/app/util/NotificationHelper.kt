@@ -236,6 +236,8 @@ class NotificationHelper @Inject constructor(
         chipSeconds: Int = 0,
         invincible: Boolean = false,
         iconKey: String? = null,
+        /** Stopping early has no speed bump in front of it, so a button here skips nothing. */
+        cancelDirect: Boolean = false,
     ): Notification {
         val tapIntent  = mainActivityIntent(routineId, (RC_FOREGROUND_TAP + routineId).toInt())
         val doneIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_COMPLETE_TASK,
@@ -276,7 +278,8 @@ class NotificationHelper @Inject constructor(
 
         // Cancelling an invincible routine is refused by the service anyway; not
         // offering the button keeps the notification honest about what it can do.
-        if (!invincible) {
+        // With a speed bump before stopping, the stop is in the app, behind it.
+        if (!invincible && cancelDirect) {
             builder.addAction(
                 0, "Cancel",
                 sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_CANCEL,
