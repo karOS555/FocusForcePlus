@@ -1,0 +1,5 @@
+# The same bytes in every checkout, on every system. The two licence texts in
+# app/src/main/assets go into the APK as they are, so a build must not depend on
+# how the computer that checked the source out treats line endings.
+* text=auto eol=lf
+*.bat text eol=crlf
