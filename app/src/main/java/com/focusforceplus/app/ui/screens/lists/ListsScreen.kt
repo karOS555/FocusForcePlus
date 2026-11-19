@@ -1,6 +1,6 @@
 package com.focusforceplus.app.ui.screens.lists
 
-import com.focusforceplus.app.ui.theme.glossOverlay
+import com.focusforceplus.app.ui.components.FfFab
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -83,13 +83,7 @@ fun ListsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             if (state.lists.isNotEmpty()) {
-                FloatingActionButton(
-                    onClick = { creating = true },
-                    modifier = Modifier.glossOverlay(MaterialTheme.shapes.large, colors.isAero),
-                    containerColor = colors.primary,
-                    contentColor = colors.onPrimary,
-                    shape = MaterialTheme.shapes.large,
-                ) { Icon(Icons.Filled.Add, contentDescription = "New list") }
+                FfFab(onClick = { creating = true }, contentDescription = "New list")
             }
         },
     ) { padding ->

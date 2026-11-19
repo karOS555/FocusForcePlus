@@ -116,6 +116,14 @@ fun SettingsScreen(
     var confirmResetUsage by remember { mutableStateOf(false) }
     var pickingWidget by remember { mutableStateOf(false) }
     var confirmUndoImport by remember { mutableStateOf(false) }
+    var showAeroCredits by remember { mutableStateOf(false) }
+    if (showAeroCredits) {
+        com.focusforceplus.app.ui.components.AssetNoteDialog(
+            title = "Picture in the Aero style",
+            assetPath = AeroPhoto.NOTE_ASSET,
+            onDismiss = { showAeroCredits = false },
+        )
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -505,9 +513,9 @@ fun SettingsScreen(
                         )
                         RowDivider()
                         LinkRow(
-                            title = "Photo in the Aero style",
-                            subtitle = "${AeroPhoto.TITLE}, ${AeroPhoto.LICENSE}, ${AeroPhoto.CHANGES}",
-                            onClick = { openUrl(context, AeroPhoto.SOURCE) },
+                            title = "Picture in the Aero style",
+                            subtitle = AeroPhoto.SUMMARY,
+                            onClick = { showAeroCredits = true },
                         )
                         RowDivider()
                         // No internet access by design, so the app cannot look for

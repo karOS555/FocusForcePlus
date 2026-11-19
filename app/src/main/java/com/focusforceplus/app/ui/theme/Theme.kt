@@ -91,19 +91,25 @@ fun FocusForceTheme(
 
 /**
  * Aero: every text style with the soft glow Aero gave text on glass, a halo in the
- * light of the day (or the dark of a dark theme) behind the letters. Over the photo
- * it is what keeps text readable on bright water and bubbles alike; on a plain surface
- * it does not show.
+ * light of the day (or the dark of a dark theme) behind the letters. Over the
+ * picture it is what keeps text readable on sky, clouds and meadow alike; on a plain
+ * surface it does not show.
  */
 private fun androidx.compose.material3.Typography.glowing(dark: Boolean): androidx.compose.material3.Typography {
-    val glow = Shadow(color = if (dark) Color.Black.copy(alpha = 0.9f) else Color.White, offset = Offset.Zero, blurRadius = 10f)
-    fun TextStyle.lit() = copy(shadow = glow)
+    val halo = if (dark) Color.Black.copy(alpha = 0.9f) else Color.White
+    // Big text gets a wide, soft halo. Small text gets a tight one: around thin
+    // letters a wide halo is too faint to help, while a tight one works like an
+    // outline and keeps a line of small print readable on grass as well as on a cloud.
+    val wide = Shadow(color = halo, offset = Offset.Zero, blurRadius = 10f)
+    val tight = Shadow(color = halo, offset = Offset.Zero, blurRadius = 4f)
+    fun TextStyle.lit() = copy(shadow = wide)
+    fun TextStyle.edged() = copy(shadow = tight)
     return copy(
         displayLarge = displayLarge.lit(), displayMedium = displayMedium.lit(), displaySmall = displaySmall.lit(),
         headlineLarge = headlineLarge.lit(), headlineMedium = headlineMedium.lit(), headlineSmall = headlineSmall.lit(),
         titleLarge = titleLarge.lit(), titleMedium = titleMedium.lit(), titleSmall = titleSmall.lit(),
-        bodyLarge = bodyLarge.lit(), bodyMedium = bodyMedium.lit(), bodySmall = bodySmall.lit(),
-        labelLarge = labelLarge.lit(), labelMedium = labelMedium.lit(), labelSmall = labelSmall.lit(),
+        bodyLarge = bodyLarge.edged(), bodyMedium = bodyMedium.edged(), bodySmall = bodySmall.edged(),
+        labelLarge = labelLarge.edged(), labelMedium = labelMedium.edged(), labelSmall = labelSmall.edged(),
     )
 }
 

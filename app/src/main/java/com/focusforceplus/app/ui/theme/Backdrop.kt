@@ -9,8 +9,8 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.RadialGradient
 import android.graphics.RectF
+import android.os.Build
 import android.graphics.Shader
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,13 +37,16 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
@@ -74,21 +77,31 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** The photo behind the Aero style, and the credit its licence asks for. */
+/**
+ * The picture behind the Aero style and the credit its parts ask for. It is put
+ * together from four photos; the full note with links ships in
+ * assets/licenses/aero-photo.txt and can be read in the app.
+ */
 object AeroPhoto {
-    const val TITLE = "\"M1-1P7230624\" by TauchSport_Steininger"
-    const val LICENSE = "CC BY 2.0"
-    const val CHANGES = "cropped and colour-graded"
-    const val CREDIT = "Background photo: $TITLE, $LICENSE (creativecommons.org/licenses/by/2.0), " +
-        "$CHANGES, with bubbles drawn over it."
-    const val SOURCE = "https://commons.wikimedia.org/wiki/File:M1-1P7230624_(29825802718).jpg"
+    /** Who made the parts, in one line, for a settings row. */
+    const val SUMMARY = "From photos by Lee Ann Ratledge (CC BY 4.0), Marco Rosanova (CC BY 3.0), " +
+        "Sam Renold Joshua (CC0) and NASA (public domain)"
+
+    const val CREDIT = "Background: put together from \"Cumulus Humilis Clouds - Tennessee, USA\" by " +
+        "Lee Ann Ratledge (CC BY 4.0), \"Xp Reloaded\" by Marco Rosanova (CC BY 3.0), \"Tall grass 404 HDR\" by " +
+        "Sam Renold Joshua (CC0) and \"The Blue Marble\" by NASA (public domain). Cropped and recoloured, " +
+        "with bubbles and light drawn in. Tap for the links."
+
+    /** The note in the APK: every part with its source and licence. */
+    const val NOTE_ASSET = "licenses/aero-photo.txt"
 }
 
 /**
  * What a whole screen sits on: the theme's background colour or, in the Aero style,
- * a photo taken under water, full of rising air bubbles (see [AeroPhoto]), with a
- * few bigger bubbles drawn close to the lens. Glass inside it shows a blurred copy
- * (see [aeroGlass]).
+ * a picture in the manner of the wallpapers of that time: a summer sky, a green
+ * meadow, the Earth as a glass ball and soap bubbles (see [AeroPhoto]). Glass
+ * inside it shows a blurred copy ([aeroGlass]) or bends it like a lens
+ * ([liquidGlass]).
  *
  * The scene is put together once per size, away from the main thread, and kept for
  * the next screen; until it is ready a gradient in its colours stands in.
@@ -117,7 +130,28 @@ fun Modifier.aeroGlass(
     edges: GlassEdges = if (sheen) GlassEdges.All else GlassEdges.None,
 ): Modifier {
     val colors = FfTheme.colors
-    return if (colors.isAero) this.then(GlassElement(shape, tint, sheen, edges, colors.isDark)) else this
+    return if (colors.isAero) this.then(GlassElement(shape, tint, sheen, edges, colors.isDark, liquid = false)) else this
+}
+
+/**
+ * Liquid glass, what buttons are made of in the Aero style: clear rather than
+ * frosted. The backdrop shows through sharply and a little enlarged, the way a
+ * thick lens bends what is behind it, under a [tint]. The body is a touch lighter
+ * at the top and darker at the bottom, light pools along the lower edge, and a
+ * rim catches it where it enters at the top left and leaves at the bottom right.
+ * No band of gloss across the middle, which is what dated the old buttons.
+ *
+ * Outside a backdrop, in a dialog for example, it is the tint, the shading and the
+ * rim alone.
+ */
+@Composable
+fun Modifier.liquidGlass(shape: Shape, tint: Color): Modifier {
+    val colors = FfTheme.colors
+    return if (colors.isAero) {
+        this.then(GlassElement(shape, tint, sheen = false, edges = GlassEdges.None, dark = colors.isDark, liquid = true))
+    } else {
+        this
+    }
 }
 
 /**
@@ -128,7 +162,7 @@ fun Modifier.aeroGlass(
 fun Modifier.ffBar(): Modifier {
     val colors = FfTheme.colors
     return if (colors.isAero) {
-        this.then(GlassElement(RectangleShape, colors.surface.copy(alpha = 0.40f), true, GlassEdges.None, colors.isDark))
+        this.then(GlassElement(RectangleShape, colors.surface.copy(alpha = 0.40f), true, GlassEdges.None, colors.isDark, liquid = false))
     } else {
         this.background(colors.bar)
     }
@@ -154,76 +188,18 @@ fun Modifier.aeroFadeOut(height: Dp): Modifier {
         }
 }
 
-/**
- * A coloured glass button: [base] shining through, light from above fading out
- * towards the middle, a glow where light leaves the glass at the bottom, and a rim
- * that catches the light top and bottom. Draws nothing unless [enabled]; use it over
- * [aeroGlass] with a see-through container.
- */
-fun Modifier.glossyFill(base: Color, shape: Shape, enabled: Boolean): Modifier {
-    if (!enabled) return this
-    return this.drawWithCache {
-        val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
-        val body = Brush.verticalGradient(
-            0f to lerp(base, Color.White, 0.16f).copy(alpha = 0.80f),
-            0.5f to base.copy(alpha = 0.84f),
-            1f to lerp(base, Color.Black, 0.14f).copy(alpha = 0.90f),
-        )
-        val glow = Brush.radialGradient(
-            0f to lerp(base, Color.White, 0.6f).copy(alpha = 0.50f),
-            1f to Color.Transparent,
-            center = Offset(size.width / 2, size.height * 1.12f),
-            radius = max(size.width * 0.42f, size.height),
-        )
-        val stroke = Stroke(1.dp.toPx())
-        onDrawBehind {
-            drawPath(path, body)
-            clipPath(path) {
-                drawRect(ButtonLight)
-                drawRect(glow)
-            }
-            drawPath(path, ButtonRim, style = stroke)
-        }
-    }
-}
-
-/** The same light laid over something already filled, like a floating button. */
-fun Modifier.glossOverlay(shape: Shape, enabled: Boolean): Modifier {
-    if (!enabled) return this
-    return this.drawWithCache {
-        val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
-        val glow = Brush.radialGradient(
-            0f to Color.White.copy(alpha = 0.30f),
-            1f to Color.Transparent,
-            center = Offset(size.width / 2, size.height * 1.1f),
-            radius = size.width * 0.6f,
-        )
-        val stroke = Stroke(1.dp.toPx())
-        onDrawWithContent {
-            drawContent()
-            clipPath(path) {
-                drawRect(ButtonLight)
-                drawRect(glow)
-            }
-            drawPath(path, ButtonRim, style = stroke)
-        }
-    }
-}
-
 /** A pill: the shape of buttons in the Aero style. */
 val AeroPill = RoundedCornerShape(percent = 50)
 
-// Light falls from above: brightest along the top edge, fading out by the middle, so
-// nothing reads as a hard line. Rims are brightest on top and catch a little light
-// again at the bottom, where it leaves the glass.
-private val ButtonLight = Brush.verticalGradient(
-    0f to Color.White.copy(alpha = 0.42f),
-    0.55f to Color.Transparent,
-)
-private val ButtonRim = Brush.verticalGradient(
-    0f to Color.White.copy(alpha = 0.78f),
-    0.5f to Color.White.copy(alpha = 0.16f),
-    1f to Color.White.copy(alpha = 0.42f),
+// How much bigger the backdrop looks through liquid glass.
+private const val LENS = 1.14f
+
+// Liquid glass is lighter where the light comes in and darker where it has gone
+// through the most glass. Soft enough that no line shows.
+private val LiquidDepth = Brush.verticalGradient(
+    0f to Color.White.copy(alpha = 0.20f),
+    0.42f to Color.Transparent,
+    1f to Color.Black.copy(alpha = 0.10f),
 )
 
 private fun glassLight(dark: Boolean) = Brush.verticalGradient(
@@ -343,9 +319,11 @@ private data class GlassElement(
     val sheen: Boolean,
     val edges: GlassEdges,
     val dark: Boolean,
+    /** Clear glass that bends the backdrop (buttons) instead of frosting it (cards). */
+    val liquid: Boolean,
 ) : ModifierNodeElement<GlassNode>() {
-    override fun create() = GlassNode(shape, tint, sheen, edges, dark)
-    override fun update(node: GlassNode) = node.update(shape, tint, sheen, edges, dark)
+    override fun create() = GlassNode(shape, tint, sheen, edges, dark, liquid)
+    override fun update(node: GlassNode) = node.update(shape, tint, sheen, edges, dark, liquid)
     override fun InspectorInfo.inspectableProperties() {
         name = "aeroGlass"
         properties["shape"] = shape
@@ -360,6 +338,7 @@ private class GlassNode(
     private var sheen: Boolean,
     private var edges: GlassEdges,
     private var dark: Boolean,
+    private var liquid: Boolean,
 ) : Modifier.Node(), DrawModifierNode, GlobalPositionAwareModifierNode {
 
     private var backdrop: BackdropNode? = null
@@ -372,13 +351,19 @@ private class GlassNode(
     private var pathSize = Size.Unspecified
     private var pathDirection: LayoutDirection? = null
 
-    fun update(shape: Shape, tint: Color, sheen: Boolean, edges: GlassEdges, dark: Boolean) {
-        if (shape != this.shape || edges != this.edges) pathSize = Size.Unspecified
+    // Liquid glass: light that depends on the size of the piece.
+    private var liquidRim: Brush? = null
+    private var liquidPool: Brush? = null
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    fun update(shape: Shape, tint: Color, sheen: Boolean, edges: GlassEdges, dark: Boolean, liquid: Boolean) {
+        if (shape != this.shape || edges != this.edges || liquid != this.liquid) pathSize = Size.Unspecified
         this.shape = shape
         this.tint = tint
         this.sheen = sheen
         this.edges = edges
         this.dark = dark
+        this.liquid = liquid
         invalidateDraw()
     }
 
@@ -414,8 +399,14 @@ private class GlassNode(
             rimPath.addRim(outline, edges)
             pathSize = size
             pathDirection = layoutDirection
+            liquidRim = null
+            liquidPool = null
         }
         val backdrop = backdrop()
+        if (liquid) {
+            drawLiquid(backdrop)
+            return
+        }
         clipPath(path) {
             val frosted = backdrop?.image?.frosted
             if (backdrop != null && frosted != null) {
@@ -438,6 +429,61 @@ private class GlassNode(
     private fun DrawScope.drawRim() {
         val brush = (if (dark) NightRims else DayRims).getValue(edges)
         drawPath(rimPath, brush, style = Stroke(1.dp.toPx()))
+    }
+
+    /** See [liquidGlass]. */
+    private fun ContentDrawScope.drawLiquid(backdrop: BackdropNode?) {
+        val clear = backdrop?.image?.clear
+        // A soft shadow lifts the piece off the picture. Only over a backdrop: the
+        // lens image covers what would otherwise show through the glass.
+        if (backdrop != null && clear != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            shadowPaint.color = android.graphics.Color.argb(if (dark) 96 else 56, 0, 20, 40)
+            shadowPaint.maskFilter = BlurMaskFilter(7.dp.toPx(), BlurMaskFilter.Blur.NORMAL)
+            drawIntoCanvas { canvas ->
+                canvas.save()
+                canvas.translate(0f, 2.5.dp.toPx())
+                canvas.nativeCanvas.drawPath(path.asAndroidPath(), shadowPaint)
+                canvas.restore()
+            }
+        }
+        clipPath(path) {
+            if (backdrop != null && clear != null) {
+                scale(LENS, LENS, pivot = center) {
+                    drawImage(
+                        clear,
+                        dstOffset = IntOffset(-offset.x.roundToInt(), -offset.y.roundToInt()),
+                        dstSize = backdrop.measured,
+                        filterQuality = FilterQuality.Medium,
+                    )
+                }
+            }
+            drawRect(tint)
+            drawRect(LiquidDepth)
+            // Light pools along the lower edge, where it leaves the glass.
+            val pool = liquidPool ?: Brush.radialGradient(
+                0f to Color.White.copy(alpha = if (dark) 0.14f else 0.26f),
+                1f to Color.Transparent,
+                center = Offset(size.width / 2f, size.height * 1.08f),
+                radius = max(size.width * 0.46f, size.height * 0.9f),
+            ).also { liquidPool = it }
+            drawRect(pool)
+        }
+        drawContent()
+        // The rim: bright where the light comes in (top left) and where it leaves
+        // (bottom right), faint in between. Angles run clockwise from the right.
+        val k = if (dark) 0.62f else 1f
+        val rim = liquidRim ?: Brush.sweepGradient(
+            0.000f to Color.White.copy(alpha = 0.22f * k),
+            0.125f to Color.White.copy(alpha = 0.78f * k),
+            0.250f to Color.White.copy(alpha = 0.34f * k),
+            0.500f to Color.White.copy(alpha = 0.30f * k),
+            0.625f to Color.White.copy(alpha = 0.98f * k),
+            0.750f to Color.White.copy(alpha = 0.62f * k),
+            0.875f to Color.White.copy(alpha = 0.24f * k),
+            1.000f to Color.White.copy(alpha = 0.22f * k),
+            center = center,
+        ).also { liquidRim = it }
+        drawPath(path, rim, style = Stroke(1.25.dp.toPx()))
     }
 }
 
@@ -501,14 +547,20 @@ internal object AeroBackdrop {
     /** One scene: its size in pixels and, for a dark theme, its background (0 by day). */
     data class Spec(val width: Int, val height: Int, val night: Int)
 
-    class Image(val spec: Spec, val scene: ImageBitmap, val frosted: ImageBitmap)
+    /**
+     * [scene] is what the screen shows; [frosted] is what frosted glass shows, small
+     * and blurred; [clear] is what liquid glass looks through, only a little soft.
+     */
+    class Image(val spec: Spec, val scene: ImageBitmap, val frosted: ImageBitmap, val clear: ImageBitmap)
 
     /** How far a dark theme dims the day. */
     const val NIGHT = 0.62f
 
-    /** The photo's colours, top to bottom: what stands in for it while it loads. */
-    private val COLOURS = intArrayOf(0xFF97E1F5.toInt(), 0xFF6AD0EF.toInt(), 0xFF4BBCE7.toInt(), 0xFF44ACE1.toInt(), 0xFF3897D2.toInt())
-    private val STOPS = floatArrayOf(0f, 0.22f, 0.45f, 0.7f, 1f)
+    /** The picture's colours, top to bottom: sky, haze at the horizon, meadow. Stands in while it loads. */
+    private val COLOURS = intArrayOf(
+        0xFF3892D9.toInt(), 0xFFAACDE7.toInt(), 0xFFC9E8F7.toInt(), 0xFF9FD243.toInt(), 0xFF6DA00D.toInt(), 0xFF82C53F.toInt(),
+    )
+    private val STOPS = floatArrayOf(0f, 0.3f, 0.59f, 0.63f, 0.8f, 1f)
 
     val placeholder = Brush.verticalGradient(*STOPS.indices.map { STOPS[it] to Color(COLOURS[it]) }.toTypedArray())
 
@@ -556,7 +608,7 @@ internal object AeroBackdrop {
         } catch (e: RuntimeException) {
             gradient(max(1, w / 4), max(1, h / 4), spec.night)
         }
-        return Image(spec, scene.asImageBitmap(), frost(scene).asImageBitmap())
+        return Image(spec, scene.asImageBitmap(), frost(scene).asImageBitmap(), clear(scene).asImageBitmap())
     }
 
     private fun paint(context: Context, w: Int, h: Int, night: Int): Bitmap {
@@ -565,7 +617,6 @@ internal object AeroBackdrop {
         val photo = decode(context, w, h)
         drawCover(canvas, photo, w, h)
         photo.recycle()
-        BUBBLES.forEach { drawBubble(canvas, it, w, h) }
         if (night != 0) canvas.drawColor(Color(night).copy(alpha = NIGHT).toArgb())
         return bmp
     }
@@ -575,13 +626,13 @@ internal object AeroBackdrop {
         val res = context.resources
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeResource(res, R.drawable.aero_backdrop, bounds)
-        check(bounds.outWidth > 0 && bounds.outHeight > 0) { "Aero photo missing" }
+        check(bounds.outWidth > 0 && bounds.outHeight > 0) { "Aero picture missing" }
         val cover = max(w / bounds.outWidth.toFloat(), h / bounds.outHeight.toFloat())
         var sample = 1
         while (cover * sample * 2 <= 1f) sample *= 2
         return checkNotNull(
             BitmapFactory.decodeResource(res, R.drawable.aero_backdrop, BitmapFactory.Options().apply { inSampleSize = sample })
-        ) { "Aero photo unreadable" }
+        ) { "Aero picture unreadable" }
     }
 
     /** Draws the photo to fill [w] x [h], cut evenly. */
@@ -607,67 +658,27 @@ internal object AeroBackdrop {
     }
 
     /**
-     * An air bubble close to the lens: clear in the middle, a silver edge lit from
-     * the surface above, the light it gathers glowing low inside it, and the bright
-     * window of the surface reflected at the top. The biggest are a little out of
-     * focus, as they would be that close to a camera.
+     * The scene, small and blurred: what shows through frosted glass. Blurred far
+     * enough that text on it reads calmly, with the shapes behind still there as
+     * soft colour, and a little more vivid, the way coloured glass deepens what is
+     * seen through it.
      */
-    private fun drawBubble(c: Canvas, b: Bubble, w: Int, h: Int) {
-        val cx = b.x * w
-        val cy = b.y * h
-        val r = b.r * w
-        val soft = if (b.r >= 0.045f) BlurMaskFilter(max(1f, r * 0.045f), BlurMaskFilter.Blur.NORMAL) else null
-        val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        p.maskFilter = soft
-        p.shader = RadialGradient(
-            cx, cy, r,
-            intArrayOf(0x0AFFFFFF, 0x0AFFFFFF, 0x2EE8FAFF, 0x8CFFFFFF.toInt(), 0x00FFFFFF),
-            floatArrayOf(0f, 0.6f, 0.86f, 0.975f, 1f), Shader.TileMode.CLAMP,
-        )
-        c.drawCircle(cx, cy, r, p)
-        // The light it gathers, low inside it.
-        c.save()
-        c.clipPath(android.graphics.Path().apply { addCircle(cx, cy, r, android.graphics.Path.Direction.CW) })
-        p.shader = RadialGradient(cx, cy + r * 0.5f, r * 0.6f, 0x5CFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
-        c.drawCircle(cx, cy + r * 0.5f, r * 0.6f, p)
-        c.restore()
-        // The edge, brightest where the light from above meets it.
-        p.shader = LinearGradient(
-            cx, cy - r, cx, cy + r,
-            intArrayOf(0xEBFFFFFF.toInt(), 0x52FFFFFF, 0x9EFFFFFF.toInt()), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP,
-        )
-        p.style = Paint.Style.STROKE
-        p.strokeWidth = max(1f, r * 0.04f)
-        c.drawCircle(cx, cy, r * 0.985f, p)
-        // The surface it reflects, and a small glint opposite.
-        p.shader = null
-        p.style = Paint.Style.FILL
-        p.maskFilter = BlurMaskFilter(max(1f, r * 0.06f), BlurMaskFilter.Blur.NORMAL)
-        p.color = 0xD9FFFFFF.toInt()
-        c.save()
-        c.rotate(-24f, cx - r * 0.38f, cy - r * 0.5f)
-        c.drawOval(RectF(cx - r * 0.66f, cy - r * 0.64f, cx - r * 0.12f, cy - r * 0.38f), p)
-        c.restore()
-        p.color = 0x8CFFFFFF.toInt()
-        c.drawCircle(cx + r * 0.42f, cy + r * 0.5f, max(1f, r * 0.07f), p)
-    }
+    private fun frost(scene: Bitmap): Bitmap = soften(scene, shrink = 8, passes = 3, radius = 2, saturation = 1.25f)
 
-    /**
-     * The scene, small and blurred: what shows through glass. Lightly blurred, so the
-     * bubbles behind still show as soft shapes, and a little more vivid, the way
-     * coloured glass deepens what is seen through it.
-     */
-    private fun frost(scene: Bitmap): Bitmap {
-        val w = max(1, scene.width / 8)
-        val h = max(1, scene.height / 8)
+    /** What liquid glass looks through: softer than the scene, clearer than frosted glass. */
+    private fun clear(scene: Bitmap): Bitmap = soften(scene, shrink = 5, passes = 2, radius = 2, saturation = 1.15f)
+
+    private fun soften(scene: Bitmap, shrink: Int, passes: Int, radius: Int, saturation: Float): Bitmap {
+        val w = max(1, scene.width / shrink)
+        val h = max(1, scene.height / shrink)
         val small = Bitmap.createScaledBitmap(scene, w, h, true)
         val px = IntArray(w * h)
         small.getPixels(px, 0, w, 0, 0, w, h)
         if (small !== scene) small.recycle()
-        repeat(3) { boxBlur(px, w, h, 2) }
+        repeat(passes) { boxBlur(px, w, h, radius) }
         val blurred = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
         val vivid = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val saturate = Paint().apply { colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(1.25f) }) }
+        val saturate = Paint().apply { colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(saturation) }) }
         Canvas(vivid).drawBitmap(blurred, 0f, 0f, saturate)
         blurred.recycle()
         return vivid
@@ -702,12 +713,3 @@ internal object AeroBackdrop {
         pass(tmp, px, horizontal = false)
     }
 }
-
-private class Bubble(val x: Float, val y: Float, val r: Float)
-
-/** Fixed places, kept off the top left where titles and greetings sit. */
-private val BUBBLES = listOf(
-    Bubble(0.86f, 0.125f, 0.042f), Bubble(0.69f, 0.088f, 0.015f), Bubble(0.94f, 0.42f, 0.032f),
-    Bubble(0.05f, 0.47f, 0.026f), Bubble(0.60f, 0.64f, 0.058f), Bubble(0.15f, 0.75f, 0.038f),
-    Bubble(0.89f, 0.80f, 0.024f), Bubble(0.37f, 0.905f, 0.030f), Bubble(0.30f, 0.56f, 0.012f),
-)

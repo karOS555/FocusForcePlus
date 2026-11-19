@@ -170,6 +170,14 @@ fun AppearanceScreen(
     val colors = FfTheme.colors
     val context = LocalContext.current
     var editing by remember { mutableStateOf<Role?>(null) }
+    var showAeroCredits by remember { mutableStateOf(false) }
+    if (showAeroCredits) {
+        com.focusforceplus.app.ui.components.AssetNoteDialog(
+            title = "Picture in the Aero style",
+            assetPath = AeroPhoto.NOTE_ASSET,
+            onDismiss = { showAeroCredits = false },
+        )
+    }
     var naming by remember { mutableStateOf(false) }
     var managing by remember { mutableStateOf<ThemeSpec?>(null) }
     var renaming by remember { mutableStateOf<ThemeSpec?>(null) }
@@ -226,7 +234,7 @@ fun AppearanceScreen(
                     RowDivider()
                     SwitchRow(
                         title = "Aero style",
-                        subtitle = "Clear glass, glossy buttons and an underwater photo full of bubbles behind everything.",
+                        subtitle = "Glass cards and liquid glass buttons over a summer sky, a green meadow and soap bubbles.",
                         checked = spec.style == ThemeStyle.AERO,
                         onCheckedChange = { on ->
                             viewModel.use(spec.copy(style = if (on) ThemeStyle.AERO else ThemeStyle.FLAT).named(spec.name))
@@ -254,14 +262,14 @@ fun AppearanceScreen(
                     PreviewCard()
                 }
                 if (spec.style == ThemeStyle.AERO) {
-                    // The licence of the photo asks for this credit.
+                    // The licences of the photos in the picture ask for this credit.
                     Text(
                         AeroPhoto.CREDIT,
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                         modifier = Modifier
                             .padding(top = 8.dp)
-                            .clickable { openPhotoSource(context) },
+                            .clickable { showAeroCredits = true },
                     )
                 }
             }
@@ -426,10 +434,10 @@ private fun ThemeTile(
                 .fillMaxWidth()
                 .then(
                     if (spec.style == ThemeStyle.AERO) {
-                        // The water of the Aero photo, light near the surface.
+                        // The Aero picture in three colours: sky, haze at the horizon, meadow.
                         Modifier.background(
                             androidx.compose.ui.graphics.Brush.verticalGradient(
-                                listOf(Color(0xFF97E1F5), Color(0xFF4BBCE7), Color(0xFF3897D2)),
+                                listOf(Color(0xFF3892D9), Color(0xFFC9E8F7), Color(0xFF82C53F)),
                             )
                         )
                     } else Modifier.background(spec.background)
@@ -597,11 +605,3 @@ private fun paste(context: Context): String? {
     return clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
 }
 
-/** The photo's page on Wikimedia Commons, with its licence. */
-private fun openPhotoSource(context: Context) {
-    runCatching {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, android.net.Uri.parse(AeroPhoto.SOURCE)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
-    }
-}

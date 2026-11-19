@@ -1,6 +1,6 @@
 package com.focusforceplus.app.ui.screens.routine
 
-import com.focusforceplus.app.ui.theme.glossOverlay
+import com.focusforceplus.app.ui.components.FfFab
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -84,13 +84,7 @@ fun RoutineListScreen(
         containerColor = colors.screen,
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreateRoutine,
-                modifier = Modifier.glossOverlay(MaterialTheme.shapes.large, colors.isAero),
-                containerColor = colors.primary,
-                contentColor = colors.onPrimary,
-                shape = MaterialTheme.shapes.large,
-            ) { Icon(Icons.Filled.Add, contentDescription = "New routine") }
+            FfFab(onClick = onCreateRoutine, contentDescription = "New routine")
         },
     ) { padding ->
         if (state.isEmpty) {

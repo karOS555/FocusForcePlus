@@ -84,7 +84,7 @@ It is made for brains that need more structure than most apps assume: ADHD, habi
 
 ### Make it yours
 
-- Six themes or your own colours, saved under a name. **Aero** is a real Frutiger Aero style: clear frosted glass, glossy see-through buttons and an underwater photo full of rising bubbles behind everything.
+- Six themes or your own colours, saved under a name. **Aero** is a real Frutiger Aero style: glass cards and liquid glass buttons over a summer sky, a green meadow and soap bubbles.
 - Choose which modules sit in the bottom bar, in which order, or switch a module off.
 - Widgets for today, quick focus and a list to tick off.
 - Your calendar on Home, todos with a date in it, and blocking during events.
@@ -204,7 +204,7 @@ The code is written from scratch, but some ideas come from these projects:
 - [Curbox / DigiPaws](https://github.com/nethical6/digipaws) by nethical6, for blocking ideas
 - [Routinery](https://play.google.com/store/apps/details?id=com.routinery.routinery), for how a running routine should feel
 
-The photo behind the Aero style, also in its screenshot, is ["M1-1P7230624"](https://commons.wikimedia.org/wiki/File:M1-1P7230624_(29825802718).jpg) by TauchSport_Steininger, used under [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/), cropped, scaled and colour-graded, with a few bubbles drawn over it in the app.
+The picture behind the Aero style, also in its screenshot, is put together from four photos: ["Cumulus Humilis Clouds - Tennessee, USA"](https://commons.wikimedia.org/wiki/File:Cumulus_Humilis_Clouds_-_Tennessee,_USA_-_July_7,_2014.jpg) by Lee Ann Ratledge ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)), ["Xp Reloaded"](https://commons.wikimedia.org/wiki/File:Xp_Reloaded_(67866923).jpeg) by Marco Rosanova ([CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)), ["Tall grass 404 HDR"](https://commons.wikimedia.org/wiki/File:Tall_grass_404_HDR.jpg) by Sam Renold Joshua (CC0) and ["The Blue Marble"](https://commons.wikimedia.org/wiki/File:The_Earth_seen_from_Apollo_17.jpg) by NASA (public domain). They were cropped and recoloured, and bubbles and light were drawn in. The [full note](app/src/main/assets/licenses/aero-photo.txt) ships with the app.
 
 Icons in this README are from [Lucide](https://github.com/lucide-icons/lucide), used under the ISC License.
 

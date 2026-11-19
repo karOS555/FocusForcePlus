@@ -1,12 +1,33 @@
-The photo behind the Aero style (res/drawable-nodpi/aero_backdrop.webp)
+The picture behind the Aero style (res/drawable-nodpi/aero_backdrop.webp)
 
-"M1-1P7230624" by TauchSport_Steininger
-https://commons.wikimedia.org/wiki/File:M1-1P7230624_(29825802718).jpg
-(first published on Flickr: https://www.flickr.com/photos/tauchsport-steininger/29825802718/)
+It is put together from four photos. Each was cropped, scaled and recoloured, and
+bubbles, sunlight and arcs of light were drawn in. For dark themes the app darkens
+the picture.
 
-Licensed under the Creative Commons Attribution 2.0 Generic License (CC BY 2.0):
-https://creativecommons.org/licenses/by/2.0/
+1. The sky
+"Cumulus Humilis Clouds - Tennessee, USA - July 7, 2014" by Lee Ann Ratledge
+https://commons.wikimedia.org/wiki/File:Cumulus_Humilis_Clouds_-_Tennessee,_USA_-_July_7,_2014.jpg
+Licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
 
-Changes: cropped to a portrait section, scaled down and colour-graded (lighter, a
-little more cyan, brighter towards the top). The app draws a few bigger bubbles over
-it and, for dark themes, darkens it.
+2. The meadow
+"Xp Reloaded" by Marco Rosanova
+https://commons.wikimedia.org/wiki/File:Xp_Reloaded_(67866923).jpeg
+(first published on 500px: https://500px.com/photo/67866923/xp-reloaded-by-marco-rosanova)
+Licensed under the Creative Commons Attribution 3.0 Unported License (CC BY 3.0):
+https://creativecommons.org/licenses/by/3.0/
+
+3. The grass in front
+"Tall grass 404 HDR" by Sam Renold Joshua
+https://commons.wikimedia.org/wiki/File:Tall_grass_404_HDR.jpg
+Dedicated to the public domain (CC0 1.0):
+https://creativecommons.org/publicdomain/zero/1.0/
+
+4. The Earth
+"The Blue Marble", photographed by the crew of Apollo 17 on 7 December 1972 (NASA)
+https://commons.wikimedia.org/wiki/File:The_Earth_seen_from_Apollo_17.jpg
+In the public domain, as a work of NASA.
+
+The picture as a whole (the arrangement and what was drawn in) is offered under the
+Creative Commons Attribution 4.0 International License; the four photos keep the
+licences named above.

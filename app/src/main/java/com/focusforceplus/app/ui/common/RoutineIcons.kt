@@ -342,7 +342,8 @@ fun IconPickerButton(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (hasIcon) colors.container else colors.surfaceHigh)
+            // Aero: milk glass, like the text fields beside it.
+            .background((if (hasIcon) colors.container else colors.surfaceHigh).copy(alpha = if (colors.isAero) 0.70f else 1f))
             .clickable { showPicker = true },
         contentAlignment = Alignment.Center,
     ) {

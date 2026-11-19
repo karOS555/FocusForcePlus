@@ -3,7 +3,7 @@ package com.focusforceplus.app.ui.components
 import com.focusforceplus.app.ui.theme.AeroPill
 import com.focusforceplus.app.ui.theme.GlassEdges
 import com.focusforceplus.app.ui.theme.aeroGlass
-import com.focusforceplus.app.ui.theme.glossyFill
+import com.focusforceplus.app.ui.theme.liquidGlass
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -34,6 +35,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,7 +50,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -83,15 +88,13 @@ fun PrimaryButton(
         onClick = onClick,
         modifier = modifier
             .height(FfDimens.buttonHeight)
-            // Aero: a pill of coloured glass with the backdrop showing through, or
-            // clear glass while it cannot be pressed.
+            // Aero: a pill of liquid glass in the button's colour, with the picture
+            // behind it showing through, or clear glass while it cannot be pressed.
             .then(
                 when {
                     !aero -> Modifier
-                    enabled -> Modifier
-                        .aeroGlass(shape, tint = Color.Transparent, sheen = false)
-                        .glossyFill(containerColor, shape, enabled = true)
-                    else -> Modifier.aeroGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.22f), sheen = false, edges = GlassEdges.All)
+                    enabled -> Modifier.liquidGlass(shape, tint = containerColor.copy(alpha = AERO_FILL))
+                    else -> Modifier.liquidGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.16f))
                 }
             ),
         enabled = enabled && !loading,
@@ -111,7 +114,7 @@ fun PrimaryButton(
                 strokeWidth = 2.dp,
             )
         } else {
-            ButtonContent(text, icon)
+            ButtonContent(text, icon, if (aero && enabled) ButtonLabel.OnColour else ButtonLabel.Plain)
         }
     }
 }
@@ -130,8 +133,8 @@ fun TonalButton(
         onClick = onClick,
         modifier = modifier
             .height(FfDimens.buttonHeight)
-            // Aero: a pill of clear glass, lit from above.
-            .then(if (aero) Modifier.aeroGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.28f)) else Modifier),
+            // Aero: a pill of clear liquid glass.
+            .then(if (aero) Modifier.liquidGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.24f)) else Modifier),
         enabled = enabled,
         shape = shape,
         colors = ButtonDefaults.buttonColors(
@@ -141,7 +144,7 @@ fun TonalButton(
             disabledContentColor = FfTheme.colors.textFaint,
         ),
         contentPadding = PaddingValues(horizontal = 16.dp),
-    ) { ButtonContent(text, icon) }
+    ) { ButtonContent(text, icon, if (aero) ButtonLabel.OnGlass else ButtonLabel.Plain) }
 }
 
 @Composable
@@ -159,11 +162,8 @@ fun OutlineButton(
         onClick = onClick,
         modifier = modifier
             .height(FfDimens.buttonHeight)
-            // Aero: barely tinted glass; its rim is the outline.
-            .then(
-                if (aero) Modifier.aeroGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.10f), sheen = false, edges = GlassEdges.All)
-                else Modifier
-            ),
+            // Aero: glass with next to no tint; its rim is the outline.
+            .then(if (aero) Modifier.liquidGlass(shape, tint = FfTheme.colors.surface.copy(alpha = 0.08f)) else Modifier),
         enabled = enabled,
         shape = shape,
         colors = ButtonDefaults.outlinedButtonColors(
@@ -172,19 +172,65 @@ fun OutlineButton(
         ),
         border = if (aero) null else androidx.compose.foundation.BorderStroke(1.dp, FfTheme.colors.outline),
         contentPadding = PaddingValues(horizontal = 16.dp),
-    ) { ButtonContent(text, icon) }
+    ) { ButtonContent(text, icon, if (aero) ButtonLabel.OnGlass else ButtonLabel.Plain) }
+}
+
+/**
+ * How strongly a filled button's colour shows in liquid glass: clearly that colour,
+ * with the picture behind it still coming through.
+ */
+private const val AERO_FILL = 0.64f
+
+/** What a button's label sits on, which decides what keeps it readable. */
+private enum class ButtonLabel {
+    /** A solid button: nothing needed. */
+    Plain,
+
+    /** Coloured liquid glass: a soft dark edge under the light label. */
+    OnColour,
+
+    /** Clear glass over the picture: the theme's glow, like any text on the picture. */
+    OnGlass,
+}
+
+/** The round button of a list page that adds a new entry. */
+@Composable
+fun FfFab(
+    onClick: () -> Unit,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Filled.Add,
+) {
+    val colors = FfTheme.colors
+    val aero = colors.isAero
+    val shape = if (aero) CircleShape else MaterialTheme.shapes.large
+    FloatingActionButton(
+        onClick = onClick,
+        // Aero: a drop of liquid glass in the accent colour. It brings its own soft
+        // shadow; the usual one would show through the glass.
+        modifier = modifier.then(if (aero) Modifier.liquidGlass(shape, tint = colors.primary.copy(alpha = AERO_FILL)) else Modifier),
+        containerColor = if (aero) Color.Transparent else colors.primary,
+        contentColor = colors.onPrimary,
+        shape = shape,
+        elevation = if (aero) FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                    else FloatingActionButtonDefaults.elevation(),
+    ) { Icon(icon, contentDescription = contentDescription) }
 }
 
 @Composable
-private fun ButtonContent(text: String, icon: ImageVector?) {
+private fun ButtonContent(text: String, icon: ImageVector?, label: ButtonLabel = ButtonLabel.Plain) {
     if (icon != null) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
     }
+    val base = MaterialTheme.typography.labelLarge
     Text(
         text = text,
-        // No Aero glow on a button: the label sits on the button, not on the photo.
-        style = MaterialTheme.typography.labelLarge.copy(shadow = null),
+        style = when (label) {
+            ButtonLabel.Plain -> base.copy(shadow = null)
+            ButtonLabel.OnColour -> base.copy(shadow = Shadow(Color.Black.copy(alpha = 0.34f), Offset(0f, 1.5f), 4f))
+            ButtonLabel.OnGlass -> base
+        },
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )

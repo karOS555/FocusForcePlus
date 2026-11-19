@@ -63,6 +63,8 @@ fun FfTextField(
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
     val colors = FfTheme.colors
+    // Aero: milk glass rather than a solid box, so the picture is not cut off by it.
+    val box = if (colors.isAero) colors.surface.copy(alpha = if (colors.isDark) 0.62f else 0.70f) else colors.surface
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -85,10 +87,10 @@ fun FfTextField(
             focusedTextColor = colors.text,
             unfocusedTextColor = colors.text,
             disabledTextColor = colors.textMuted,
-            focusedContainerColor = colors.surface,
-            unfocusedContainerColor = colors.surface,
-            disabledContainerColor = colors.surface,
-            errorContainerColor = colors.surface,
+            focusedContainerColor = box,
+            unfocusedContainerColor = box,
+            disabledContainerColor = box,
+            errorContainerColor = box,
             focusedBorderColor = colors.accent,
             unfocusedBorderColor = Color.Transparent,
             disabledBorderColor = Color.Transparent,

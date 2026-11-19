@@ -23,7 +23,7 @@ data class ThemeSpec(
     /** Links and active icons. */
     val accent: Color,
     val text: Color,
-    /** FLAT, or AERO: glass cards, glossy buttons and an underwater photo behind everything. */
+    /** FLAT, or AERO: glass cards, liquid glass buttons and a picture of sky and meadow behind everything. */
     val style: ThemeStyle = ThemeStyle.FLAT,
 ) {
     val isDark: Boolean get() = background.luminance() < 0.4f
@@ -31,7 +31,8 @@ data class ThemeSpec(
     fun toAppColors(): AppColors {
         if (sameColorsAs(ThemePresets.MIDNIGHT)) return DefaultAppColors
         val dark = isDark
-        // Over a photo, quiet text needs to be a step less quiet.
+        // Over a picture, quiet text needs to be a step less quiet: it can end up
+        // on the meadow or on a cloud, not on a plain page.
         val aero = style == ThemeStyle.AERO
         fun mix(a: Color, b: Color, t: Float) = lerp(a, b, t)
         return AppColors(
@@ -41,9 +42,9 @@ data class ThemeSpec(
             surfaceVariant = mix(surface, text, if (dark) 0.035f else 0.04f),
             surfaceHigh = mix(surface, text, if (dark) 0.085f else 0.09f),
             text = text,
-            textSecondary = mix(text, background, 0.14f),
-            textMuted = mix(text, background, if (aero) (if (dark) 0.30f else 0.24f) else if (dark) 0.40f else 0.36f),
-            textFaint = mix(text, background, if (aero) (if (dark) 0.42f else 0.32f) else if (dark) 0.58f else 0.54f),
+            textSecondary = mix(text, background, if (aero && !dark) 0.08f else 0.14f),
+            textMuted = mix(text, background, if (aero) (if (dark) 0.30f else 0.16f) else if (dark) 0.40f else 0.36f),
+            textFaint = mix(text, background, if (aero) (if (dark) 0.42f else 0.25f) else if (dark) 0.58f else 0.54f),
             outline = mix(surface, text, if (dark) 0.20f else 0.24f),
             divider = mix(surface, text, if (dark) 0.07f else 0.09f),
             primary = primary,
@@ -117,7 +118,7 @@ object ThemePresets {
     val EMBER = ThemeSpec("Ember", Color(0xFF0B0706), Color(0xFF1A1210), Color(0xFFC2410C), Color(0xFFFB923C), Color(0xFFF1E4DC))
     val PAPER = ThemeSpec("Paper", Color(0xFFF4F5F7), Color(0xFFFFFFFF), Color(0xFF1D4ED8), Color(0xFF1D4ED8), Color(0xFF111827))
     /**
-     * Frutiger Aero: clear glass and glossy buttons over sunlit water full of bubbles.
+     * Frutiger Aero: glass over a summer sky, a green meadow and soap bubbles.
      * The accent is a deep teal, so links stay readable on the light blue glass.
      */
     val AERO = ThemeSpec(
