@@ -110,9 +110,13 @@ class ShareActivity : ComponentActivity() {
         return if (subject.isNotEmpty() && (lines.size != 1 || lines.first().startsWith("http"))) {
             SharedText(subject.take(200), text.ifEmpty { null }, lines.ifEmpty { listOf(subject) })
         } else {
+            // A first line too long for a title is shortened there and kept whole
+            // in the details, so nothing of what was shared is lost.
+            val first = lines.first()
+            val tooLong = first.length > 200
             SharedText(
-                title = lines.first().take(200),
-                details = lines.drop(1).joinToString("\n").ifBlank { null },
+                title = if (tooLong) first.take(199).trimEnd() + "…" else first,
+                details = (if (tooLong) lines else lines.drop(1)).joinToString("\n").ifBlank { null },
                 lines = lines,
             )
         }

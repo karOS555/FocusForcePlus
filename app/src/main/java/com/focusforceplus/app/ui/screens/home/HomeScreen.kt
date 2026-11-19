@@ -54,6 +54,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.focusforceplus.app.compliance.GuardAction
+import com.focusforceplus.app.compliance.GuardSlot
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.ui.common.RoutineIcons
 import com.focusforceplus.app.ui.components.CompletionRing
@@ -68,6 +69,7 @@ import com.focusforceplus.app.ui.components.RowDivider
 import com.focusforceplus.app.ui.components.SectionHeader
 import com.focusforceplus.app.ui.components.TonalButton
 import com.focusforceplus.app.ui.guards.GuardCopy
+import com.focusforceplus.app.ui.guards.GuardDialog
 import com.focusforceplus.app.ui.guards.GuardFlow
 import com.focusforceplus.app.ui.navigation.AppModule
 import com.focusforceplus.app.ui.theme.FfTheme
@@ -101,6 +103,7 @@ fun HomeScreen(
     val colors = FfTheme.colors
     val snackbar = remember { SnackbarHostState() }
     var finishing by remember { mutableStateOf<TodoEntity?>(null) }
+    var pausingBlocker by remember { mutableStateOf(false) }
 
     // Screen time and permissions change all the time; refresh on every return.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -120,6 +123,13 @@ fun HomeScreen(
 
     fun tickOff(todo: TodoEntity) {
         if (s.guards.forTodo(todo, GuardAction.DONE).isNone) viewModel.completeTodo(todo) else finishing = todo
+    }
+
+    // Switching the blocker off from here is the same pause as on its own screen,
+    // so the same speed bump stands in front of it.
+    val pauseGuard = s.guards[GuardSlot.BLOCKER_PAUSE]
+    fun switchBlocker(on: Boolean) {
+        if (on || pauseGuard.isNone) viewModel.setBlockerEnabled(on) else pausingBlocker = true
     }
 
     val activeFocus = s.activeFocusSession
@@ -147,7 +157,9 @@ fun HomeScreen(
             }
 
             // ── Going on right now ────────────────────────────────────────────
-            if (activeFocus != null || runningRoutine != null || s.sleepWindowActive) {
+            // The night only counts while the Sleep module is switched on.
+            val sleeping = s.sleepWindowActive && s.isOn(AppModule.SLEEP)
+            if (activeFocus != null || runningRoutine != null || sleeping) {
                 item(key = "now") {
                     FfCard {
                         var first = true
@@ -174,7 +186,7 @@ fun HomeScreen(
                             )
                             first = false
                         }
-                        if (s.sleepWindowActive) {
+                        if (sleeping) {
                             if (!first) RowDivider()
                             ListRow(
                                 title = "Sleep",
@@ -189,10 +201,11 @@ fun HomeScreen(
             }
 
             // ── Up next: the one thing to look at when nothing runs ───────────
-            if (activeFocus == null && runningRoutine == null && !s.sleepWindowActive) {
+            if (activeFocus == null && runningRoutine == null && !sleeping) {
                 item(key = "next") {
                     UpNextCard(
                         item = plan.next,
+                        now = plan.asOf,
                         onStartRoutine = onStartRoutine,
                         onOpenActiveRoutine = onOpenActiveRoutine,
                         onTick = { tickOff(it) },
@@ -346,7 +359,7 @@ fun HomeScreen(
                                     onClick = onGoToBlocker,
                                     leading = { IconCircle(icon = Icons.Filled.Block) },
                                     trailing = {
-                                        FfSwitch(checked = s.blockerEnabled, onCheckedChange = viewModel::setBlockerEnabled)
+                                        FfSwitch(checked = s.blockerEnabled, onCheckedChange = ::switchBlocker)
                                     },
                                 )
                             }
@@ -367,6 +380,18 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (pausingBlocker) {
+        GuardDialog(
+            guard = pauseGuard,
+            copy = GuardCopy.BLOCKER_PAUSE,
+            onPassed = {
+                pausingBlocker = false
+                viewModel.setBlockerEnabled(false)
+            },
+            onDismiss = { pausingBlocker = false },
+        )
     }
 
     // Ticking off from here goes through the same speed bump as everywhere else.
@@ -493,6 +518,7 @@ private fun DayProgress(done: Int, planned: Int) {
 @Composable
 private fun UpNextCard(
     item: TodayItem?,
+    now: Long,
     onStartRoutine: (Long) -> Unit,
     onOpenActiveRoutine: (Long) -> Unit,
     onTick: (TodoEntity) -> Unit,
@@ -502,7 +528,6 @@ private fun UpNextCard(
     val colors = FfTheme.colors
     val context = androidx.compose.ui.platform.LocalContext.current
     if (item == null) return
-    val now = System.currentTimeMillis()
     val whenText = when {
         item is TodayItem.Routine && item.today.status == RoutineTodayStatus.RUNNING -> "Running now"
         item.at <= now -> "Now"

@@ -28,6 +28,19 @@ import com.focusforceplus.app.ui.screens.stats.StatsScreen
 import com.focusforceplus.app.ui.screens.todo.CreateTodoScreen
 import com.focusforceplus.app.ui.screens.todo.TodoListScreen
 
+/**
+ * Goes back from the screen [from], once.
+ *
+ * A screen can ask to be left twice: a second tap on its back arrow, or a check
+ * like "this list is gone, so leave" that fires again while the screen is already
+ * sliding out. By then the screen below is the current one, and a plain pop would
+ * take that one away too, down to an empty stack and a blank page. Asking who
+ * wants to leave makes the second call do nothing.
+ */
+private fun NavHostController.leave(from: androidx.navigation.NavBackStackEntry) {
+    if (currentBackStackEntry?.id == from.id) popBackStack()
+}
+
 @Composable
 fun NavGraph(
     navController: NavHostController,
@@ -66,9 +79,9 @@ fun NavGraph(
         }
 
         // ── Statistics ────────────────────────────────────────────────────────
-        composable(StatsRoutes.STATS) {
+        composable(StatsRoutes.STATS) { entry ->
             StatsScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
                 onOpenUsageDisclosure = { navController.navigate(BlockerRoutes.disclosure(DisclosureType.USAGE_ACCESS)) },
             )
         }
@@ -97,18 +110,18 @@ fun NavGraph(
             )
         }
 
-        composable(RoutineRoutes.CREATE) {
+        composable(RoutineRoutes.CREATE) { entry ->
             CreateRoutineScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
             )
         }
 
         composable(
             route = RoutineRoutes.EDIT,
             arguments = listOf(navArgument("routineId") { type = NavType.LongType }),
-        ) {
+        ) { entry ->
             CreateRoutineScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
             )
         }
 
@@ -139,15 +152,15 @@ fun NavGraph(
                 navArgument("listId") { type = NavType.LongType; defaultValue = -1L },
                 navArgument("title") { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
-        ) {
-            CreateTodoScreen(onNavigateBack = { navController.popBackStack() })
+        ) { entry ->
+            CreateTodoScreen(onNavigateBack = { navController.leave(entry) })
         }
 
         composable(
             route = TodoRoutes.EDIT,
             arguments = listOf(navArgument("todoId") { type = NavType.LongType }),
-        ) {
-            CreateTodoScreen(onNavigateBack = { navController.popBackStack() })
+        ) { entry ->
+            CreateTodoScreen(onNavigateBack = { navController.leave(entry) })
         }
 
         // ── App Blocker ───────────────────────────────────────────────────────
@@ -172,12 +185,12 @@ fun NavGraph(
         ) { backStackEntry ->
             com.focusforceplus.app.ui.screens.blocker.BlockEditorScreen(
                 groupName = backStackEntry.arguments?.getString("name"),
-                onBack = { navController.popBackStack() },
+                onBack = { navController.leave(backStackEntry) },
             )
         }
 
-        composable(BlockerRoutes.SETTINGS) {
-            BlockerSettingsScreen(onNavigateBack = { navController.popBackStack() })
+        composable(BlockerRoutes.SETTINGS) { entry ->
+            BlockerSettingsScreen(onNavigateBack = { navController.leave(entry) })
         }
 
         composable(
@@ -186,7 +199,7 @@ fun NavGraph(
         ) { backStackEntry ->
             DisclosureScreen(
                 type = backStackEntry.arguments?.getString("type") ?: "",
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(backStackEntry) },
             )
         }
 
@@ -199,15 +212,15 @@ fun NavGraph(
             )
         }
 
-        composable(FocusRoutes.CREATE) {
-            CreateFocusScreen(onNavigateBack = { navController.popBackStack() })
+        composable(FocusRoutes.CREATE) { entry ->
+            CreateFocusScreen(onNavigateBack = { navController.leave(entry) })
         }
 
         composable(
             route = FocusRoutes.EDIT,
             arguments = listOf(navArgument("sessionId") { type = NavType.LongType }),
-        ) {
-            CreateFocusScreen(onNavigateBack = { navController.popBackStack() })
+        ) { entry ->
+            CreateFocusScreen(onNavigateBack = { navController.leave(entry) })
         }
 
         composable(
@@ -224,9 +237,9 @@ fun NavGraph(
         }
 
         // ── Sleep Mode ────────────────────────────────────────────────────────
-        composable(SleepRoutes.SLEEP) {
+        composable(SleepRoutes.SLEEP) { entry ->
             SleepScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
                 topLevel = true,
                 onCreateRoutine = { linkTarget ->
                     navController.navigate(SleepRoutes.createLinkedRoutine(linkTarget))
@@ -247,7 +260,7 @@ fun NavGraph(
             }
             val sleepViewModel: SleepViewModel = hiltViewModel(sleepEntry)
             CreateRoutineScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(backStackEntry) },
                 onRoutineSaved = { savedId ->
                     if (linkTarget == "bedtime") sleepViewModel.setBedtimeRoutine(savedId)
                     else sleepViewModel.setMorningRoutine(savedId)
@@ -265,9 +278,9 @@ fun NavGraph(
         composable(
             route = ListRoutes.DETAIL,
             arguments = listOf(navArgument("listId") { type = NavType.LongType }),
-        ) {
+        ) { entry ->
             com.focusforceplus.app.ui.screens.lists.ListDetailScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.leave(entry) },
                 onRemind = { listId, title -> navController.navigate(TodoRoutes.create(listId, title)) },
                 onEditTodo = { id -> navController.navigate(TodoRoutes.edit(id)) },
                 onOpenList = { id ->
@@ -277,9 +290,9 @@ fun NavGraph(
         }
 
         // ── Settings ──────────────────────────────────────────────────────────
-        composable(SettingsRoutes.SETTINGS) {
+        composable(SettingsRoutes.SETTINGS) { entry ->
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
                 onOpenBlockerSettings = { navController.navigate(BlockerRoutes.SETTINGS) },
                 onOpenDisclosure = { type -> navController.navigate(BlockerRoutes.disclosure(type)) },
                 onReplayOnboarding = { navController.navigate(OnboardingRoutes.ONBOARDING) },
@@ -294,48 +307,48 @@ fun NavGraph(
             )
         }
 
-        composable(SettingsRoutes.TASK_SYNC) {
+        composable(SettingsRoutes.TASK_SYNC) { entry ->
             com.focusforceplus.app.ui.screens.settings.TaskSyncScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
                 onOpenDisclosure = { type -> navController.navigate(BlockerRoutes.disclosure(type)) },
             )
         }
 
-        composable(SettingsRoutes.CALENDAR) {
+        composable(SettingsRoutes.CALENDAR) { entry ->
             com.focusforceplus.app.ui.screens.settings.CalendarScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
                 onOpenDisclosure = { type -> navController.navigate(BlockerRoutes.disclosure(type)) },
             )
         }
 
-        composable(SettingsRoutes.APPEARANCE) {
+        composable(SettingsRoutes.APPEARANCE) { entry ->
             com.focusforceplus.app.ui.screens.settings.AppearanceScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
             )
         }
 
-        composable(SettingsRoutes.AUTO_BACKUP) {
+        composable(SettingsRoutes.AUTO_BACKUP) { entry ->
             com.focusforceplus.app.ui.screens.settings.AutoBackupScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
             )
         }
 
-        composable(SettingsRoutes.INTEGRATIONS) {
+        composable(SettingsRoutes.INTEGRATIONS) { entry ->
             com.focusforceplus.app.ui.screens.settings.IntegrationsScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
             )
         }
 
-        composable(SettingsRoutes.SPEED_BUMPS) {
+        composable(SettingsRoutes.SPEED_BUMPS) { entry ->
             com.focusforceplus.app.ui.screens.settings.SpeedBumpsScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
             )
         }
 
         // ── Trash ─────────────────────────────────────────────────────────────
-        composable(TrashRoutes.TRASH) {
+        composable(TrashRoutes.TRASH) { entry ->
             com.focusforceplus.app.ui.screens.trash.TrashScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.leave(entry) },
             )
         }
     }

@@ -63,6 +63,13 @@ data class TodayPlan(
     val doneToday: Int = 0,
     /** Done today plus what is still planned for today (routines and todos). */
     val plannedToday: Int = 0,
+    /**
+     * The moment this plan was made. The screen counts "in 12 min" from it, and
+     * because it changes with every minute, the plan does too: without it a plan
+     * with the same items would count as unchanged and the screen would keep
+     * showing the minutes from when it was opened.
+     */
+    val asOf: Long = System.currentTimeMillis(),
 )
 
 data class UsageStats(
@@ -110,6 +117,7 @@ class HomeViewModel @Inject constructor(
     private val todoReminders: TodoReminderEngine,
     private val sleepAlarmHelper: com.focusforceplus.app.util.SleepAlarmHelper,
     private val tamperGuard: com.focusforceplus.app.compliance.TamperProtectionGuard,
+    private val blockerLocks: com.focusforceplus.app.compliance.BlockerLocks,
     focusRepository: com.focusforceplus.app.data.repository.FocusRepository,
     listRepository: com.focusforceplus.app.data.repository.ListRepository,
     navRepository: com.focusforceplus.app.data.repository.NavRepository,
@@ -242,7 +250,13 @@ class HomeViewModel @Inject constructor(
 
         val items = buildList {
             routines.filter { it.status != RoutineTodayStatus.DONE_TODAY }.forEach { today ->
-                val at = start + (today.routine.startTimeHour * 60 + today.routine.startTimeMinute) * 60_000L
+                // Set on the calendar, not added to midnight: on the two days a year
+                // the clocks change, midnight plus so many minutes is an hour off.
+                val at = Calendar.getInstance().apply {
+                    timeInMillis = start
+                    set(Calendar.HOUR_OF_DAY, today.routine.startTimeHour)
+                    set(Calendar.MINUTE, today.routine.startTimeMinute)
+                }.timeInMillis
                 add(TodayItem.Routine(today, if (today.status == RoutineTodayStatus.RUNNING) minOf(at, now) else at))
             }
             if (todosOn) {
@@ -272,6 +286,7 @@ class HomeViewModel @Inject constructor(
             }
         }
         return TodayPlan(
+            asOf = now,
             items = items,
             next = next,
             anytime = if (todosOn) open.filter { it.dueDateTime == null }
@@ -312,21 +327,9 @@ class HomeViewModel @Inject constructor(
     fun setBlockerEnabled(enabled: Boolean) {
         viewModelScope.launch {
             if (!enabled) {
-                val cal = Calendar.getInstance()
-                val minutesOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-                val rules = blockerRepository.getAllAppsOnce()
-                val lockedCount = rules.count { isRuleLocked(it, minutesOfDay) }
-                if (lockedCount > 0) {
-                    _message.value = "Cannot turn blocking off: $lockedCount rule(s) are " +
-                        "locked by Invincible Mode right now."
+                blockerLocks.refusalToStopBlocking()?.let {
+                    _message.value = it
                     return@launch
-                }
-                if (rules.any { it.invincibleMode && it.isBlocked }) {
-                    val verdict = tamperGuard.checkProtectedChange()
-                    if (!verdict.allowed) {
-                        _message.value = verdict.message
-                        return@launch
-                    }
                 }
             }
             settingsRepository.saveBlockerEnabled(enabled)

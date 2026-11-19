@@ -49,8 +49,18 @@ data class Metric(
     val total: Int get() = days.sumOf { it.value }
     val change: Int get() = total - previousTotal
 
-    /** Average over the days that have something; empty days before first use do not count. */
-    val average: Int get() = days.filter { it.value > 0 }.let { if (it.isEmpty()) 0 else it.sumOf { d -> d.value } / it.size }
+    /**
+     * Average per day over the days that have something; empty days before first
+     * use do not count. Today is left out while there are finished days to go by:
+     * it is not over yet, and counting it as a whole day pulls the average down
+     * every morning. On the very first day it is all there is.
+     */
+    val average: Int
+        get() {
+            val finished = days.dropLast(1).filter { it.value > 0 }
+            return if (finished.isEmpty()) days.lastOrNull()?.value ?: 0
+            else finished.sumOf { it.value } / finished.size
+        }
 
     val previousAverage: Int get() = if (previousCounted == 0) 0 else previousTotal / previousCounted
 }

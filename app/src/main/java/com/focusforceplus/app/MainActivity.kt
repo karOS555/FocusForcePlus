@@ -128,8 +128,13 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        routineNavRequest.value = intent.routineId() to 0
-        openRouteRequest.value = intent.openRoute() to 0
+        // Only on a fresh start. After a rotation the activity is built again with
+        // the same intent, and the screens come back from the saved state; following
+        // the intent once more would open its screen a second time.
+        if (savedInstanceState == null) {
+            routineNavRequest.value = intent.routineId() to 0
+            openRouteRequest.value = intent.openRoute() to 0
+        }
         setContent {
             FocusForceTheme {
                 // Direct .value read is tracked by composition; the local val allows smart-cast.
@@ -196,14 +201,19 @@ class MainActivity : ComponentActivity() {
         /** Intent extra: route of the module to show, e.g. "todos". */
         const val EXTRA_OPEN_ROUTE = "openRoute"
 
+        // This activity is exported, so the extra can come from any app. An id is
+        // at most 18 digits: a longer one does not fit a Long, matches no screen,
+        // and navigating to it would crash the app together with its services.
+        private const val ID = "[0-9]{1,18}"
+
         /** The running focus session, opened from its notification. */
-        private val ACTIVE_FOCUS_ROUTE = Regex("focus/active/[0-9]+")
+        private val ACTIVE_FOCUS_ROUTE = Regex("focus/active/$ID")
 
         /** A list, opened from a todo's alarm or a widget. */
-        private val LIST_ROUTE = Regex("list/[0-9]+")
+        private val LIST_ROUTE = Regex("list/$ID")
         // Widgets open a todo or a routine's start screen; neither starts or changes anything by itself.
-        private val TODO_EDIT_ROUTE = Regex("todo/edit/[0-9]+")
-        private val ROUTINE_ACTIVE_ROUTE = Regex("routine/active/[0-9]+")
+        private val TODO_EDIT_ROUTE = Regex("todo/edit/$ID")
+        private val ROUTINE_ACTIVE_ROUTE = Regex("routine/active/$ID")
 
         /** Screens below the modules that other parts of the app may open directly. */
         fun isDirectRoute(route: String): Boolean =
@@ -214,6 +224,15 @@ class MainActivity : ComponentActivity() {
 
     private fun Intent.routineId(): Long =
         getLongExtra("routineId", 0L).takeIf { it > 0L } ?: 0L
+}
+
+/** The path this screen was opened with: its route with the ids filled in, without options. */
+private fun androidx.navigation.NavBackStackEntry.filledPath(): String? {
+    val pattern = destination.route?.substringBefore('?') ?: return null
+    val values = arguments
+    return destination.arguments.keys.fold(pattern) { path, key ->
+        path.replace("{$key}", values?.get(key)?.toString().orEmpty())
+    }
 }
 
 @Composable
@@ -278,14 +297,15 @@ private fun AppContent(
         // nothing.
         if (navController.popBackStack(module.route, inclusive = false)) return
         if (module in AppModule.topLevel) {
-            // Settings and statistics belong to no tab: leave them rather than
-            // keeping them with the tab they were opened over, or coming back to
-            // that tab would show them again instead of the tab.
-            while (AppModule.owning(navController.currentDestination?.route)
-                    .let { it == AppModule.SETTINGS || it == AppModule.STATS } &&
-                navController.previousBackStackEntry != null
-            ) {
-                if (!navController.popBackStack()) break
+            // Settings and statistics belong to no tab, and neither does a page
+            // that was opened from them (the Blocker or Sleep page of a module that
+            // is not in the bar). Leave all of it rather than keeping it with the
+            // tab it was opened over, or coming back to that tab would show those
+            // pages again instead of the tab.
+            for (root in listOf(SettingsRoutes.SETTINGS, StatsRoutes.STATS)) {
+                if (runCatching { navController.getBackStackEntry(root) }.isSuccess) {
+                    navController.popBackStack(root, inclusive = true)
+                }
             }
             navController.navigate(module.route) {
                 popUpTo(AppModule.HOME.route) { saveState = true }
@@ -306,15 +326,27 @@ private fun AppContent(
         }
     }
 
-    LaunchedEffect(openRouteRequest) {
-        val route = openRouteRequest.first
+    // Waits for the bar's setup: whether a module is switched off decides below.
+    LaunchedEffect(openRouteRequest, navConfig != null) {
+        val route = openRouteRequest.first ?: return@LaunchedEffect
+        val config = navConfig ?: return@LaunchedEffect
         val module = AppModule.fromRoute(route)
+        // A module that is switched off is not opened by a shortcut, a widget or a
+        // notification that is still around either.
+        val owner = module ?: AppModule.owning(route)
+        if (owner != null && !config.isOn(owner)) return@LaunchedEffect
         when {
             module != null -> openModule(module)
-            route != null && MainActivity.isDirectRoute(route) ->
-                if (navController.currentDestination?.route != FocusRoutes.ACTIVE) {
-                    navController.navigate(route) { launchSingleTop = true }
+            MainActivity.isDirectRoute(route) -> {
+                val current = navController.currentBackStackEntry
+                if (current?.destination?.route == FocusRoutes.ACTIVE) return@LaunchedEffect
+                // Not launchSingleTop: with another todo's editor on top, that would
+                // keep the old editor and its todo while the address says the new
+                // one. The same screen with the same id is not opened twice.
+                if (current?.filledPath() != route.substringBefore('?')) {
+                    runCatching { navController.navigate(route) }
                 }
+            }
         }
     }
 
