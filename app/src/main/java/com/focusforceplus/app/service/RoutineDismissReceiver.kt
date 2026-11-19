@@ -16,10 +16,14 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Handles "Dismiss" taps from alarm and snooze notifications, and swipe-dismissals
- * of the ringing alarm notification ([ACTION_ALARM_SWIPED]): swiping an alarm away
- * is not a decision, so the notification simply comes back until the user acts on
- * it (Start, Snooze, Reschedule, or the explicit Cancel action).
+ * Handles "Dismiss" on the heads-up before the start, "Cancel Routine" on a ringing
+ * or snoozed alarm, and swipe-dismissals of the ringing alarm notification
+ * ([ACTION_ALARM_SWIPED]): swiping an alarm away is not a decision, so the
+ * notification simply comes back until the user acts on it (Start, Snooze,
+ * Reschedule, or the explicit Cancel action).
+ *
+ * An invincible routine has no Cancel action, and this receiver does not take its
+ * word for that: whatever asks, an invincible run only loses its heads-up here.
  */
 @AndroidEntryPoint
 class RoutineDismissReceiver : BroadcastReceiver() {
@@ -61,12 +65,26 @@ class RoutineDismissReceiver : BroadcastReceiver() {
             return
         }
 
-        // Cancel both the alarm and pre-alarm notifications.
-        notificationHelper.cancelNotification(NotificationHelper.alarmNotificationId(routineId))
+        // The heads-up before the start can always go.
         notificationHelper.cancelNotification(NotificationHelper.preAlarmNotificationId(routineId))
 
-        // Cancel any pending reschedule alarm and clear the tracker.
-        alarmHelper.cancelRescheduleAlarm(routineId)
-        rescheduleTracker.clear(routineId)
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                // An invincible run can be started, snoozed or moved, not skipped. The
+                // heads-up's "Dismiss" comes through here as well, and it may still be
+                // in the shade while the alarm rings or after the run was moved: it
+                // must not take the alarm or the moved run with it.
+                val invincible = repository.getRoutineById(routineId).first()?.invincibleMode == true
+                if (invincible) return@launch
+
+                notificationHelper.cancelNotification(NotificationHelper.alarmNotificationId(routineId))
+                // Cancel any pending reschedule alarm and clear the tracker.
+                alarmHelper.cancelRescheduleAlarm(routineId)
+                rescheduleTracker.clear(routineId)
+            } finally {
+                pendingResult.finish()
+            }
+        }
     }
 }

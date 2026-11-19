@@ -402,6 +402,12 @@ class NotificationHelper @Inject constructor(
         manager.cancel(id)
     }
 
+    /** Whether a notification with this id is in the shade right now. */
+    fun isShowing(id: Int): Boolean {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        return runCatching { manager.activeNotifications.any { it.id == id } }.getOrDefault(false)
+    }
+
     // ── Private intent builders ───────────────────────────────────────────────
 
     fun alarmScreenIntent(
