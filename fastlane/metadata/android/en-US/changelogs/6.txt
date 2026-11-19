@@ -1,0 +1,5 @@
+A small release that gets the app ready for F-Droid. Nothing changes in how it works.
+
+- The build is reproducible: the tagged source gives this exact APK
+- The APK no longer carries Google Play's dependency list
+- Newer versions of the libraries underneath

@@ -1,0 +1,5 @@
+Ein kleiner Release, der die App für F-Droid vorbereitet. An der Bedienung ändert sich nichts.
+
+- Der Build ist reproduzierbar: Der getaggte Quelltext ergibt genau diese APK
+- Die APK enthält Googles Abhängigkeitsliste nicht mehr
+- Neuere Versionen der Bibliotheken darunter

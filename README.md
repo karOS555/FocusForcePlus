@@ -30,10 +30,9 @@ Routines, todos, lists, an app blocker, focus and sleep mode in one Android app.
 <img src="https://img.shields.io/badge/Download_the_APK-152e54?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"/>
 </a>
 
-<!-- Enable once FocusForce+ is listed on IzzyOnDroid. Check both URLs against the
-     current IzzyOnDroid docs before turning this on.
-<a href="https://apt.izzysoft.de/fdroid/index/apk/com.focusforceplus.app">
-<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it on IzzyOnDroid" height="60"/>
+<!-- Enable once FocusForce+ is listed on F-Droid.
+<a href="https://f-droid.org/packages/com.focusforceplus.app/">
+<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="75"/>
 </a>
 -->
 
@@ -275,7 +274,7 @@ FocusForce+ needs Android 8.0 or newer. It is not in an app store yet, so there 
 > The simple way around is Obtainium, above. If you want the plain APK anyway:
 >
 > 1. **Pause the scan for the install.** Play Store > your profile picture > **Play Protect** > the gear > switch off **Scan apps with Play Protect**. Install the APK, then **switch the scan back on right away**.
-> 2. **Or install over USB.** With Android's platform tools on a computer: `adb install FocusForcePlus-v0.9.4-beta.apk`. Play Protect stays on.
+> 2. **Or install over USB.** With Android's platform tools on a computer: `adb install` and the name of the downloaded file. Play Protect stays on.
 >
 > Check your download first: `SHA256SUMS.txt` is attached to every release. An update by hand can run into the same block.
 
@@ -319,7 +318,7 @@ FocusForce+ needs Android 8.0 or newer. It is not in an app store yet, so there 
 - [x] Speed bumps, lists, Reels and Shorts, themes, sharing and start links, nightly backups
 - [x] Calendar, OpenTasks and Tasks.org, widgets, Frutiger Aero
 - [ ] 1.0 after this testing round
-- [ ] Play Store and IzzyOnDroid
+- [ ] F-Droid and the Play Store
 
 </details>
 

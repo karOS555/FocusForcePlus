@@ -17,8 +17,8 @@ android {
         applicationId = "com.focusforceplus.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.9.4-beta"
+        versionCode = 6
+        versionName = "0.9.5-beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

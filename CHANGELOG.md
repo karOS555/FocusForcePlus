@@ -2,6 +2,17 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.9.5-beta] - 2026-11-20
+
+A small release that gets the app ready for F-Droid. Nothing changes in how it works.
+
+### Changed
+- **The build is reproducible.** Whoever builds the tagged source gets this exact APK, byte for byte. That lets F-Droid check the APK against the source and ship it with the same signature as the one here, so the two can be swapped without reinstalling
+- The APK no longer carries the list of its dependencies that only Google Play can read, nor the commit it was built from
+- Newer versions of the libraries underneath: Room, WorkManager, DataStore, coroutines and the splash screen
+
+[0.9.5-beta]: https://github.com/karOS555/FocusForcePlus/releases/tag/v0.9.5-beta
+
 ## [0.9.4-beta] - 2026-11-19
 
 The last big update before 1.0: a new look, a home screen that shows your day in one list, speed bumps, lists for shopping and packing, your calendar and tasks apps, widgets, and a blocker that can skip just Reels and Shorts.
