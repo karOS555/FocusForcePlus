@@ -37,6 +37,12 @@ data class TodoUiState(
     val recurringType: String = "DAILY",
     val recurringDays: Set<String> = setOf("MO"),
     val checklistItems: List<ChecklistItem> = emptyList(),
+    /**
+     * One id per checklist item, in the same order, that stays with the item when
+     * it is moved. Rows are told apart by it while they are dragged: two items may
+     * carry the same text, and the position changes with every move.
+     */
+    val checklistKeys: List<Long> = emptyList(),
     /** A list this todo is about, e.g. the groceries for "Go shopping". */
     val listId: Long? = null,
     val lists: List<com.focusforceplus.app.data.db.entity.ListEntity> = emptyList(),
@@ -72,8 +78,7 @@ class TodoViewModel @Inject constructor(
     private val editTodoId: Long = savedStateHandle.get<Long>("todoId") ?: 0L
     val isEditMode: Boolean get() = editTodoId != 0L
 
-    // The stored todo, so fields the form does not show survive an edit.
-    private var originalTodo: TodoEntity? = null
+    private var createdAt: Long? = null
 
     private val _uiState = MutableStateFlow(TodoUiState())
     val uiState: StateFlow<TodoUiState> = _uiState.asStateFlow()
@@ -84,8 +89,12 @@ class TodoViewModel @Inject constructor(
     val hasUnsavedChanges: Boolean
         get() = snapshotState?.let { normalized(_uiState.value) != normalized(it) } ?: false
 
-    private fun normalized(s: TodoUiState) =
-        s.copy(isSaving = false, titleError = false, error = null, guardDefaults = GuardSettings(), lists = emptyList())
+    private fun normalized(s: TodoUiState) = s.copy(
+        isSaving = false, titleError = false, error = null, guardDefaults = GuardSettings(), lists = emptyList(),
+        checklistKeys = emptyList(),
+    )
+
+    private var nextChecklistKey = 0L
 
     init {
         viewModelScope.launch {
@@ -95,7 +104,7 @@ class TodoViewModel @Inject constructor(
             val guards = settingsRepository.guardSettings.first()
             if (isEditMode) {
                 repository.getTodoById(editTodoId)?.let { todo ->
-                    originalTodo = todo
+                    createdAt = todo.createdAt
                     val (type, days) = parsePattern(todo.recurringPattern)
                     _uiState.update {
                         it.copy(
@@ -111,6 +120,7 @@ class TodoViewModel @Inject constructor(
                             recurringType = type,
                             recurringDays = days,
                             checklistItems = checklistFromJson(todo.checklistJson),
+                            checklistKeys = checklistFromJson(todo.checklistJson).map { nextChecklistKey++ },
                             guardOverrides = GuardOverrides.decode(todo.guards),
                             guardDefaults = guards,
                             isCompleted = todo.isCompleted,
@@ -167,11 +177,19 @@ class TodoViewModel @Inject constructor(
     fun addChecklistItem(text: String) {
         val trimmed = text.trim()
         if (trimmed.isBlank()) return
-        _uiState.update { it.copy(checklistItems = it.checklistItems + ChecklistItem(trimmed)) }
+        _uiState.update {
+            it.copy(
+                checklistItems = it.checklistItems + ChecklistItem(trimmed),
+                checklistKeys = it.checklistKeys + nextChecklistKey++,
+            )
+        }
     }
 
     fun removeChecklistItem(index: Int) = _uiState.update { state ->
-        state.copy(checklistItems = state.checklistItems.filterIndexed { i, _ -> i != index })
+        state.copy(
+            checklistItems = state.checklistItems.filterIndexed { i, _ -> i != index },
+            checklistKeys = state.checklistKeys.filterIndexed { i, _ -> i != index },
+        )
     }
 
     fun toggleChecklistItem(index: Int) = _uiState.update { state ->
@@ -186,8 +204,12 @@ class TodoViewModel @Inject constructor(
 
     fun moveChecklistItem(from: Int, to: Int) = _uiState.update { state ->
         val items = state.checklistItems.toMutableList()
-        if (from in items.indices && to in items.indices) items.add(to, items.removeAt(from))
-        state.copy(checklistItems = items)
+        val keys = state.checklistKeys.toMutableList()
+        if (from in items.indices && to in items.indices) {
+            items.add(to, items.removeAt(from))
+            if (from in keys.indices && to in keys.indices) keys.add(to, keys.removeAt(from))
+        }
+        state.copy(checklistItems = items, checklistKeys = keys)
     }
 
     fun saveTodo(onSuccess: () -> Unit) {
@@ -205,9 +227,13 @@ class TodoViewModel @Inject constructor(
                     else -> state.recurringType
                 }
                 val limits = clampTodoLimits(state.priority, state.maxSnoozeCount, state.maxRescheduleCount)
-                val original = originalTodo
-                val todo = (original ?: TodoEntity(title = "", createdAt = System.currentTimeMillis())).copy(
+                // Only the fields of this form. What else the stored todo carries
+                // (done, snoozes, its calendar event, its synced task) may have
+                // changed while the editor was open, so the engine takes it from the
+                // stored row when it saves.
+                val todo = TodoEntity(
                     id = if (isEditMode) editTodoId else 0L,
+                    createdAt = createdAt ?: System.currentTimeMillis(),
                     title = state.title.trim(),
                     description = state.description.trim().ifBlank { null },
                     iconKey = state.iconKey,

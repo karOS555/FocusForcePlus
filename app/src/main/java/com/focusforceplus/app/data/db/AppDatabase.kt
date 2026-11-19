@@ -167,11 +167,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * 10 -> 11: icons for todos, focus sessions and blocker groups, the trash
-         * (soft delete), the confirmation guards, the todo reminder state, and the
-         * Lists module. Only adds columns and tables, so nothing existing is touched.
-         */
         /** Sections and amounts on lists, and lists on routine steps. */
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -189,6 +184,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * 10 -> 11: icons for todos, focus sessions and blocker groups, the trash
+         * (soft delete), the confirmation guards, the todo reminder state, and the
+         * Lists module. Adds columns and tables; the only existing rows it touches
+         * are overdue todos, which start out as already reminded.
+         */
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE todos ADD COLUMN iconKey TEXT")
@@ -198,6 +199,14 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE todos ADD COLUMN nagCount INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE todos ADD COLUMN lastAlarmAt INTEGER")
                 db.execSQL("ALTER TABLE todos ADD COLUMN listId INTEGER")
+                // Todos that are overdue at the update have had their alarm in the old
+                // version. Without this the reminder engine would take every one of
+                // them for a missed wake-up and ring them all right after the update.
+                // -1 is TodoEntity.NAG_DISMISSED: quiet until the next daily reminder.
+                db.execSQL(
+                    "UPDATE todos SET nagCount = -1, lastAlarmAt = dueDateTime " +
+                        "WHERE dueDateTime IS NOT NULL AND dueDateTime <= ${System.currentTimeMillis()}"
+                )
 
                 db.execSQL("ALTER TABLE routines ADD COLUMN deletedAt INTEGER")
                 db.execSQL("ALTER TABLE routines ADD COLUMN guards TEXT")

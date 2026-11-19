@@ -316,6 +316,7 @@ fun CreateTodoScreen(
         FormSection(title = "Checklist") {
             ChecklistEditor(
                 items = state.checklistItems,
+                keys = state.checklistKeys,
                 onToggle = viewModel::toggleChecklistItem,
                 onRemove = viewModel::removeChecklistItem,
                 onAdd = viewModel::addChecklistItem,
@@ -463,6 +464,7 @@ private fun PriorityRow(
 @Composable
 private fun ChecklistEditor(
     items: List<ChecklistItem>,
+    keys: List<Long>,
     onToggle: (Int) -> Unit,
     onRemove: (Int) -> Unit,
     onAdd: (String) -> Unit,
@@ -478,11 +480,12 @@ private fun ChecklistEditor(
     }
     FfCard {
         if (items.isNotEmpty()) {
-            // Items are identified by position: two items may carry the same text.
+            // Each row is known by an id that travels with it. A key made from
+            // its position changed with every move and ended the drag after one row.
             val indexed = items.withIndex().toList()
             ReorderableColumn(
                 items = indexed,
-                key = { "${it.index}:${it.value.text}" },
+                key = { keys.getOrElse(it.index) { _ -> -1L - it.index } },
                 rowHeight = 52.dp,
                 onMove = onMove,
             ) { entry, handle, _ ->

@@ -215,25 +215,38 @@ class TodoNotifications @Inject constructor(
             .build()
     }
 
-    /** Low priority: one ordinary notification, done with a tap, swiped away freely. */
-    fun lowDue(todo: TodoEntity): Notification =
-        base(todo, CHANNEL_DIGEST)
+    /**
+     * Low priority: one ordinary notification, swiped away freely. Done works with a
+     * tap, unless this todo has a speed bump in front of it ([doneDirect] is false):
+     * then the button opens the todo, which is where that speed bump is.
+     *
+     * It stands on its own, outside the group of the medium and high todos. That
+     * group's header goes away with the last of them, and Android removes
+     * everything in a group together with its header.
+     */
+    fun lowDue(todo: TodoEntity, doneDirect: Boolean): Notification {
+        val builder = base(todo, CHANNEL_DIGEST, grouped = false)
             .setContentTitle(todo.title)
             .setContentText(if (todo.dueDateTime != null) "Due ${formatMoment(todo.dueDateTime)}" else "Open todo")
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(listIntent())
             .setAutoCancel(true)
-            .addAction(0, "Done", actionIntent(todo.id, TodoActionReceiver.ACTION_DONE))
-            .build()
+        if (doneDirect) {
+            builder.addAction(0, "Done", actionIntent(todo.id, TodoActionReceiver.ACTION_DONE))
+        } else {
+            builder.addAction(0, "Open", openIntent(todo.id))
+        }
+        return builder.build()
+    }
 
-    /** Header that the per-todo notifications collapse under. */
+    /** Header that the medium and high todo notifications collapse under. */
     fun summary(count: Int): Notification =
         NotificationCompat.Builder(context, CHANNEL_OPEN)
             .setSmallIcon(moduleIcon())
             .setColor(NotificationStyle.ACCENT)
             .setSubText(MODULE)
-            .setContentTitle("$count todos need you")
+            .setContentTitle(if (count == 1) "1 todo needs you" else "$count todos need you")
             .setContentIntent(listIntent())
             .setGroup(GROUP_KEY)
             .setGroupSummary(true)
@@ -281,7 +294,11 @@ class TodoNotifications @Inject constructor(
 
     fun cancelDaily() = manager.cancel(ID_DAILY)
 
-    /** Removes notifications posted under the ids of versions before 0.10. */
+    /**
+     * Removes notifications posted under the ids of 0.9.3 and older. Those ids were
+     * computed from the todo id and overlap other notifications of the app, so the
+     * engine calls this once after the update and never again.
+     */
     fun cancelLegacy(todoIds: Collection<Long>) {
         manager.cancel(6001)
         manager.cancel(6002)
@@ -293,7 +310,7 @@ class TodoNotifications @Inject constructor(
 
     // ── Pieces ────────────────────────────────────────────────────────────────
 
-    private fun base(todo: TodoEntity, channel: String): NotificationCompat.Builder {
+    private fun base(todo: TodoEntity, channel: String, grouped: Boolean = true): NotificationCompat.Builder {
         val icon = RoutineIcons.find(todo.iconKey)
         val color = when (todo.priority) {
             2 -> COLOR_HIGH
@@ -304,8 +321,9 @@ class TodoNotifications @Inject constructor(
             .setSmallIcon(moduleIcon())
             .setColor(color)
             .setSubText(MODULE)
-            .setGroup(GROUP_KEY)
-            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+        if (grouped) {
+            builder.setGroup(GROUP_KEY).setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+        }
         if (icon != null) {
             builder.setLargeIcon(
                 NotificationIcons.badge(

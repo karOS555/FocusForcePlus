@@ -58,12 +58,20 @@ class TodoReminderEngine @Inject constructor(
     enum class Outcome { OK, NOT_FOUND, NOT_ALLOWED }
 
     private companion object {
-        /** Delay before catching up on a wake-up that was missed (phone off, app killed). */
-        const val CATCH_UP_MILLIS = 5_000L
-        const val MINUTE = 60_000L
+        const val CATCH_UP_MILLIS = TodoReminderRules.CATCH_UP_MILLIS
+        const val MINUTE = TodoReminderRules.MINUTE
     }
 
     private val mutex = Mutex()
+
+    /**
+     * Missed wake-ups that are waiting for their turn: todo id to the moment it will
+     * ring. Several todos that came due while nothing could ring (phone off, module
+     * off) take turns a few minutes apart, like at a daily reminder time, instead of
+     * all ringing at once. Only kept in memory: after a restart [syncAll] deals the
+     * turns out again.
+     */
+    private val catchUpTurns = HashMap<Long, Long>()
 
     private fun now() = System.currentTimeMillis()
 
@@ -72,8 +80,7 @@ class TodoReminderEngine @Inject constructor(
 
     // ── State, derived from the stored todo ───────────────────────────────────
 
-    fun isSnoozed(todo: TodoEntity, now: Long = now()): Boolean =
-        (todo.snoozedUntil ?: 0L) > now
+    fun isSnoozed(todo: TodoEntity, now: Long = now()): Boolean = TodoReminderRules.isSnoozed(todo, now)
 
     /**
      * True when the todo is asking for an answer right now: it is past due, or it
@@ -100,34 +107,54 @@ class TodoReminderEngine @Inject constructor(
      * running snooze belong to the old one.
      */
     suspend fun save(todo: TodoEntity): Long = mutex.withLock {
+        val now = now()
         val existing = if (todo.id != 0L) repository.getTodoById(todo.id) else null
         val id: Long
         if (existing == null) {
-            id = repository.insertTodo(todo.copy(id = 0L))
+            // New. Or its row was deleted for good while the editor was open: then it
+            // starts over as a new todo, without the old row's event and synced task.
+            val fresh = if (todo.id == 0L) todo else todo.unlinked().copy(id = 0L)
+            id = repository.insertTodo(TodoReminderRules.quietIfOverdue(fresh, now))
         } else {
+            // Only what an editor shows comes from [todo]. Everything else is read
+            // from the stored row here, inside the lock: an editor that was open for
+            // a while would otherwise write back an old "not done" or an old place in
+            // the trash, or drop the link to a calendar event or synced task that
+            // was made in the meantime.
+            val edited = existing.copy(
+                title = todo.title,
+                description = todo.description,
+                iconKey = todo.iconKey,
+                dueDateTime = todo.dueDateTime,
+                priority = todo.priority,
+                maxSnoozeCount = todo.maxSnoozeCount,
+                maxRescheduleCount = todo.maxRescheduleCount,
+                isRecurring = todo.isRecurring,
+                recurringPattern = todo.recurringPattern,
+                checklistJson = todo.checklistJson,
+                guards = todo.guards,
+                listId = todo.listId,
+            )
             val freshOccurrence = existing.dueDateTime != todo.dueDateTime ||
                 existing.priority != todo.priority
             val merged = if (freshOccurrence) {
-                todo.copy(
-                    snoozeCount = 0,
-                    rescheduleCount = 0,
-                    snoozedUntil = null,
-                    nagCount = 0,
-                    lastAlarmAt = null,
+                TodoReminderRules.quietIfOverdue(
+                    edited.copy(
+                        snoozeCount = 0,
+                        rescheduleCount = 0,
+                        snoozedUntil = null,
+                        nagCount = 0,
+                        lastAlarmAt = null,
+                    ),
+                    now,
                 )
             } else {
-                todo.copy(
-                    snoozeCount = existing.snoozeCount,
-                    rescheduleCount = existing.rescheduleCount,
-                    snoozedUntil = existing.snoozedUntil,
-                    nagCount = existing.nagCount,
-                    lastAlarmAt = existing.lastAlarmAt,
-                )
+                edited
             }
             repository.updateTodo(merged)
-            id = todo.id
+            id = existing.id
         }
-        repository.getTodoById(id)?.let { apply(it) }
+        repository.getTodoById(id)?.let { apply(it, now) }
         refreshSummary()
         id
     }
@@ -226,6 +253,9 @@ class TodoReminderEngine @Inject constructor(
         if (todo.priority == 2) return@act Outcome.NOT_ALLOWED
         val quiet = todo.copy(nagCount = TodoEntity.NAG_DISMISSED, snoozedUntil = null)
         repository.updateTodo(quiet)
+        // A daily reminder that is going through the todos right now may still have
+        // this one's turn ahead. Dismissed means that turn is skipped as well.
+        scheduler.cancelActivation(todo.id)
         apply(quiet, now)
         if (todo.priority == 0) notifications.cancel(todo.id)
         Outcome.OK
@@ -349,7 +379,8 @@ class TodoReminderEngine @Inject constructor(
     /** After a reboot, an update, a clock change, or switching the module back on. */
     suspend fun syncAll() = mutex.withLock {
         val all = repository.getAllActiveOnce()
-        notifications.cancelLegacy(all.map { it.id })
+        retireLegacy(all)
+        catchUpTurns.clear()
         if (!todosOn()) {
             all.forEach { clear(it.id) }
             scheduler.cancelAllDigestAlarms()
@@ -358,9 +389,26 @@ class TodoReminderEngine @Inject constructor(
             return@withLock
         }
         val now = now()
+        // Wake-ups that were missed take turns, the most important one first.
+        val gap = settings.undatedAlarmGapMinutes.first().coerceAtLeast(1) * MINUTE
+        catchUpTurns.putAll(TodoReminderRules.catchUpTurns(all, now, gap))
         all.forEach { apply(it, now) }
         scheduler.scheduleDigestAlarms(settings.digestTimes.first())
         refreshSummary()
+    }
+
+    /**
+     * Once after the update from 0.9.3 or older: its notifications and alarms used
+     * other ids, and an update leaves both in place, so an old alarm would fire
+     * next to the new one. Only once, because the old notification ids were
+     * computed from the todo id and run into other notifications as ids grow.
+     */
+    private suspend fun retireLegacy(todos: List<TodoEntity>) {
+        if (runCatching { settings.legacyTodoAlarmsRetired.first() }.getOrDefault(true)) return
+        val ids = todos.map { it.id }
+        runCatching { notifications.cancelLegacy(ids) }
+        runCatching { scheduler.cancelLegacyAlarms(ids) }
+        runCatching { settings.markLegacyTodoAlarmsRetired() }
     }
 
     /** The todo module was switched off: nothing of it may fire any more. */
@@ -392,9 +440,11 @@ class TodoReminderEngine @Inject constructor(
             snoozedUntil = null,
         )
         repository.updateTodo(rung)
+        catchUpTurns.remove(rung.id)
 
         if (rung.priority == 0) {
-            notifications.post(rung.id, notifications.lowDue(rung))
+            val doneDirect = settings.guardSettings.first().forTodo(rung, GuardAction.DONE).isNone
+            notifications.post(rung.id, notifications.lowDue(rung, doneDirect))
             scheduler.cancelWake(rung.id)
             return
         }
@@ -456,32 +506,25 @@ class TodoReminderEngine @Inject constructor(
 
     /** When this todo should next make itself heard, or null if it should not. */
     private suspend fun nextWake(todo: TodoEntity, now: Long): Long? {
-        if (todo.isCompleted || todo.isInTrash) return null
-        todo.snoozedUntil?.takeIf { it > now }?.let { return it }
-        val due = todo.dueDateTime
-        if (due != null && due > now) return due
-
-        if (todo.priority == 0) {
-            // Low priority speaks once. If its moment passed unheard, soon.
-            return if (due != null && todo.lastAlarmAt == null) now + CATCH_UP_MILLIS else null
-        }
-        // Without a date a todo only starts once a daily reminder has brought it up.
-        if (due == null && todo.lastAlarmAt == null) return null
-        if (todo.nagCount == TodoEntity.NAG_DISMISSED) return null
-        val last = todo.lastAlarmAt ?: return now + CATCH_UP_MILLIS
-
-        val policy = settings.nagPolicy(todo.priority).first()
-        if (todo.nagCount > policy.maxRepeats) return null
-        return maxOf(last + policy.intervalMinutes * MINUTE, now + CATCH_UP_MILLIS)
+        val policy = if (todo.priority >= 1) settings.nagPolicy(todo.priority).first() else null
+        return TodoReminderRules.nextWake(todo, now, policy, catchUpTurns[todo.id])
     }
 
     private fun clear(todoId: Long) {
+        catchUpTurns.remove(todoId)
         scheduler.cancelAllFor(todoId)
         TodoAlarmService.stop(context, todoId)
         notifications.cancel(todoId)
     }
 
-    /** One header for the todo notifications once there are several of them. */
+    /**
+     * The header the medium and high todo notifications collapse under.
+     *
+     * It stays for as long as one of them is showing. Android removes a group's
+     * notifications together with its header, so taking the header away when a
+     * single todo is left would take that todo's notification with it. With one
+     * todo the system shows just that notification, without the header.
+     */
     private suspend fun refreshSummary() {
         if (!todosOn()) {
             notifications.cancelSummary()
@@ -491,6 +534,6 @@ class TodoReminderEngine @Inject constructor(
         val showing = repository.getOpenTodosOnce().count {
             it.priority >= 1 && (isActionable(it, now) || isSnoozed(it, now))
         }
-        if (showing >= 2) notifications.postSummary(showing) else notifications.cancelSummary()
+        if (showing >= 1) notifications.postSummary(showing) else notifications.cancelSummary()
     }
 }

@@ -37,6 +37,11 @@ class TodoAlarmScheduler @Inject constructor(
         const val EXTRA_DIGEST_SLOT = "digestSlot"
         const val EXTRA_DIGEST_HOUR = "digestHour"
         const val EXTRA_DIGEST_MINUTE = "digestMinute"
+
+        // Request codes of 0.9.3 and older, see cancelLegacyAlarms.
+        private const val LEGACY_RC_ALARM = 200_000L
+        private const val LEGACY_RC_SNOOZE = 210_000L
+        private const val LEGACY_RC_DIGEST = 300_001
     }
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -68,6 +73,31 @@ class TodoAlarmScheduler @Inject constructor(
     fun cancelAllFor(todoId: Long) {
         cancelWake(todoId)
         cancelActivation(todoId)
+    }
+
+    /**
+     * Cancels what 0.9.3 and older armed: a due alarm and a snooze alarm per todo
+     * and the daily reminder slots, all told apart by request codes instead of a
+     * data URI. An app update leaves alarms in place, and these would fire next to
+     * the ones this class sets.
+     */
+    fun cancelLegacyAlarms(todoIds: Collection<Long>) {
+        fun cancel(receiver: Class<*>, requestCode: Int) {
+            PendingIntent.getBroadcast(
+                context, requestCode, Intent(context, receiver),
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+            )?.let {
+                alarmManager.cancel(it)
+                it.cancel()
+            }
+        }
+        todoIds.forEach { id ->
+            cancel(TodoAlarmReceiver::class.java, (LEGACY_RC_ALARM + id).toInt())
+            cancel(TodoAlarmReceiver::class.java, (LEGACY_RC_SNOOZE + id).toInt())
+        }
+        for (slot in 0 until MAX_DIGEST_SLOTS) {
+            cancel(TodoDigestReceiver::class.java, LEGACY_RC_DIGEST + slot)
+        }
     }
 
     private fun setAlarmClock(atMillis: Long, operation: PendingIntent, show: PendingIntent) {

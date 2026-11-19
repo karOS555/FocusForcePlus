@@ -53,6 +53,7 @@ class SettingsRepository @Inject constructor(
         private val ONBOARDING_COMPLETED_KEY       = booleanPreferencesKey("onboarding_completed")
         private val HELP_HINTS_SEEN_KEY            = stringSetPreferencesKey("help_hints_seen")
         private val FSI_PROMPT_SHOWN_KEY           = booleanPreferencesKey("fsi_prompt_shown")
+        private val LEGACY_TODO_ALARMS_RETIRED_KEY = booleanPreferencesKey("legacy_todo_alarms_retired")
 
         private val TP_ENABLED_KEY                 = booleanPreferencesKey("tp_enabled")
         private val TP_WINDOW_START_KEY            = intPreferencesKey("tp_window_start_minutes")
@@ -339,6 +340,19 @@ class SettingsRepository @Inject constructor(
 
     suspend fun markFullScreenIntentPromptShown() {
         dataStore.edit { prefs -> prefs[FSI_PROMPT_SHOWN_KEY] = true }
+    }
+
+    /**
+     * Whether the todo alarms and notifications that 0.9.3 and older left behind
+     * have been removed. That is done once after the update, see
+     * [com.focusforceplus.app.util.TodoReminderEngine].
+     */
+    val legacyTodoAlarmsRetired: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs -> prefs[LEGACY_TODO_ALARMS_RETIRED_KEY] ?: false }
+
+    suspend fun markLegacyTodoAlarmsRetired() {
+        dataStore.edit { prefs -> prefs[LEGACY_TODO_ALARMS_RETIRED_KEY] = true }
     }
 
     // ── Tamper Protection ─────────────────────────────────────────────────────
