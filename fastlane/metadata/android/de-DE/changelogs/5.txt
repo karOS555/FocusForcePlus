@@ -1,8 +1,10 @@
-- Laufende Sitzungen als Zeitstrahl, ein Abschnitt pro Schritt
-- Laufende Sitzungen bleiben auf dem Sperrbildschirm lesbar
-- Tab-Titel in der App-Leiste, Listen zeigen dadurch mehr
-- Blocker und Schlaf-Modus vom Startbildschirm aus schaltbar
-- Keine Grenze von drei To-do-Erinnerungen pro Tag mehr
-- Behoben: Backups ohne Einstellungen und Schlafplan
-- Behoben: ein Snooze konnte doppelt verbraucht werden
-- Behoben: endloses Fragen nach fehlender Berechtigung
+- Home zeigt deinen Tag in einer Liste, mit dem Nächsten ganz oben
+- Listen zum Einkaufen und Packen, auch in To-dos und Routinen
+- Kalender: Termine auf Home, To-dos darin, Sperren bei Terminen
+- Abgleich mit OpenTasks oder Tasks.org (CalDAV über DAVx5)
+- Widgets: Heute, Schnell-Fokus, eine Liste
+- Speed Bumps vor Erledigt, Snooze und vorzeitigem Beenden
+- Reels und Shorts überspringen, die Apps behalten
+- Themes, auch helle, und eigene Farben
+- Sitzungen als Zeitstrahl, auch auf dem Sperrbildschirm
+- Nächtliche Backups, Import rückgängig machbar

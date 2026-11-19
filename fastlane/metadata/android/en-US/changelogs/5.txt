@@ -1,8 +1,10 @@
-- Running sessions draw as a timeline, one section per step
-- A running session stays readable on the lock screen
-- Tab titles moved into the app bar, so lists show more
-- Blocker and sleep mode switch from the home screen
-- No limit of three daily to-do reminder times any more
-- Fixed: backups were missing settings and the sleep schedule
-- Fixed: a snooze could be spent twice on the alarm screen
-- Fixed: endless prompts for a permission some phones lack
+- Home shows your day in one list, with what is up next
+- Lists for shopping and packing, in todos and routines
+- Calendar: events on Home, todos in it, blocks during events
+- Sync with OpenTasks or Tasks.org (CalDAV via DAVx5)
+- Widgets: Today, Quick focus, a list
+- Speed bumps before done, snooze and stopping early
+- Skip Reels and Shorts, keep the apps
+- Themes, light ones too, and your own colours
+- Sessions as a timeline, on the lock screen too
+- Nightly backups and an import you can undo
