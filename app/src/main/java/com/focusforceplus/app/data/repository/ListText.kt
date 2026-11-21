@@ -68,6 +68,27 @@ object ListText {
             .map { it.trim().replace(LIST_MARK, "").trim() }
             .filter { it.isNotEmpty() }
 
+    private val LINE_BREAK = Regex("""[\n\r]+""")
+
+    /** "- keys", "• keys", "[ ] keys": the bullets of a pasted list. A number in front is not one. */
+    private val BULLET = Regex("""^(?:[-*•–·]\s+|\[[ xX]?]\s*)+""")
+
+    /**
+     * What was typed into a checklist, taken as it is: one item per line, and only
+     * the bullets of a pasted list dropped. A comma stays in the item ("Keys, wallet,
+     * phone" is one thing to check), and so does a number in front ("1. Wake up").
+     */
+    fun splitLines(raw: String): List<String> =
+        raw.split(LINE_BREAK)
+            .map { it.trim().replace(BULLET, "").trim() }
+            .filter { it.isNotEmpty() }
+
+    /** An item exactly as it was typed, with no amount read out of it ("10 min stretching"). */
+    fun plain(raw: String): Parsed = Parsed(raw.trim().replace(Regex("\\s+"), " "), null)
+
+    /** The longest wording of one item. */
+    const val MAX_ITEM = 200
+
     /**
      * How an item is written on the list: "milk" becomes "Milk", so a list typed
      * in a hurry still reads tidily. A word with a capital of its own somewhere

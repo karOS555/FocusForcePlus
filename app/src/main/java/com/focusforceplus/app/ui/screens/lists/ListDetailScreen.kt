@@ -2,6 +2,8 @@ package com.focusforceplus.app.ui.screens.lists
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,18 +13,22 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -63,12 +69,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -94,13 +104,19 @@ import com.focusforceplus.app.ui.components.PageScaffold
 import com.focusforceplus.app.ui.components.PrimaryButton
 import com.focusforceplus.app.ui.components.ReorderableColumn
 import com.focusforceplus.app.ui.components.RowDivider
+import com.focusforceplus.app.ui.components.RowPosition
 import com.focusforceplus.app.ui.components.StepButton
 import com.focusforceplus.app.ui.components.TextAction
 import com.focusforceplus.app.ui.components.TonalButton
+import com.focusforceplus.app.ui.components.rowPosition
+import com.focusforceplus.app.ui.components.submitsOnEnter
 import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.ui.theme.FfType
 import com.focusforceplus.app.ui.theme.ffBar
 import com.focusforceplus.app.util.TimeFormat
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * One list. What it offers depends on what it is for.
@@ -117,7 +133,7 @@ import com.focusforceplus.app.util.TimeFormat
  * Whatever is done often has a button in plain sight; nothing a list needs every
  * day is behind a menu.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ListDetailScreen(
     onBack: () -> Unit,
@@ -128,9 +144,12 @@ fun ListDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val undo by viewModel.undo.collectAsState()
+    val added by viewModel.justAdded.collectAsState()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var input by rememberSaveable { mutableStateOf("") }
+    // A checklist with sections: where the next items go. Null = where each was last time.
+    var addTo by rememberSaveable { mutableStateOf<String?>(null) }
     var shopping by rememberSaveable { mutableStateOf(false) }
     var hideTicked by rememberSaveable { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ListItemEntity?>(null) }
@@ -141,6 +160,10 @@ fun ListDetailScreen(
     // The list was deleted elsewhere: nothing to show.
     LaunchedEffect(state.loading, state.list) {
         if (!state.loading && state.list == null) onBack()
+    }
+    // The section chosen for new items was renamed or removed.
+    LaunchedEffect(state.loading, state.sections) {
+        if (!state.loading && addTo != null && addTo !in state.sections) addTo = null
     }
     // A checklist has no shopping view.
     LaunchedEffect(state.isChecklist) {
@@ -163,7 +186,7 @@ fun ListDetailScreen(
 
     fun submit() {
         if (input.isNotBlank()) {
-            viewModel.add(input)
+            viewModel.add(input, addTo)
             input = ""
         }
     }
@@ -209,13 +232,19 @@ fun ListDetailScreen(
                     typed = viewModel.matches(input),
                     again = if (state.isChecklist) emptyList() else state.buyAgain.take(14).map { it.text },
                     onPick = { text ->
-                        viewModel.add(text)
+                        viewModel.add(text, addTo)
                         input = ""
                     },
+                    sections = if (state.isChecklist) state.sections else emptyList(),
+                    section = addTo,
+                    onSection = { addTo = it },
+                    notice = if (added?.already == true) "Already on the list" else null,
                 )
                 ListBody(
                     state = state,
                     hideTicked = hideTicked,
+                    added = added,
+                    onAddedShown = viewModel::addedShown,
                     onToggleHide = { hideTicked = !hideTicked },
                     onToggle = viewModel::toggle,
                     onEdit = { editing = it },
@@ -227,7 +256,9 @@ fun ListDetailScreen(
                     onStartOver = viewModel::startOver,
                     onEmptyBasket = viewModel::emptyBasket,
                 )
-                if (!state.isChecklist && state.open > 0) {
+                // Not while typing: nobody leaves for the shop mid-word, and the room
+                // is better spent on the list.
+                if (!state.isChecklist && state.open > 0 && !WindowInsets.isImeVisible) {
                     Column(Modifier.fillMaxWidth().ffBar().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp)) {
                         PrimaryButton(
                             text = if (state.open == 1) "Go shopping · 1 item" else "Go shopping · ${state.open} items",
@@ -305,7 +336,11 @@ fun ListDetailScreen(
 
 // ── Adding ─────────────────────────────────────────────────────────────────────
 
-/** The field to type into, and under it one row of things to add with a single tap. */
+/**
+ * The field to type into and, under it, what one tap can do: on a checklist with
+ * sections, choose where the next items go; while typing, take a suggestion; on a
+ * shopping list, add again what was bought before.
+ */
 @Composable
 private fun AddBar(
     input: String,
@@ -315,6 +350,10 @@ private fun AddBar(
     typed: List<String>,
     again: List<String>,
     onPick: (String) -> Unit,
+    sections: List<String>,
+    section: String?,
+    onSection: (String?) -> Unit,
+    notice: String?,
 ) {
     val colors = FfTheme.colors
     Column(Modifier.padding(horizontal = 16.dp)) {
@@ -323,12 +362,16 @@ private fun AddBar(
                 value = input,
                 onValueChange = onInput,
                 placeholder = if (checklist) "Add an item" else "Add: milk, 2 bread, flour 500 g",
+                // Several lines: a long item can be read while it is typed, and a
+                // pasted list keeps its lines.
+                singleLine = false,
+                maxLines = 3,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).submitsOnEnter(onSubmit),
             )
             IconButton(onClick = onSubmit, enabled = input.isNotBlank()) {
                 Icon(
@@ -338,32 +381,110 @@ private fun AddBar(
                 )
             }
         }
+        if (notice != null) {
+            Text(
+                notice,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+            )
+        }
+        if (sections.isNotEmpty()) {
+            ChipLine(label = "Add to") {
+                sections.forEach { name ->
+                    FfChip(
+                        label = name,
+                        selected = section == name,
+                        onClick = { onSection(if (section == name) null else name) },
+                    )
+                }
+            }
+        }
         val typing = input.isNotBlank()
         val chips = if (typing) typed else again
         if (chips.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(top = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                if (!typing) {
-                    Text("Buy again", style = MaterialTheme.typography.labelMedium, color = colors.textMuted)
-                }
+            ChipLine(label = if (typing) null else "Buy again") {
                 chips.forEach { text -> FfChip(label = text, selected = false, onClick = { onPick(text) }) }
             }
         }
     }
 }
 
+/** One line of chips that scrolls sideways, with a quiet word in front that says what they do. */
+@Composable
+private fun ChipLine(label: String?, chips: @Composable RowScope.() -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (label != null) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = FfTheme.colors.textMuted)
+        }
+        chips()
+    }
+}
+
 // ── The list ───────────────────────────────────────────────────────────────────
+
+/**
+ * One row of the page, top to bottom. The page is a flat list of these, so that
+ * every item is a row of its own: it can be scrolled to, and it can move.
+ */
+private sealed interface BodyRow {
+    val key: String
+
+    data object Actions : BodyRow { override val key = "actions" }
+    data object Progress : BodyRow { override val key = "progress" }
+    data object Reminders : BodyRow { override val key = "reminders" }
+    data object Empty : BodyRow { override val key = "empty" }
+    data class Header(val name: String?) : BodyRow {
+        override val key = if (name == null) "section" else "section-$name"
+    }
+    data class Item(val item: ListItemEntity, val position: RowPosition) : BodyRow {
+        override val key = "item-${item.id}"
+
+        /** The top row of its card, which keeps its distance from what is above. */
+        val first: Boolean get() = position == RowPosition.First || position == RowPosition.Single
+    }
+    data object AllIn : BodyRow { override val key = "all-in" }
+    data object BasketLabel : BodyRow { override val key = "basket-label" }
+    data object Hint : BodyRow { override val key = "hint" }
+}
+
+private fun bodyRows(state: ListDetailUiState, hideTicked: Boolean): List<BodyRow> = buildList {
+    val checklist = state.isChecklist
+    add(BodyRow.Actions)
+    if (checklist && state.total > 0) add(BodyRow.Progress)
+    if (state.reminders.isNotEmpty()) add(BodyRow.Reminders)
+    if (state.total == 0 && !state.loading) add(BodyRow.Empty)
+    val showHeaders = state.groups.size > 1 || state.groups.any { it.name != null }
+    state.groups.forEach { group ->
+        val items = if (checklist && hideTicked) group.items.filter { !it.isChecked } else group.items
+        if (items.isEmpty()) return@forEach
+        if (showHeaders) add(BodyRow.Header(group.name))
+        items.forEachIndexed { index, item -> add(BodyRow.Item(item, rowPosition(index, items.size))) }
+    }
+    if (!checklist && state.open == 0 && state.basket.isNotEmpty()) add(BodyRow.AllIn)
+    if (state.basket.isNotEmpty()) {
+        add(BodyRow.BasketLabel)
+        state.basket.forEachIndexed { index, item -> add(BodyRow.Item(item, rowPosition(index, state.basket.size))) }
+    }
+    if (state.total > 0) add(BodyRow.Hint)
+}
+
+/** How long a row that was just added stays pointed out. */
+private const val ADDED_SHOWN_MILLIS = 2_200L
 
 @Composable
 private fun ColumnScope.ListBody(
     state: ListDetailUiState,
     hideTicked: Boolean,
+    added: JustAdded?,
+    onAddedShown: (JustAdded) -> Unit,
     onToggleHide: () -> Unit,
     onToggle: (ListItemEntity) -> Unit,
     onEdit: (ListItemEntity) -> Unit,
@@ -377,49 +498,74 @@ private fun ColumnScope.ListBody(
 ) {
     val colors = FfTheme.colors
     val checklist = state.isChecklist
+    val rows = remember(state, hideTicked) { bodyRows(state, hideTicked) }
+    val currentRows by rememberUpdatedState(rows)
+    val listState = rememberLazyListState()
+    val roomAbove = with(LocalDensity.current) { 56.dp.roundToPx() }
+
+    // What was just added is brought into view and pointed out. With the keyboard
+    // open only a few rows are on screen, and a new item often lands below them:
+    // without this it looked as if nothing had happened.
+    LaunchedEffect(added?.stamp) {
+        val target = added ?: return@LaunchedEffect
+        // The row arrives from the database a moment after the tap.
+        val index = withTimeoutOrNull(1_500) {
+            snapshotFlow { currentRows.indexOfFirst { it is BodyRow.Item && it.item.id == target.itemId } }
+                .first { it >= 0 }
+        }
+        if (index != null) {
+            withFrameNanos { }
+            val layout = listState.layoutInfo
+            val seen = layout.visibleItemsInfo.firstOrNull { it.index == index }
+            val inView = seen != null && seen.offset >= 0 && seen.offset + seen.size <= layout.viewportEndOffset
+            // Only as far as needed: a row that is on screen stays where it is.
+            if (!inView) listState.animateScrollToItem(index, -roomAbove)
+        }
+        delay(ADDED_SHOWN_MILLIS)
+        onAddedShown(target)
+    }
+
+    // The distance between two blocks. Rows of one card have none.
+    val gap = Modifier.padding(top = 6.dp)
     LazyColumn(
+        state = listState,
         modifier = Modifier.weight(1f),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // What the list offers, in plain sight.
-        item(key = "actions") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    // Room for the soft shadow the pills cast in the Aero style.
-                    .padding(top = 4.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ActionPill("Remind me", Icons.Filled.Alarm, onRemind)
-                ActionPill("Share", Icons.Filled.Share, onShare, enabled = state.total > 0)
-                ActionPill(
-                    if (checklist) "Sections" else "Aisles",
-                    Icons.Filled.SwapVert,
-                    onSections,
-                    enabled = state.sections.isNotEmpty(),
-                )
-                if (checklist) {
+        items(rows, key = { it.key }, contentType = { it::class }) { row ->
+            when (row) {
+                // What the list offers, in plain sight.
+                BodyRow.Actions -> Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        // Room for the soft shadow the pills cast in the Aero style.
+                        .padding(top = 4.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ActionPill("Remind me", Icons.Filled.Alarm, onRemind)
+                    ActionPill("Share", Icons.Filled.Share, onShare, enabled = state.total > 0)
                     ActionPill(
-                        if (hideTicked) "Show ticked" else "Hide ticked",
-                        if (hideTicked) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                        onToggleHide,
-                        enabled = state.ticked > 0,
-                        selected = hideTicked,
+                        if (checklist) "Sections" else "Aisles",
+                        Icons.Filled.SwapVert,
+                        onSections,
+                        enabled = state.sections.isNotEmpty(),
                     )
+                    if (checklist) {
+                        ActionPill(
+                            if (hideTicked) "Show ticked" else "Hide ticked",
+                            if (hideTicked) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            onToggleHide,
+                            enabled = state.ticked > 0,
+                            selected = hideTicked,
+                        )
+                    }
+                    ActionPill("Edit list", Icons.Filled.Edit, onEditList)
                 }
-                ActionPill("Edit list", Icons.Filled.Edit, onEditList)
-            }
-        }
 
-        if (checklist && state.total > 0) {
-            item(key = "progress") { ChecklistProgress(state.ticked, state.total, onStartOver) }
-        }
+                BodyRow.Progress -> ChecklistProgress(state.ticked, state.total, onStartOver, modifier = gap)
 
-        if (state.reminders.isNotEmpty()) {
-            item(key = "reminders") {
-                FfCard {
+                BodyRow.Reminders -> FfCard(modifier = gap) {
                     state.reminders.forEachIndexed { index, todo ->
                         if (index > 0) RowDivider()
                         ListRow(
@@ -431,12 +577,8 @@ private fun ColumnScope.ListBody(
                         )
                     }
                 }
-            }
-        }
 
-        if (state.total == 0 && !state.loading) {
-            item(key = "empty") {
-                Text(
+                BodyRow.Empty -> Text(
                     if (checklist) {
                         "Nothing on it yet. Add what you pack or check every time; ticked items stay, " +
                             "and \"Start over\" makes the list ready for the next time."
@@ -446,69 +588,41 @@ private fun ColumnScope.ListBody(
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textMuted,
-                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 8.dp),
+                    modifier = gap.padding(horizontal = 2.dp, vertical = 8.dp),
                 )
-            }
-        }
 
-        val showHeaders = state.groups.size > 1 || state.groups.any { it.name != null }
-        state.groups.forEach { group ->
-            val items = if (checklist && hideTicked) group.items.filter { !it.isChecked } else group.items
-            if (items.isEmpty()) return@forEach
-            if (showHeaders) {
-                item(key = "section-${group.name}") {
-                    GroupLabel(group.name ?: "Other", modifier = Modifier.padding(top = 6.dp))
-                }
-            }
-            item(key = "items-${group.name}") {
-                FfCard {
-                    items.forEachIndexed { index, item ->
-                        if (index > 0) RowDivider()
-                        ItemRow(item, onToggle = { onToggle(item) }, onEdit = { onEdit(item) })
-                    }
-                }
-            }
-        }
+                is BodyRow.Header -> GroupLabel(row.name ?: "Other", modifier = gap.padding(top = 6.dp))
 
-        if (!checklist && state.open == 0 && state.basket.isNotEmpty()) {
-            item(key = "all-in") {
-                Text(
+                is BodyRow.Item -> ItemRow(
+                    item = row.item,
+                    position = row.position,
+                    pointedOut = added?.itemId == row.item.id,
+                    onToggle = { onToggle(row.item) },
+                    onEdit = { onEdit(row.item) },
+                    modifier = Modifier.animateItem().then(if (row.first) gap else Modifier),
+                )
+
+                BodyRow.AllIn -> Text(
                     "Everything is in the basket.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textMuted,
-                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                    modifier = gap.padding(horizontal = 2.dp, vertical = 4.dp),
                 )
-            }
-        }
 
-        if (state.basket.isNotEmpty()) {
-            item(key = "basket-label") {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                BodyRow.BasketLabel -> Row(
+                    modifier = gap.fillMaxWidth().padding(top = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     GroupLabel("In the basket · ${state.basket.size}", modifier = Modifier.weight(1f))
                     TextAction("Done, empty it", onClick = onEmptyBasket)
                 }
-            }
-            item(key = "basket") {
-                FfCard {
-                    state.basket.forEachIndexed { index, item ->
-                        if (index > 0) RowDivider()
-                        ItemRow(item, onToggle = { onToggle(item) }, onEdit = { onEdit(item) })
-                    }
-                }
-            }
-        }
 
-        if (state.total > 0) {
-            item(key = "hint") {
-                Text(
+                BodyRow.Hint -> Text(
                     "Tap to tick. Press and hold an item for its amount, note or " +
                         (if (checklist) "section." else "aisle."),
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textFaint,
-                    modifier = Modifier.padding(top = 8.dp, start = 2.dp),
+                    modifier = gap.padding(top = 8.dp, start = 2.dp),
                 )
             }
         }
@@ -516,9 +630,9 @@ private fun ColumnScope.ListBody(
 }
 
 @Composable
-private fun ChecklistProgress(ticked: Int, total: Int, onStartOver: () -> Unit) {
+private fun ChecklistProgress(ticked: Int, total: Int, onStartOver: () -> Unit, modifier: Modifier = Modifier) {
     val colors = FfTheme.colors
-    FfPaddedCard(spacing = 10.dp) {
+    FfPaddedCard(modifier = modifier, spacing = 10.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 if (ticked >= total) "All $total ticked" else "$ticked of $total ticked",
@@ -551,13 +665,32 @@ private fun ProgressLine(done: Int, total: Int) {
 }
 
 @Composable
-private fun ItemRow(item: ListItemEntity, onToggle: () -> Unit, onEdit: () -> Unit) {
+private fun ItemRow(
+    item: ListItemEntity,
+    position: RowPosition,
+    pointedOut: Boolean,
+    onToggle: () -> Unit,
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = FfTheme.colors
+    // Comes up quickly over the row that was just added and fades slowly.
+    val tint by animateColorAsState(
+        targetValue = colors.accent.copy(alpha = if (pointedOut) 0.20f else 0f),
+        animationSpec = tween(if (pointedOut) 200 else 700),
+        label = "added",
+    )
     ListRow(
         title = item.text,
         subtitle = item.note,
         struck = item.isChecked,
         titleColor = if (item.isChecked) colors.textMuted else colors.text,
+        // All of it: an item is there to be read.
+        titleMaxLines = Int.MAX_VALUE,
+        subtitleMaxLines = 4,
+        position = position,
+        tint = tint,
+        modifier = modifier,
         onClick = onToggle,
         onLongClick = onEdit,
         leading = {
@@ -636,6 +769,7 @@ private fun ColumnScope.ShoppingView(
                             title = item.text,
                             struck = true,
                             titleColor = colors.textMuted,
+                            titleMaxLines = Int.MAX_VALUE,
                             onClick = { onTick(item) },
                             leading = {
                                 CompletionRing(
@@ -728,7 +862,18 @@ private fun EditItemSheet(
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            FfTextField(value = text, onValueChange = { text = it }, label = "Item")
+            FfTextField(
+                value = text,
+                onValueChange = { text = it.take(ListText.MAX_ITEM) },
+                label = "Item",
+                // Several lines, so a long item can be read while it is changed.
+                singleLine = false,
+                maxLines = 4,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+            )
             // Plus and minus count pieces; anything with a unit ("500 g") is typed.
             val count = ListText.countOf(quantity)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -746,7 +891,18 @@ private fun EditItemSheet(
                     quantity = ListText.withCount(quantity, (count ?: 1) + 1).orEmpty()
                 }
             }
-            FfTextField(value = note, onValueChange = { note = it }, label = "Note", placeholder = "The big one, brand, ...")
+            FfTextField(
+                value = note,
+                onValueChange = { note = it.take(200) },
+                label = "Note",
+                placeholder = "The big one, brand, ...",
+                singleLine = false,
+                maxLines = 3,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+            )
             Text(sectionWord, style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 FfChip(label = "None", selected = section == null && newSection.isBlank(), onClick = { section = null; newSection = "" })

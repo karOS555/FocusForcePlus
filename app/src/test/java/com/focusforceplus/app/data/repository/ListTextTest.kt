@@ -60,6 +60,26 @@ class ListTextTest {
         )
     }
 
+    // ── A checklist takes the words as typed ──────────────────────────────────
+
+    @Test
+    fun aChecklistItemKeepsItsCommasAndNumbers() {
+        assertEquals(listOf("Keys, wallet, phone"), ListText.splitLines("Keys, wallet, phone"))
+        assertEquals(listOf("1. Wake up"), ListText.splitLines("1. Wake up"))
+        assertEquals(ListText.Parsed("10 min stretching", null), ListText.plain("  10 min   stretching "))
+        assertEquals(ListText.Parsed("2x socks", null), ListText.plain("2x socks"))
+    }
+
+    @Test
+    fun aListPastedIntoAChecklistComesInLineByLine() {
+        val pasted = "Passport\n- Charger, cable\n• Socks\n[ ] Toothbrush\n[x] 2 books\r\n\n3) Sunscreen"
+        assertEquals(
+            listOf("Passport", "Charger, cable", "Socks", "Toothbrush", "2 books", "3) Sunscreen"),
+            ListText.splitLines(pasted),
+        )
+        assertEquals(emptyList<String>(), ListText.splitLines("  \n \n"))
+    }
+
     @Test
     fun nothingGivesNothing() {
         assertEquals(emptyList<String>(), ListText.splitItems("  ,, \n ; "))

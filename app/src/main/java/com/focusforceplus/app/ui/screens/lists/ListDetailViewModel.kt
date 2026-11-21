@@ -7,6 +7,7 @@ import com.focusforceplus.app.data.db.entity.ListEntity
 import com.focusforceplus.app.data.db.entity.ListItemEntity
 import com.focusforceplus.app.data.db.entity.ListSuggestionEntity
 import com.focusforceplus.app.data.db.entity.TodoEntity
+import com.focusforceplus.app.data.repository.AddedItem
 import com.focusforceplus.app.data.repository.ListCatalog
 import com.focusforceplus.app.data.repository.ListRepository
 import com.focusforceplus.app.data.repository.ListText
@@ -48,6 +49,12 @@ data class ListDetailUiState(
     val open: Int get() = total - ticked
 }
 
+/**
+ * The item that was just added, for the screen to bring into view and point out.
+ * [already]: it was on the list like this before, so nothing changed.
+ */
+data class JustAdded(val itemId: Long, val already: Boolean, val stamp: Long)
+
 /** Something that was just done and can be taken back, said in a few words. */
 data class ListUndo(val message: String, val id: Long)
 
@@ -75,7 +82,9 @@ class ListDetailViewModel @Inject constructor(
         val groups = shown.groupBy { it.section }
             .map { (name, groupItems) -> SectionGroup(name, groupItems) }
             .sortedBy { g -> if (g.name == null) Int.MAX_VALUE else order.indexOf(g.name) }
-        val onList = openItems.map { it.text.lowercase() }.toSet()
+        // What is on the list needs no suggesting. On a checklist that is everything
+        // on it, because there a ticked item has not left.
+        val onList = (if (checklist) items else openItems).map { it.text.lowercase() }.toSet()
         ListDetailUiState(
             loading = false,
             list = list,
@@ -101,15 +110,41 @@ class ListDetailViewModel @Inject constructor(
         if (q.isEmpty()) return emptyList()
         val state = uiState.value
         val own = state.buyAgain.filter { it.text.contains(q, ignoreCase = true) }.map { it.text }
-        val onList = state.groups.flatMap { it.items }.filter { !it.isChecked }.map { it.text.lowercase() }.toSet()
+        val onList = state.groups.flatMap { it.items }
+            .filter { state.isChecklist || !it.isChecked }
+            .map { it.text.lowercase() }
+            .toSet()
         val known = if (state.isChecklist) emptyList() else ListCatalog.suggest(q, limit = 8)
         return (own + known).distinctBy { it.lowercase() }.filter { it.lowercase() !in onList }.take(8)
     }
 
-    /** "Milk, eggs, bread", or a pasted list with one item per line, adds them all. */
-    fun add(text: String) {
-        val parts = ListText.splitItems(text)
-        viewModelScope.launch { parts.forEach { repository.addItem(listId, it) } }
+    private val _justAdded = MutableStateFlow<JustAdded?>(null)
+
+    /** What was added last, until the screen has shown where it went. */
+    val justAdded: StateFlow<JustAdded?> = _justAdded.asStateFlow()
+
+    private var addCounter = 0L
+
+    /**
+     * Adds what was typed. A shopping list takes several things at once ("milk,
+     * eggs, bread"); a checklist takes each line as one item, commas and all. A
+     * pasted list with one item per line adds them all on both. [section] is where a
+     * checklist's new items go, if one was chosen.
+     */
+    fun add(text: String, section: String? = null) {
+        viewModelScope.launch {
+            val checklist = repository.getListById(listId)?.isChecklist == true
+            val parts = if (checklist) ListText.splitLines(text) else ListText.splitItems(text)
+            var last: AddedItem? = null
+            parts.forEach { part ->
+                repository.addItem(listId, part, section = section.takeIf { checklist })?.let { last = it }
+            }
+            last?.let { _justAdded.value = JustAdded(it.id, it.already && parts.size == 1, ++addCounter) }
+        }
+    }
+
+    fun addedShown(shown: JustAdded) {
+        if (_justAdded.value?.stamp == shown.stamp) _justAdded.value = null
     }
 
     // ── Items ─────────────────────────────────────────────────────────────────
@@ -119,7 +154,7 @@ class ListDetailViewModel @Inject constructor(
     }
 
     fun update(item: ListItemEntity, text: String, quantity: String, note: String, section: String?) {
-        val trimmed = text.trim().take(120)
+        val trimmed = text.trim().replace(Regex("\\s+"), " ").take(ListText.MAX_ITEM)
         if (trimmed.isEmpty()) return
         viewModelScope.launch {
             val updated = item.copy(

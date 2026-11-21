@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** What adding did: the item, and whether it was on the list exactly like this already. */
+data class AddedItem(val id: Long, val already: Boolean)
+
 @Singleton
 class ListRepository @Inject constructor(
     private val listDao: ListDao,
@@ -80,54 +83,67 @@ class ListRepository @Inject constructor(
     suspend fun getItemsOnce(listId: Long): List<ListItemEntity> = listDao.getItemsOnce(listId)
 
     /**
-     * Adds an item and remembers it for the suggestions. An amount in the text
-     * ("2 milk", "flour 500 g") becomes the item's quantity. The item goes into the
-     * section it was in last time; on a shopping list, something new goes to the
-     * aisle it is usually found in ([ListCatalog]). Adding something that is
-     * already on the list and ticked simply unticks it, which is what "milk again"
-     * means on a shopping list.
+     * Adds an item and remembers it for the suggestions.
+     *
+     * A **shopping list** reads an amount out of the text ("2 milk", "flour 500 g")
+     * and puts something new into the aisle it is usually found in ([ListCatalog]).
+     * Adding what is in the basket takes it back out, which is what "milk again"
+     * means there.
+     *
+     * A **checklist** takes the words exactly as typed, "10 min stretching" and all,
+     * and leaves a tick alone: a ticked item is one that is done.
+     *
+     * Either way the item goes to [section] if one is given, else to where it was
+     * last time. Returns the item and whether it was on the list like this already,
+     * or null if there was nothing to add.
      */
-    suspend fun addItem(listId: Long, rawText: String, note: String? = null) {
-        val parsed = ListText.parse(rawText)
-        val text = ListText.tidy(parsed.text.take(120))
-        if (text.isEmpty()) return
+    suspend fun addItem(listId: Long, rawText: String, note: String? = null, section: String? = null): AddedItem? {
+        val list = listDao.getListById(listId)
+        val checklist = list?.isChecklist == true
+        val parsed = if (checklist) ListText.plain(rawText) else ListText.parse(rawText)
+        val text = ListText.tidy(parsed.text.take(ListText.MAX_ITEM))
+        if (text.isEmpty()) return null
         val now = System.currentTimeMillis()
         val key = text.lowercase()
         val known = listDao.getSuggestion(listId, key)
-        val list = listDao.getListById(listId)
+        val chosen = section?.trim()?.take(40)?.ifBlank { null }
         // What the user decided for this item wins; the catalogue is the first guess.
-        val section = known?.section
-            ?: if (known == null && list != null && !list.isChecklist) ListCatalog.aisleFor(text) else null
-        if (section != null && list != null && section !in list.sections) {
-            listDao.updateList(list.copy(sectionOrder = (list.sections + section).joinToString("\n")))
+        val target = chosen
+            ?: known?.section
+            ?: if (known == null && list != null && !checklist) ListCatalog.aisleFor(text) else null
+        if (target != null && list != null && target !in list.sections) {
+            listDao.updateList(list.copy(sectionOrder = (list.sections + target).joinToString("\n")))
         }
         val existing = listDao.getItemsOnce(listId).firstOrNull { it.text.lowercase() == key }
-        if (existing != null) {
-            listDao.updateItem(
-                existing.copy(
-                    isChecked = false,
-                    checkedAt = null,
-                    quantity = parsed.quantity ?: existing.quantity,
-                    note = note?.trim()?.ifBlank { null } ?: existing.note,
-                )
+        val added = if (existing != null) {
+            val changed = existing.copy(
+                isChecked = if (checklist) existing.isChecked else false,
+                checkedAt = if (checklist) existing.checkedAt else null,
+                quantity = parsed.quantity ?: existing.quantity,
+                note = note?.trim()?.ifBlank { null } ?: existing.note,
+                section = chosen ?: existing.section,
             )
+            if (changed != existing) listDao.updateItem(changed)
+            AddedItem(existing.id, already = changed == existing)
         } else {
-            listDao.insertItem(
+            val id = listDao.insertItem(
                 ListItemEntity(
                     listId = listId,
                     text = text,
                     note = note?.trim()?.ifBlank { null },
                     sortOrder = listDao.maxItemSortOrder(listId) + 1,
                     createdAt = now,
-                    section = section,
+                    section = target,
                     quantity = parsed.quantity,
                 )
             )
+            AddedItem(id, already = false)
         }
         listDao.upsertSuggestion(
-            known?.copy(text = text, useCount = known.useCount + 1, lastUsedAt = now)
-                ?: ListSuggestionEntity(listId = listId, key = key, text = text, lastUsedAt = now, section = section)
+            known?.copy(text = text, useCount = known.useCount + 1, lastUsedAt = now, section = chosen ?: known.section)
+                ?: ListSuggestionEntity(listId = listId, key = key, text = text, lastUsedAt = now, section = target)
         )
+        return added
     }
 
     fun observeAllItems(): Flow<List<ListItemEntity>> = listDao.observeAllItems()

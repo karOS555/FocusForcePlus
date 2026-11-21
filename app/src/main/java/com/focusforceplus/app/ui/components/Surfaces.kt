@@ -143,8 +143,11 @@ fun ListRow(
     subtitleColor: Color = FfTheme.colors.textMuted,
     titleColor: Color = FfTheme.colors.text,
     struck: Boolean = false,
+    titleMaxLines: Int = 2,
     subtitleMaxLines: Int = 2,
     position: RowPosition = RowPosition.InCard,
+    /** Laid over the row's own colour, e.g. to point out a row that was just added. */
+    tint: Color = Color.Transparent,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
@@ -178,6 +181,7 @@ fun ListRow(
             .then(
                 if (position == RowPosition.InCard || colors.isAero) Modifier else Modifier.background(colors.surface)
             )
+            .then(if (tint.alpha > 0f) Modifier.background(tint) else Modifier)
             .then(
                 when {
                     onClick != null && onLongClick != null ->
@@ -205,7 +209,7 @@ fun ListRow(
                     style = FfType.rowTitle,
                     color = if (struck) colors.textMuted else titleColor,
                     textDecoration = if (struck) TextDecoration.LineThrough else null,
-                    maxLines = 2,
+                    maxLines = titleMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (!subtitle.isNullOrBlank()) {
