@@ -695,6 +695,10 @@ class BackupManager @Inject constructor(
         put("externalStarts", settingsRepository.externalStartsAllowed.first())
         put("shortsBlockInstagram", settingsRepository.shortsBlockInstagram.first())
         put("shortsBlockYouTube", settingsRepository.shortsBlockYouTube.first())
+        settingsRepository.shortVideoAllowance.first().let {
+            put("shortsDailyMinutes", it.minutes)
+            put("shortsTimeEach", it.each)
+        }
 
         val nav = navRepository.current()
         put("nav", JSONObject().apply {
@@ -782,6 +786,16 @@ class BackupManager @Inject constructor(
             settingsRepository.saveShortsBlock(
                 instagram = o.optBoolean("shortsBlockInstagram", false),
                 youtube = o.optBoolean("shortsBlockYouTube", false),
+            )
+        }
+        if (o.has("shortsDailyMinutes")) {
+            settingsRepository.saveShortVideoAllowance(
+                com.focusforceplus.app.compliance.ShortVideoAllowance(
+                    // Only a time the app offers; anything else in the file means none.
+                    minutes = o.optInt("shortsDailyMinutes", 0)
+                        .takeIf { it in com.focusforceplus.app.compliance.SHORT_VIDEO_ALLOWANCES } ?: 0,
+                    each = o.optBoolean("shortsTimeEach", false),
+                )
             )
         }
         o.optJSONObject("nav")?.let { nav ->

@@ -5,6 +5,10 @@ import android.graphics.drawable.Drawable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.compliance.NEVER_BLOCK_PACKAGES
+import com.focusforceplus.app.compliance.SHORT_VIDEO_ONLY_APPS
+import com.focusforceplus.app.compliance.ShortFeed
+import com.focusforceplus.app.compliance.ShortVideoAllowance
+import com.focusforceplus.app.compliance.ShortVideoUsage
 import com.focusforceplus.app.compliance.TamperProtectionGuard
 import com.focusforceplus.app.compliance.dayCodeFor
 import com.focusforceplus.app.compliance.isGroupLocked
@@ -17,6 +21,7 @@ import com.focusforceplus.app.data.db.entity.BlockedAppEntity
 import com.focusforceplus.app.data.db.entity.BlockerGroupEntity
 import com.focusforceplus.app.data.repository.BlockerRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
+import com.focusforceplus.app.service.ServiceLink
 import com.focusforceplus.app.util.InstalledApp
 import com.focusforceplus.app.util.InstalledAppsHelper
 import com.focusforceplus.app.util.PermissionHelper
@@ -27,9 +32,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -80,6 +87,30 @@ sealed interface BlockItem {
     }
 }
 
+/** One feed inside a bigger app (Reels, Shorts), as the short-video section shows it. */
+data class ShortFeedRow(val feed: ShortFeed, val on: Boolean, val usedMinutes: Int)
+
+/** An installed app that is nothing but short videos, with its block if it has one. */
+data class ShortAppRow(val packageName: String, val appName: String, val rule: BlockedAppEntity?) {
+    val on: Boolean get() = rule?.isBlocked == true
+}
+
+/** Why the feeds that are switched on are not being left right now. */
+enum class ShortTrouble { SERVICE_OFF, SERVICE_NOT_RUNNING, BLOCKING_PAUSED }
+
+/** Everything the short-video section shows. Only what is installed is in it. */
+data class ShortVideos(
+    val loaded: Boolean = false,
+    val feeds: List<ShortFeedRow> = emptyList(),
+    val apps: List<ShortAppRow> = emptyList(),
+    val allowance: ShortVideoAllowance = ShortVideoAllowance(),
+    /** Today's minutes in all the feeds together. */
+    val usedMinutes: Int = 0,
+    /** The short-video service is switched on in Android. */
+    val serviceOn: Boolean = false,
+    val trouble: ShortTrouble? = null,
+)
+
 /** An app that cannot be opened at this moment, and why in a few words. */
 data class BlockedNow(val packageName: String, val appName: String, val why: String)
 
@@ -91,6 +122,8 @@ data class BlockerListUiState(
     val groups: List<BlockerGroupRow> = emptyList(),
     val selectedGroup: String? = null,
     val accessibilityEnabled: Boolean = false,
+    /** Switched on in Android, yet not connected: nothing is blocked. */
+    val serviceNotRunning: Boolean = false,
     val usageAccessGranted: Boolean = false,
     val blockerEnabled: Boolean = false,
     val isLoadingApps: Boolean = true,
@@ -117,20 +150,73 @@ class BlockerViewModel @Inject constructor(
     private val _isLoadingApps = MutableStateFlow(true)
     private val _message = MutableStateFlow<String?>(null)
 
-    /** Reels and Shorts switches, and whether their service is on. */
-    data class ShortVideos(val instagram: Boolean = false, val youtube: Boolean = false, val serviceOn: Boolean = false)
-
     private val _shortsServiceOn = MutableStateFlow(false)
 
-    val shortVideos: StateFlow<ShortVideos> = combine(
-        settingsRepository.shortsBlockInstagram,
-        settingsRepository.shortsBlockYouTube,
-        _shortsServiceOn,
-    ) { ig, yt, on -> ShortVideos(ig, yt, on) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, ShortVideos())
+    private data class ShortSettings(
+        val on: Map<ShortFeed, Boolean>,
+        val allowance: ShortVideoAllowance,
+        val usage: ShortVideoUsage,
+    )
 
-    fun setShortsBlock(instagram: Boolean? = null, youtube: Boolean? = null) {
-        viewModelScope.launch { settingsRepository.saveShortsBlock(instagram, youtube) }
+    val shortVideos: StateFlow<ShortVideos> = combine(
+        combine(
+            settingsRepository.shortsBlockInstagram,
+            settingsRepository.shortsBlockYouTube,
+            settingsRepository.shortVideoAllowance,
+            settingsRepository.shortVideoUsage,
+        ) { instagram, youtube, allowance, usage ->
+            ShortSettings(
+                on = mapOf(ShortFeed.INSTAGRAM to instagram, ShortFeed.YOUTUBE to youtube),
+                allowance = allowance,
+                usage = usage.on(LocalDate.now().toEpochDay()),
+            )
+        },
+        combine(_installedApps, _isLoadingApps, ::Pair),
+        repository.getAllApps(),
+        combine(
+            _shortsServiceOn,
+            ServiceLink.notRunning(_shortsServiceOn, ServiceLink.shortVideos),
+            settingsRepository.blockerEnabled,
+            ::Triple,
+        ),
+    ) { settings, (installed, loading), rules, (serviceOn, stalled, blockingOn) ->
+        val installedPackages = installed.map { it.packageName }.toSet()
+        val ruleByPackage = rules.associateBy { it.packageName }
+        // A feed whose app is not on this phone is not offered, whatever its switch says.
+        val feeds = ShortFeed.entries
+            .filter { it.packageName in installedPackages }
+            .map { ShortFeedRow(it, on = settings.on[it] == true, usedMinutes = settings.usage.minutes(it)) }
+        ShortVideos(
+            loaded = !loading,
+            feeds = feeds,
+            apps = installed
+                .filter { it.packageName in SHORT_VIDEO_ONLY_APPS }
+                .map { ShortAppRow(it.packageName, it.appName, ruleByPackage[it.packageName]) },
+            allowance = settings.allowance,
+            usedMinutes = settings.usage.totalMinutes,
+            serviceOn = serviceOn,
+            trouble = when {
+                feeds.none { it.on } -> null
+                !serviceOn -> ShortTrouble.SERVICE_OFF
+                stalled -> ShortTrouble.SERVICE_NOT_RUNNING
+                !blockingOn -> ShortTrouble.BLOCKING_PAUSED
+                else -> null
+            },
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, ShortVideos())
+
+    fun setShortFeed(feed: ShortFeed, on: Boolean) {
+        viewModelScope.launch {
+            when (feed) {
+                ShortFeed.INSTAGRAM -> settingsRepository.saveShortsBlock(instagram = on)
+                ShortFeed.YOUTUBE -> settingsRepository.saveShortsBlock(youtube = on)
+            }
+        }
+    }
+
+    /** The daily time for the feeds. More than before is a loosening; the screen guards that. */
+    fun setShortVideoAllowance(allowance: ShortVideoAllowance) {
+        viewModelScope.launch { settingsRepository.saveShortVideoAllowance(allowance) }
     }
 
     /** Speed bump defaults, for pausing the blocker or a block. */
@@ -181,7 +267,9 @@ class BlockerViewModel @Inject constructor(
                 rules.filter { it.groupName == null }.sortedBy { it.appName.lowercase() }.map { BlockItem.App(it) }
             Triple(sorted, groupRows, blocks to blockedNow(rules, groups, minutesOfDay, today))
         },
-        _permissions,
+        combine(_permissions, ServiceLink.notRunning(_permissions.map { it.first }, ServiceLink.blocker)) { perms, stalled ->
+            Triple(perms.first, perms.second, stalled)
+        },
         settingsRepository.blockerEnabled,
         _isLoadingApps,
         _message,
@@ -194,6 +282,7 @@ class BlockerViewModel @Inject constructor(
             groups = groups,
             selectedGroup = _selectedGroup.value,
             accessibilityEnabled = perms.first,
+            serviceNotRunning = perms.third,
             usageAccessGranted = perms.second,
             blockerEnabled = blockerEnabled,
             isLoadingApps = loading,

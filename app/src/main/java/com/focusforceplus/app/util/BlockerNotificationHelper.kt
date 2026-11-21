@@ -20,7 +20,9 @@ class BlockerNotificationHelper @Inject constructor(
     companion object {
         const val CHANNEL_BLOCKER = "app_blocker"
         const val NOTIFICATION_ID_SERVICE_LOST = 7001
+        const val NOTIFICATION_ID_SHORTS_LOST = 7002
         private const val RC_SERVICE_LOST_TAP = 700_001
+        private const val RC_SHORTS_LOST_TAP = 700_002
     }
 
     fun createChannels() {
@@ -69,5 +71,37 @@ class BlockerNotificationHelper @Inject constructor(
             .build()
         (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .notify(NOTIFICATION_ID_SERVICE_LOST, notification)
+    }
+
+    /**
+     * The same for the short-video service: it was switched off while Reels or Shorts
+     * were meant to be left. Informative only, like the one above.
+     */
+    fun showShortVideoServiceLostNotification() {
+        val tapIntent = PendingIntent.getActivity(
+            context, RC_SHORTS_LOST_TAP,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val text = "The short-video service was turned off, so Reels and Shorts stay open again."
+        val notification = NotificationCompat.Builder(context, CHANNEL_BLOCKER)
+            .applyBrand(context, AppModule.BLOCKER)
+            .setContentTitle("Short videos are no longer left")
+            .setContentText(text)
+            .setStyle(
+                NotificationCompat.BigTextStyle().bigText(
+                    "$text Your settings are unchanged. Turn the service back on from the " +
+                        "Blocker tab whenever you want it back."
+                )
+            )
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setContentIntent(tapIntent)
+            .setAutoCancel(true)
+            .build()
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .notify(NOTIFICATION_ID_SHORTS_LOST, notification)
     }
 }

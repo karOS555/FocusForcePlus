@@ -16,6 +16,7 @@ import com.focusforceplus.app.util.TodoReminderEngine
 import com.focusforceplus.app.util.UsageTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.focusforceplus.app.service.ServiceLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -90,6 +91,8 @@ data class HomeUiState(
     val blockerGroupCount: Int = 0,
     /** False while the accessibility service is off — blocking cannot work yet. */
     val blockerReady: Boolean = true,
+    /** The blocker's service is switched on in Android but not running: nothing is blocked. */
+    val blockerStalled: Boolean = false,
     val usage: UsageStats = UsageStats(),
     val sleep: SleepSchedule = SleepSchedule(),
     val sleepWindowActive: Boolean = false,
@@ -200,11 +203,16 @@ class HomeViewModel @Inject constructor(
             blockerRepository.getAllGroups(),
             settingsRepository.blockerEnabled,
         ) { blocked, groups, enabled -> BlockerSnapshot(blocked.size, groups.size, enabled) },
-        combine(sleepRepository.schedule, _blockerReady, ::Pair),
+        combine(
+            sleepRepository.schedule,
+            _blockerReady,
+            ServiceLink.notRunning(_blockerReady, ServiceLink.blocker),
+            ::Triple,
+        ),
         combine(_usage, _message, ::Pair),
     ) { (todayRoutines, activeId), todosAndFocus, blocker, sleepAndReady, usageAndMessage ->
         val (openTodos, focusSession) = todosAndFocus
-        val (sleep, blockerReady) = sleepAndReady
+        val (sleep, blockerReady, blockerStalled) = sleepAndReady
         val (usage, message) = usageAndMessage
         HomeUiState(
             todayRoutines = todayRoutines,
@@ -216,6 +224,7 @@ class HomeViewModel @Inject constructor(
             blockedAppCount = blocker.ruleCount,
             blockerGroupCount = blocker.groupCount,
             blockerReady = blockerReady,
+            blockerStalled = blockerStalled,
             usage = usage,
             sleep = sleep,
             sleepWindowActive = sleepWindowActive(sleep),

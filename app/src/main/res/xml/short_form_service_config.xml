@@ -2,7 +2,9 @@
 <!--
   The opt-in service for Reels and Shorts (ShortFormBlockerService). Unlike the main
   blocker it has to see screen content, so it is held as narrow as it can be:
-  - packageNames: only Instagram and YouTube; no other app's content reaches it
+  - packageNames: only Instagram and YouTube; no other app's content reaches it.
+    At runtime the service narrows this further, to the one whose feed is switched
+    on in the blocker, and to nothing while none is
   - flagReportViewIds: it identifies the Reels and Shorts players by their screen
     ids and reads no text
   - no isAccessibilityTool flag (Golden Rule #4)

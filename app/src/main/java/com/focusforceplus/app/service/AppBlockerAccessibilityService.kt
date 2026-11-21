@@ -95,6 +95,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        ServiceLink.blocker.value = true
         launcherPackage = installedAppsHelper.defaultLauncherPackage()
         clockPackage = resolveClockPackage()
 
@@ -307,6 +308,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        ServiceLink.blocker.value = false
         // The user (or the system) disabled the service. Compliance: clean up,
         // inform once, and do nothing else — never restart or steer the user back.
         if (snapshot.rulesByPackage.isNotEmpty() && snapshot.blockerEnabled) {
@@ -316,6 +318,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        ServiceLink.blocker.value = false
         serviceScope.cancel()
         super.onDestroy()
     }

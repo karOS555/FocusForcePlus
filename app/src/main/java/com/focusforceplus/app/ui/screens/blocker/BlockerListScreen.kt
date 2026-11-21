@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -39,8 +40,13 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.focusforceplus.app.compliance.Guard
 import com.focusforceplus.app.compliance.GuardSlot
+import com.focusforceplus.app.compliance.SHORT_VIDEO_ALLOWANCES
+import com.focusforceplus.app.compliance.ShortVideoAllowance
+import com.focusforceplus.app.compliance.loosensShortVideos
 import com.focusforceplus.app.ui.common.RoutineIcons
 import com.focusforceplus.app.ui.common.routineDaysSummary
+import com.focusforceplus.app.ui.components.Choice
+import com.focusforceplus.app.ui.components.ChoiceDialog
 import com.focusforceplus.app.ui.components.FfCard
 import com.focusforceplus.app.ui.components.FfSwitch
 import com.focusforceplus.app.ui.components.IconCircle
@@ -51,6 +57,7 @@ import com.focusforceplus.app.ui.components.TextAction
 import com.focusforceplus.app.ui.guards.GuardCopy
 import com.focusforceplus.app.ui.guards.GuardDialog
 import com.focusforceplus.app.ui.theme.FfTheme
+import com.focusforceplus.app.util.PermissionHelper
 
 /**
  * The blocker, built around blocks: one switch for all of it, what is blocked
@@ -69,10 +76,13 @@ fun BlockerListScreen(
     val guards by viewModel.guards.collectAsState()
     val shorts by viewModel.shortVideos.collectAsState()
     val colors = FfTheme.colors
+    val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var editingApp by remember { mutableStateOf<BlockerAppRow?>(null) }
+    var pickingShortTime by remember { mutableStateOf(false) }
     // What waits behind the pause speed bump: null, the whole blocker, or a block.
     var pausing by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var pausingCopy by remember { mutableStateOf(GuardCopy.BLOCKER_PAUSE) }
 
     // Permissions change in system settings; recheck on every return.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -92,6 +102,14 @@ fun BlockerListScreen(
 
     val pauseGuard: Guard = guards[GuardSlot.BLOCKER_PAUSE]
 
+    fun pause(copy: GuardCopy = GuardCopy.BLOCKER_PAUSE, action: () -> Unit) {
+        if (pauseGuard.isNone) {
+            action()
+        } else {
+            pausingCopy = copy
+            pausing = action
+        }
+    }
     // Switching short videos off again counts as pausing a block. Switching them on
     // without the service first leads to its disclosure.
     fun shortsToggle(on: Boolean, apply: (Boolean) -> Unit) {
@@ -101,12 +119,18 @@ fun BlockerListScreen(
                 onOpenDisclosure("shorts")
             }
             on -> apply(true)
-            else -> if (pauseGuard.isNone) apply(false) else pausing = { apply(false) }
+            else -> pause { apply(false) }
         }
     }
-    fun pause(action: () -> Unit) {
-        if (pauseGuard.isNone) action() else pausing = action
+    // More time for short videos loosens a block and takes the same speed bump as
+    // pausing one. Less time, or none, is always free.
+    fun setShortTime(to: ShortVideoAllowance) {
+        if (loosensShortVideos(shorts.allowance, to)) pause(GuardCopy.SHORTS_MORE) { viewModel.setShortVideoAllowance(to) }
+        else viewModel.setShortVideoAllowance(to)
     }
+    // Android's own page, for a service that is switched on there but not running.
+    // Its disclosure was read and accepted when it was switched on.
+    val openAndroidAccessibility = { PermissionHelper.openAccessibilitySettings(context) }
 
     Scaffold(
         containerColor = colors.screen,
@@ -129,6 +153,7 @@ fun BlockerListScreen(
                         title = if (state.blockerEnabled) "Blocking is on" else "Blocking is paused",
                         subtitle = when {
                             !state.accessibilityEnabled -> "Needs the blocker service, see below"
+                            state.serviceNotRunning -> "The blocker service is not running, see below"
                             !state.blockerEnabled -> "Nothing is blocked until you switch it on"
                             state.blockedNow.isEmpty() -> "Nothing is blocked right now"
                             state.blockedNow.size == 1 -> "1 app is blocked right now"
@@ -154,6 +179,23 @@ fun BlockerListScreen(
                             subtitleMaxLines = 3,
                             onClick = { onOpenDisclosure("accessibility") },
                             trailing = { TextAction("Set up", onClick = { onOpenDisclosure("accessibility") }) },
+                        )
+                    }
+                }
+            }
+            if (state.accessibilityEnabled && state.serviceNotRunning) {
+                item(key = "a11y-stalled") {
+                    FfCard {
+                        ListRow(
+                            title = "The blocker service is not running",
+                            subtitle = "Android has it switched on, but it is not connected, which can " +
+                                "happen after an update. Until then nothing is blocked. Switch " +
+                                "\"FocusForce+ App Blocker\" off and on again in Android's " +
+                                "accessibility settings.",
+                            subtitleMaxLines = 6,
+                            titleColor = colors.error,
+                            onClick = openAndroidAccessibility,
+                            trailing = { TextAction("Open", onClick = openAndroidAccessibility) },
                         )
                     }
                 }
@@ -246,43 +288,26 @@ fun BlockerListScreen(
 
             // ── Short videos ──────────────────────────────────────────────────
             item(key = "shorts") {
-                Column {
-                    SectionHeader("Short videos")
-                    FfCard {
-                        if (!shorts.serviceOn) {
-                            ListRow(
-                                title = "Keep the app, skip the scrolling",
-                                subtitle = "Leaves Reels and Shorts when you open them; the rest of " +
-                                    "Instagram and YouTube keeps working. Needs its own service.",
-                                subtitleMaxLines = 3,
-                                onClick = { onOpenDisclosure("shorts") },
-                                trailing = { TextAction("Set up", onClick = { onOpenDisclosure("shorts") }) },
-                            )
-                            RowDivider()
+                ShortVideoSection(
+                    shorts = shorts,
+                    blockerIdle = !state.accessibilityEnabled || state.serviceNotRunning || !state.blockerEnabled,
+                    loadIcon = { viewModel.loadIcon(it) },
+                    onSetUp = { onOpenDisclosure("shorts") },
+                    onOpenAndroidSettings = openAndroidAccessibility,
+                    onResumeBlocking = { viewModel.setBlockerEnabled(true) },
+                    onFeed = { feed, on -> shortsToggle(on) { viewModel.setShortFeed(feed, it) } },
+                    onPickTime = { pickingShortTime = true },
+                    onShareTime = { shared -> setShortTime(shorts.allowance.copy(each = !shared)) },
+                    onOpenApp = { app -> editingApp = BlockerAppRow(app.packageName, app.appName, app.rule) },
+                    onApp = { app, on ->
+                        val row = BlockerAppRow(app.packageName, app.appName, app.rule)
+                        when {
+                            on == app.on -> Unit
+                            on -> viewModel.toggleBlock(row)
+                            else -> pause { viewModel.toggleBlock(row) }
                         }
-                        ListRow(
-                            title = "Skip Instagram Reels",
-                            subtitle = if (shorts.instagram) "Reels close as soon as they open" else "Reels are allowed",
-                            onClick = { shortsToggle(!shorts.instagram) { viewModel.setShortsBlock(instagram = it) } },
-                            trailing = {
-                                FfSwitch(checked = shorts.instagram, onCheckedChange = { on ->
-                                    shortsToggle(on) { viewModel.setShortsBlock(instagram = it) }
-                                })
-                            },
-                        )
-                        RowDivider()
-                        ListRow(
-                            title = "Skip YouTube Shorts",
-                            subtitle = if (shorts.youtube) "Shorts close as soon as they open" else "Shorts are allowed",
-                            onClick = { shortsToggle(!shorts.youtube) { viewModel.setShortsBlock(youtube = it) } },
-                            trailing = {
-                                FfSwitch(checked = shorts.youtube, onCheckedChange = { on ->
-                                    shortsToggle(on) { viewModel.setShortsBlock(youtube = it) }
-                                })
-                            },
-                        )
-                    }
-                }
+                    },
+                )
             }
 
             item(key = "settings") {
@@ -296,10 +321,24 @@ fun BlockerListScreen(
         }
     }
 
+    if (pickingShortTime) {
+        ChoiceDialog(
+            title = "Short videos per day",
+            choices = listOf(Choice(0, "None", "They close as soon as they open")) +
+                SHORT_VIDEO_ALLOWANCES.map { Choice(it, "$it min") },
+            selected = shorts.allowance.minutes,
+            onSelect = { minutes ->
+                pickingShortTime = false
+                setShortTime(shorts.allowance.copy(minutes = minutes))
+            },
+            onDismiss = { pickingShortTime = false },
+        )
+    }
+
     pausing?.let { action ->
         GuardDialog(
             guard = pauseGuard,
-            copy = GuardCopy.BLOCKER_PAUSE,
+            copy = pausingCopy,
             onPassed = {
                 pausing = null
                 action()

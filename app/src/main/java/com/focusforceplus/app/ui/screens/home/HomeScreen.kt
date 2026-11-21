@@ -355,7 +355,7 @@ fun HomeScreen(
                                 ListRow(
                                     title = "App blocker",
                                     subtitle = blockerStatus(s),
-                                    subtitleColor = if (!s.blockerReady && s.blockerEnabled) colors.warning else colors.textMuted,
+                                    subtitleColor = if ((!s.blockerReady || s.blockerStalled) && s.blockerEnabled) colors.warning else colors.textMuted,
                                     onClick = onGoToBlocker,
                                     leading = { IconCircle(icon = Icons.Filled.Block) },
                                     trailing = {
@@ -458,6 +458,7 @@ private fun TodoRow(todo: TodoEntity, onOpen: () -> Unit, onTick: () -> Unit) {
 private fun blockerStatus(s: HomeUiState): String = when {
     !s.blockerEnabled -> "Paused"
     !s.blockerReady -> "Needs the accessibility service to work"
+    s.blockerStalled -> "Its service is not running, tap to see"
     s.blockedAppCount == 0 -> "On, but nothing to block yet"
     else -> buildString {
         append("On · ${s.blockedAppCount} apps")

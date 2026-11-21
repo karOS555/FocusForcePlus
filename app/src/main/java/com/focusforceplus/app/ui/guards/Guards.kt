@@ -95,6 +95,7 @@ data class GuardCopy(
         val ROUTINE_END = GuardCopy("Stop the routine now?", "Yes, stop it", "Keep going", "Stop", "stop the routine")
         val BLOCKER_EXCEPTION = GuardCopy("Open it anyway?", "Yes, a few minutes", "Never mind", "Open", "open it")
         val BLOCKER_PAUSE = GuardCopy("Pause the blocker?", "Yes, pause", "Never mind", "Pause", "pause the blocker")
+        val SHORTS_MORE = GuardCopy("Allow more short videos?", "Yes, allow it", "Never mind", "Allow", "allow more")
     }
 }
 

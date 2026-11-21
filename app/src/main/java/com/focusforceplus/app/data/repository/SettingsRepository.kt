@@ -15,6 +15,9 @@ import com.focusforceplus.app.compliance.Guard
 import com.focusforceplus.app.compliance.GuardSettings
 import com.focusforceplus.app.compliance.GuardSlot
 import com.focusforceplus.app.compliance.NagPolicy
+import com.focusforceplus.app.compliance.ShortFeed
+import com.focusforceplus.app.compliance.ShortVideoAllowance
+import com.focusforceplus.app.compliance.ShortVideoUsage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -46,6 +49,11 @@ class SettingsRepository @Inject constructor(
         private val TASK_SYNC_LIST_KEY             = longPreferencesKey("task_sync_list")
         private val TASK_SYNC_SEEN_KEY             = stringPreferencesKey("task_sync_seen")
         private val SHORTS_YOUTUBE_KEY             = booleanPreferencesKey("shorts_block_youtube")
+        private val SHORTS_DAILY_MINUTES_KEY       = intPreferencesKey("shorts_daily_minutes")
+        private val SHORTS_TIME_EACH_KEY           = booleanPreferencesKey("shorts_time_each")
+        private val SHORTS_USAGE_DAY_KEY           = longPreferencesKey("shorts_usage_day")
+        private val SHORTS_USED_INSTAGRAM_KEY      = longPreferencesKey("shorts_used_instagram")
+        private val SHORTS_USED_YOUTUBE_KEY        = longPreferencesKey("shorts_used_youtube")
         private val BLOCK_DURING_ROUTINES_KEY      = booleanPreferencesKey("blocker_during_routines")
         private val BLOCK_DURING_FOCUS_KEY         = booleanPreferencesKey("blocker_during_focus")
         private val ALARM_SOUND_ENABLED_KEY        = booleanPreferencesKey("alarm_sound_enabled")
@@ -276,6 +284,45 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { prefs ->
             instagram?.let { prefs[SHORTS_INSTAGRAM_KEY] = it }
             youtube?.let { prefs[SHORTS_YOUTUBE_KEY] = it }
+        }
+    }
+
+    /** The daily time for Reels and Shorts. None by default: a feed is left as soon as it opens. */
+    val shortVideoAllowance: Flow<ShortVideoAllowance> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { ShortVideoAllowance(minutes = it[SHORTS_DAILY_MINUTES_KEY] ?: 0, each = it[SHORTS_TIME_EACH_KEY] ?: false) }
+        .distinctUntilChanged()
+
+    suspend fun saveShortVideoAllowance(allowance: ShortVideoAllowance) {
+        dataStore.edit { prefs ->
+            prefs[SHORTS_DAILY_MINUTES_KEY] = allowance.minutes.coerceAtLeast(0)
+            prefs[SHORTS_TIME_EACH_KEY] = allowance.each
+        }
+    }
+
+    /**
+     * Today's time in the Reels and Shorts players, counted by the short-video
+     * service and only while a daily time is set. One number per feed and the day
+     * they belong to; this is all that service ever stores.
+     */
+    val shortVideoUsage: Flow<ShortVideoUsage> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            ShortVideoUsage(
+                day = prefs[SHORTS_USAGE_DAY_KEY] ?: 0L,
+                millis = buildMap {
+                    prefs[SHORTS_USED_INSTAGRAM_KEY]?.takeIf { it > 0 }?.let { put(ShortFeed.INSTAGRAM, it) }
+                    prefs[SHORTS_USED_YOUTUBE_KEY]?.takeIf { it > 0 }?.let { put(ShortFeed.YOUTUBE, it) }
+                },
+            )
+        }
+        .distinctUntilChanged()
+
+    suspend fun saveShortVideoUsage(usage: ShortVideoUsage) {
+        dataStore.edit { prefs ->
+            prefs[SHORTS_USAGE_DAY_KEY] = usage.day
+            prefs[SHORTS_USED_INSTAGRAM_KEY] = usage.millis[ShortFeed.INSTAGRAM] ?: 0L
+            prefs[SHORTS_USED_YOUTUBE_KEY] = usage.millis[ShortFeed.YOUTUBE] ?: 0L
         }
     }
 

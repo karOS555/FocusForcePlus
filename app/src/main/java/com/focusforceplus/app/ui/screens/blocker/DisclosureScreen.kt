@@ -116,13 +116,16 @@ private fun disclosureFor(type: String): Disclosure = TaskApp.ofDisclosure(type)
         heading = "A separate service for Reels and Shorts",
         icon = Icons.Filled.SmartDisplay,
         does = "It lets an app see what is on the screen of other apps and press Back. " +
-            "This one is limited to Instagram and YouTube: no other app is visible to it.",
+            "This one is limited to Instagram and YouTube, and of those to the one you " +
+            "switch on in the blocker: it looks at no other app.",
         usedFor = "Noticing the Reels or Shorts player when it opens, and pressing Back " +
-            "once, so you land on the rest of the app. Only for what you switched off.",
+            "once, so you land on the rest of the app. If you allow a daily time, it counts " +
+            "the minutes the player is open and presses Back once they are used up.",
         doesNot = "It does not read your messages, posts, comments or anything else: it " +
-            "only checks whether the Reels or Shorts player is showing. It stores nothing " +
-            "and sends nothing, and FocusForce+ has no internet access. It is separate " +
-            "from the app blocker, which never looks at screen content at all.",
+            "only checks whether the Reels or Shorts player is showing. With a daily time it " +
+            "keeps today's minutes in the player, on this phone; nothing else is stored, and " +
+            "nothing is sent: FocusForce+ has no internet access. It is separate from the " +
+            "app blocker, which never looks at screen content at all.",
         turnOff = "Switch Reels and Shorts back on in the blocker, or turn off \"FocusForce+ " +
             "Short videos\" in Android Settings > Accessibility. Nothing else changes.",
         restricted = true,
