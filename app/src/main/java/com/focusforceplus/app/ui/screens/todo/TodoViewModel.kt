@@ -62,6 +62,9 @@ data class TodoUiState(
         if (!guardDefaults.enabled) Guard.NONE else guardOverrides[action] ?: defaultGuard(action)
 }
 
+/** Longest wording of one checklist item. */
+private const val MAX_CHECKLIST_ITEM = 200
+
 @HiltViewModel
 class TodoViewModel @Inject constructor(
     private val repository: TodoRepository,
@@ -175,7 +178,7 @@ class TodoViewModel @Inject constructor(
         _uiState.update { it.copy(guardOverrides = it.guardOverrides.with(action, guard)) }
 
     fun addChecklistItem(text: String) {
-        val trimmed = text.trim()
+        val trimmed = text.trim().take(MAX_CHECKLIST_ITEM)
         if (trimmed.isBlank()) return
         _uiState.update {
             it.copy(
@@ -183,6 +186,16 @@ class TodoViewModel @Inject constructor(
                 checklistKeys = it.checklistKeys + nextChecklistKey++,
             )
         }
+    }
+
+    /** The wording of an item, changed in place. An item emptied this way is dropped when saving. */
+    fun editChecklistItem(index: Int, text: String) = _uiState.update { state ->
+        state.copy(
+            checklistItems = state.checklistItems.mapIndexed { i, item ->
+                // One item is one line, whatever a keyboard with real keys or a paste brings.
+                if (i == index) item.copy(text = text.replace('\n', ' ').take(MAX_CHECKLIST_ITEM)) else item
+            }
+        )
     }
 
     fun removeChecklistItem(index: Int) = _uiState.update { state ->
@@ -243,7 +256,9 @@ class TodoViewModel @Inject constructor(
                     maxRescheduleCount = limits.maxRescheduleCount,
                     isRecurring = state.isRecurring,
                     recurringPattern = pattern,
-                    checklistJson = state.checklistItems.takeIf { it.isNotEmpty() }?.toChecklistJson(),
+                    checklistJson = state.checklistItems
+                        .mapNotNull { item -> item.text.trim().takeIf { it.isNotEmpty() }?.let { item.copy(text = it) } }
+                        .takeIf { it.isNotEmpty() }?.toChecklistJson(),
                     guards = state.guardOverrides.encode(),
                     listId = state.listId,
                 )

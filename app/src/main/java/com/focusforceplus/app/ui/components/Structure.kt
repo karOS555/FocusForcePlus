@@ -25,7 +25,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -50,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -162,7 +166,7 @@ fun UnderlineTabs(
  * there is more form below the fold, a small arrow says so. Both were easy to
  * miss when Save sat at the end of a long scrolling column.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FormScaffold(
     title: String,
@@ -253,8 +257,11 @@ fun FormScaffold(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 content = content,
             )
+            // Only at the top of the form, where it says "there is more". Further down,
+            // and while typing, it sat on top of whatever was being read or typed into.
+            val atTop by remember { derivedStateOf { scrollState.value == 0 } }
             ScrollHint(
-                visible = scrollState.canScrollForward,
+                visible = scrollState.canScrollForward && atTop && !WindowInsets.isImeVisible,
                 onClick = {
                     scope.launch {
                         scrollState.animateScrollTo(

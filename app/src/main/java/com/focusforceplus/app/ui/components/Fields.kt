@@ -1,16 +1,22 @@
 package com.focusforceplus.app.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -28,17 +34,73 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.focusforceplus.app.ui.theme.FfShapes
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.ui.theme.FfType
+
+/**
+ * Keeps a field on screen while it is typed into. Compose scrolls a field into view
+ * when it gets the focus, but that happens before the keyboard is up: a field low
+ * on the screen ended behind it. This asks again once the keyboard has risen, and
+ * whenever the field grows by a line.
+ */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+fun Modifier.staysVisibleWhenFocused(): Modifier = composed {
+    val requester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    var focused by remember { mutableStateOf(false) }
+    val keyboardUp = WindowInsets.isImeVisible
+    LaunchedEffect(focused, keyboardUp) {
+        if (focused && keyboardUp) {
+            delay(KEYBOARD_RISE_MILLIS)
+            requester.bringIntoView()
+        }
+    }
+    bringIntoViewRequester(requester)
+        .onFocusEvent { focused = it.isFocused }
+        .onSizeChanged { if (focused) scope.launch { requester.bringIntoView() } }
+}
+
+/** About as long as the keyboard takes to slide in. */
+private const val KEYBOARD_RISE_MILLIS = 280L
+
+/**
+ * For a field with several lines that still stands for one entry: Enter on a
+ * keyboard with real keys sends it instead of starting a new line. (The keyboard
+ * on screen gets its "done" key from the field's keyboard options.)
+ */
+fun Modifier.submitsOnEnter(onSubmit: () -> Unit): Modifier = onPreviewKeyEvent { event ->
+    if (event.key == Key.Enter || event.key == Key.NumPadEnter) {
+        if (event.type == KeyEventType.KeyDown) onSubmit()
+        true
+    } else {
+        false
+    }
+}
 
 /**
  * The app's text field: a filled slate box with no outline until it has focus.
@@ -68,7 +130,7 @@ fun FfTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().staysVisibleWhenFocused(),
         enabled = enabled,
         label = label?.let { { Text(it) } },
         placeholder = placeholder?.let { { Text(it, color = colors.textFaint) } },

@@ -3,7 +3,7 @@ package com.focusforceplus.app.ui.screens.todo
 import com.focusforceplus.app.ui.components.ChoiceDialog
 import com.focusforceplus.app.ui.components.Choice
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +13,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -42,9 +46,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -68,10 +76,13 @@ import com.focusforceplus.app.ui.components.ReorderableColumn
 import com.focusforceplus.app.ui.components.RowDivider
 import com.focusforceplus.app.ui.components.StepperRow
 import com.focusforceplus.app.ui.components.SwitchRow
+import com.focusforceplus.app.ui.components.staysVisibleWhenFocused
+import com.focusforceplus.app.ui.components.submitsOnEnter
 import com.focusforceplus.app.ui.components.ValueRow
 import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.ui.theme.FfType
 import com.focusforceplus.app.util.TimeFormat
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -320,6 +331,7 @@ fun CreateTodoScreen(
                 onToggle = viewModel::toggleChecklistItem,
                 onRemove = viewModel::removeChecklistItem,
                 onAdd = viewModel::addChecklistItem,
+                onEdit = viewModel::editChecklistItem,
                 onMove = viewModel::moveChecklistItem,
             )
         }
@@ -461,6 +473,7 @@ private fun PriorityRow(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChecklistEditor(
     items: List<ChecklistItem>,
@@ -468,15 +481,25 @@ private fun ChecklistEditor(
     onToggle: (Int) -> Unit,
     onRemove: (Int) -> Unit,
     onAdd: (String) -> Unit,
+    onEdit: (Int, String) -> Unit,
     onMove: (from: Int, to: Int) -> Unit,
 ) {
     val colors = FfTheme.colors
+    val focus = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    val addRow = remember { BringIntoViewRequester() }
     var draft by remember { mutableStateOf("") }
     val submit = {
-        if (draft.isNotBlank()) {
-            onAdd(draft)
-            draft = ""
+        // A pasted note with one thing per line becomes one item per line.
+        draft.lines().map { it.trim() }.filter { it.isNotEmpty() }.forEach(onAdd)
+        draft = ""
+        // The new row pushes the field down, with the keyboard open usually out of
+        // sight: follow it, so the next item can be typed straight away.
+        scope.launch {
+            repeat(2) { withFrameNanos { } }
+            addRow.bringIntoView()
         }
+        Unit
     }
     FfCard {
         if (items.isNotEmpty()) {
@@ -486,11 +509,15 @@ private fun ChecklistEditor(
             ReorderableColumn(
                 items = indexed,
                 key = { keys.getOrElse(it.index) { _ -> -1L - it.index } },
-                rowHeight = 52.dp,
+                // As tall as the text: an item is shown whole, however long it is.
+                rowHeight = null,
                 onMove = onMove,
             ) { entry, handle, _ ->
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(start = 2.dp, end = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp)
+                        .padding(start = 2.dp, end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(modifier = handle.size(40.dp), contentAlignment = Alignment.Center) {
@@ -507,12 +534,25 @@ private fun ChecklistEditor(
                         contentDescription = entry.value.text,
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = entry.value.text,
-                        style = FfType.rowTitle,
-                        color = if (entry.value.done) colors.textMuted else colors.text,
-                        maxLines = 2,
-                        modifier = Modifier.weight(1f),
+                    // The item itself is the field: tap it to change the wording.
+                    BasicTextField(
+                        value = entry.value.text,
+                        onValueChange = { onEdit(entry.index, it) },
+                        textStyle = FfType.rowTitle.copy(
+                            color = if (entry.value.done) colors.textMuted else colors.text,
+                        ),
+                        cursorBrush = SolidColor(colors.accent),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+                        modifier = Modifier
+                            .weight(1f)
+                            // Around the padding, so the row keeps some air above the
+                            // keyboard when it is brought into view.
+                            .staysVisibleWhenFocused()
+                            .padding(vertical = 10.dp),
                     )
                     IconButton(onClick = { onRemove(entry.index) }) {
                         Icon(
@@ -527,28 +567,31 @@ private fun ChecklistEditor(
             RowDivider()
         }
         Row(
-            modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            modifier = Modifier
+                .bringIntoViewRequester(addRow)
+                .padding(start = 6.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             FfTextField(
                 value = draft,
                 onValueChange = { draft = it },
                 placeholder = "Add an item",
+                // Several lines, so a long item stays readable while it is typed.
+                singleLine = false,
+                maxLines = 4,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).submitsOnEnter(submit),
             )
             IconButton(onClick = submit, enabled = draft.isNotBlank()) {
                 Icon(
                     Icons.Filled.Add,
                     contentDescription = "Add item",
                     tint = if (draft.isNotBlank()) colors.accent else colors.textFaint,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable(enabled = false) {},
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }

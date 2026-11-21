@@ -16,32 +16,43 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 
 /**
- * A column of equally tall rows that can be reordered by dragging a handle.
+ * A column of rows that can be reordered by dragging a handle.
  *
- * Because every row has the same height, the drop position is plain arithmetic:
- * whenever the dragged row has travelled more than half a row, it swaps with its
- * neighbour and the remaining offset carries over. [row] receives the modifier to
+ * Whenever the dragged row has travelled more than half of its neighbour, the two
+ * swap and the rest of the way carries over. With a [rowHeight] every row is that
+ * tall; with `null` each row is as tall as its content, so a long text can run
+ * over several lines, and the heights are measured. [row] receives the modifier to
  * put on its drag handle.
  */
 @Composable
 fun <T> ReorderableColumn(
     items: List<T>,
     key: (T) -> Any,
-    rowHeight: Dp,
+    rowHeight: Dp?,
     onMove: (from: Int, to: Int) -> Unit,
     modifier: Modifier = Modifier,
     row: @Composable (item: T, handle: Modifier, dragging: Boolean) -> Unit,
 ) {
-    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
+    val density = LocalDensity.current
+    val fixedPx = rowHeight?.let { with(density) { it.toPx() } }
+    val fallbackPx = with(density) { FALLBACK_ROW.toPx() }
+    // Plain map on purpose: the heights are only read while a drag is running.
+    val measured = remember { HashMap<Any, Int>() }
     var draggingKey by remember { mutableStateOf<Any?>(null) }
     var offset by remember { mutableFloatStateOf(0f) }
+    // A drag outlives the composition it began in: what it reads has to be current.
     val currentItems by rememberUpdatedState(items)
+    val currentKey by rememberUpdatedState(key)
     val currentOnMove by rememberUpdatedState(onMove)
+
+    fun heightOf(rowKey: Any): Float = fixedPx ?: measured[rowKey]?.toFloat() ?: fallbackPx
 
     Column(modifier = modifier.fillMaxWidth()) {
         items.forEach { item ->
@@ -49,24 +60,38 @@ fun <T> ReorderableColumn(
             key(itemKey) {
                 val dragging = draggingKey == itemKey
                 val handle = Modifier.pointerInput(itemKey) {
+                    // The order as this drag has left it. It is kept here instead of
+                    // being read back from the items, which only catch up with a move
+                    // on the next frame: a row that had just passed a taller one was
+                    // measured against the wrong neighbour and jumped straight back.
+                    var order = mutableListOf<Any>()
                     detectDragGestures(
                         onDragStart = {
+                            order = currentItems.map { currentKey(it) }.toMutableList()
                             draggingKey = itemKey
                             offset = 0f
                         },
                         onDrag = { change, amount ->
                             change.consume()
                             offset += amount.y
-                            var index = currentItems.indexOfFirst { key(it) == itemKey }
-                            while (offset > rowHeightPx / 2 && index in 0 until currentItems.lastIndex) {
-                                currentOnMove(index, index + 1)
-                                index++
-                                offset -= rowHeightPx
-                            }
-                            while (offset < -rowHeightPx / 2 && index > 0) {
-                                currentOnMove(index, index - 1)
-                                index--
-                                offset += rowHeightPx
+                            var index = order.indexOf(itemKey)
+                            if (index >= 0) {
+                                while (index < order.lastIndex) {
+                                    val next = heightOf(order[index + 1])
+                                    if (offset <= next / 2) break
+                                    currentOnMove(index, index + 1)
+                                    order.add(index + 1, order.removeAt(index))
+                                    index++
+                                    offset -= next
+                                }
+                                while (index > 0) {
+                                    val previous = heightOf(order[index - 1])
+                                    if (offset >= -previous / 2) break
+                                    currentOnMove(index, index - 1)
+                                    order.add(index - 1, order.removeAt(index))
+                                    index--
+                                    offset += previous
+                                }
                             }
                         },
                         onDragEnd = { draggingKey = null; offset = 0f },
@@ -76,7 +101,10 @@ fun <T> ReorderableColumn(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(rowHeight)
+                        .then(
+                            if (rowHeight != null) Modifier.height(rowHeight)
+                            else Modifier.onSizeChanged { measured[itemKey] = it.height }
+                        )
                         .zIndex(if (dragging) 1f else 0f)
                         .graphicsLayer {
                             translationY = if (dragging) offset else 0f
@@ -89,3 +117,6 @@ fun <T> ReorderableColumn(
         }
     }
 }
+
+/** Assumed for a row that has not been measured yet. */
+private val FALLBACK_ROW = 52.dp
