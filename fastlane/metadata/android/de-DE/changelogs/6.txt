@@ -1,5 +1,9 @@
-Ein kleiner Release, der die App für F-Droid vorbereitet. An der Bedienung ändert sich nichts.
+Korrekturen für Checklisten, Tastatur und Kurzvideos.
 
-- Der Build ist reproduzierbar: Der getaggte Quelltext ergibt genau diese APK
-- Die APK enthält Googles Abhängigkeitsliste nicht mehr
-- Neuere Versionen der Bibliotheken darunter
+- Tageszeit für Reels und Shorts, statt sofort zu schließen
+- TikTok und andere Kurzvideo-Apps werden von selbst erkannt
+- Neue Listeneinträge werden angezeigt und hervorgehoben
+- Die Tastatur schiebt den Bildschirm nicht mehr hoch
+- Das Plus in der Todo-Checkliste geht; lange Einträge sind ganz zu sehen
+- Der Blocker sagt, wenn ein Dienst nicht läuft
+- Reproduzierbarer Build, bereit für F-Droid

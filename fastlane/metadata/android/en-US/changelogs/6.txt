@@ -1,5 +1,9 @@
-A small release that gets the app ready for F-Droid. Nothing changes in how it works.
+Fixes for checklists, the keyboard and short videos.
 
-- The build is reproducible: the tagged source gives this exact APK
-- The APK no longer carries Google Play's dependency list
-- Newer versions of the libraries underneath
+- A daily time for Reels and Shorts, instead of closing at once
+- TikTok and other short-video apps are found on their own
+- New list items are scrolled to and pointed out
+- The keyboard no longer pushes the screen up
+- The plus in a todo's checklist works; long items show in full
+- The blocker says when a service is not running
+- Reproducible build, ready for F-Droid

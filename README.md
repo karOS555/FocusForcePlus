@@ -166,6 +166,7 @@ Two kinds, because shopping and packing work differently.
 - For the same things every time, like packing or leaving the house.
 - Ticked items stay, and the top shows how far you are.
 - **Start over** resets it for the next trip.
+- What you type goes on it as it is. A new item is scrolled to, so you see where it went.
 
 Both can remind you with a todo, be shared as text, and undo what you removed.
 
@@ -184,7 +185,8 @@ Both can remind you with a todo, be shared as text, and undo what you removed.
 - **always**, after a **daily limit**, or on a **schedule**, overnight too
 - while a **routine**, a **focus session** or a **calendar event** is on
 - with **one shared limit** for several apps, like 60 minutes for all social media
-- or only **Reels and Shorts**, while the rest of Instagram and YouTube keeps working
+- or only **Reels and Shorts**, at once or after a daily time, while the rest of Instagram and YouTube keeps working
+- **TikTok** and other apps that are only short videos are found on their own and blocked as a whole
 
 Need an app anyway? "5 more minutes" is there a couple of times a day, after a short wait.
 

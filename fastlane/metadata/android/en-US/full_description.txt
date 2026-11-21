@@ -10,7 +10,7 @@ Todos get pushier with their priority. Low is one notification. Medium comes up 
 
 Lists in two kinds. A shopping list sorts what you type by aisle on its own, keeps what you bought before one tap away, and has a big tick-off view for the shop. A checklist is for the same things every time, like packing: ticked items stay, and it starts over. A todo or a routine step can carry a list.
 
-The blocker closes apps always, after a daily limit, or on a schedule, overnight included, and during routines, focus sessions and calendar events. Several apps can share one limit. An optional service keeps Instagram and YouTube usable but leaves Reels and Shorts as soon as they open.
+The blocker closes apps always, after a daily limit, or on a schedule, overnight included, and during routines, focus sessions and calendar events. Several apps can share one limit. An optional service keeps Instagram and YouTube usable but leaves Reels and Shorts, at once or after a daily time you set.
 
 Focus silences the phone and blocks the apps you pick for a set time. Ending early asks first and then makes you wait.
 

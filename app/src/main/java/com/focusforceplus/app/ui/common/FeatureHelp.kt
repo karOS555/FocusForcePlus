@@ -189,7 +189,8 @@ object FeatureHelpContent {
                 "For the same things every time: packing, leaving the house, the gym bag. " +
                     "Ticked items stay where they are, the top shows how far along you are, and " +
                     "\"Start over\" unticks everything for the next time. A few ready-made ones " +
-                    "come with their items.",
+                    "come with their items. What you type goes on it as it is, commas and " +
+                    "numbers included, and with sections you pick where it goes.",
             ),
             HelpSection(
                 "Reminders and routines",
@@ -229,9 +230,11 @@ object FeatureHelpContent {
                     "then the block cannot be weakened or switched off.",
             ),
             HelpSection(
-                "Reels and Shorts",
+                "Short videos",
                 "Instead of blocking Instagram or YouTube completely, a separate optional " +
-                    "service can leave just Reels and Shorts when they open.",
+                    "service can leave just Reels and Shorts: as soon as they open, or after a " +
+                    "daily time you allow. Apps that are nothing but short videos, like TikTok, " +
+                    "show up there too once they are installed; those are blocked as a whole.",
             ),
             HelpSection(
                 "Permissions",

@@ -10,7 +10,7 @@ To-dos werden mit ihrer Priorität hartnäckiger. Niedrig ist eine Benachrichtig
 
 Listen in zwei Arten. Eine Einkaufsliste sortiert von selbst nach Abteilungen, hält bereit, was du schon einmal gekauft hast, und hat eine große Abhak-Ansicht für den Laden. Eine Checkliste ist für das, was jedes Mal gleich ist, etwa Packen: Abgehaktes bleibt stehen, und sie beginnt wieder von vorn.
 
-Die Sperre schließt Apps immer, nach einem Tageslimit oder nach Zeitplan, auch über Nacht, sowie während Routinen, Fokus-Sitzungen und Kalenderterminen. Mehrere Apps können sich ein Limit teilen. Ein optionaler Dienst lässt Instagram und YouTube nutzbar, verlässt aber Reels und Shorts, sobald sie aufgehen.
+Die Sperre schließt Apps immer, nach einem Tageslimit oder nach Zeitplan, auch über Nacht, sowie während Routinen, Fokus-Sitzungen und Kalenderterminen. Mehrere Apps können sich ein Limit teilen. Ein optionaler Dienst lässt Instagram und YouTube nutzbar, verlässt aber Reels und Shorts, sofort oder nach einer Tageszeit, die du festlegst.
 
 Fokus stellt das Handy für eine feste Zeit stumm und sperrt die Apps, die du auswählst. Vorzeitig beenden fragt erst nach und lässt dich dann warten.
 

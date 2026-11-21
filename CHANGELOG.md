@@ -2,11 +2,28 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
-## [0.9.5-beta] - 2026-11-20
+## [0.9.5-beta] - 2026-11-22
 
-A small release that gets the app ready for F-Droid. Nothing changes in how it works.
+Checklists, the keyboard and short videos get fixed up, and the app is ready for F-Droid.
+
+### Added
+- **A daily time for Reels and Shorts.** Instead of closing at once, they can stay open for 5 to 120 minutes a day, counted for both together or for each on its own. Allowing more goes through the same speed bump as pausing a block
+- **TikTok and other short-video apps show up on their own.** Apps that are nothing but short videos are listed under "Short videos" once they are installed. There is no rest of the app to keep, so they are blocked as a whole, and the row says so. A tap on it opens the block, for a daily limit or a schedule
+- **Sections when adding to a checklist.** A list with sections lets you pick where the next items go
+- An item in a todo's checklist can be reworded in place
+
+### Fixed
+- **Adding to a list looked as if nothing had happened.** A new item often landed below what the keyboard left of the list. The list now scrolls to it and points it out, and says so when it was on the list already
+- **The keyboard pushed the whole screen up.** Buttons jumped far above it and the top bar slid away. The screen now stays where it is and only makes room, and the field being typed into stays in view, also when it grows or a row is added above it
+- **The plus next to a todo's checklist did nothing.** It adds the item now, and so does Enter
+- **Long checklist items were cut off.** Items in todos and in lists show all of their text, while they are typed too
+- **Reordering a todo's checklist.** A dragged item no longer jumps back when it passes more than one row or a longer item
+- **The edit sheet of the bar jumped** on a light swipe when its list was a little too tall for the screen. The heading stays put now and only the list scrolls
+- **Reels or Shorts could be switched off here and stay open all the same.** The blocker now says why and what to do about it: the service is off, Android has it switched on but it is not running (which can happen after an update), or blocking is paused. The same goes for the app blocker itself, and a notification says so when the short-video service is turned off
 
 ### Changed
+- **A checklist takes what you type as it is.** "Keys, wallet, phone" and "10 min stretching" stay one item with all their words. Only a shopping list splits at commas and reads amounts
+- The short-video service only hears from the app whose feed is switched on, and from no app while none is
 - **The build is reproducible.** Whoever builds the tagged source gets this exact APK, byte for byte. That lets F-Droid check the APK against the source and ship it with the same signature as the one here, so the two can be swapped without reinstalling
 - The APK no longer carries the list of its dependencies that only Google Play can read, nor the commit it was built from
 - Newer versions of the libraries underneath: Room, WorkManager, DataStore, coroutines and the splash screen
