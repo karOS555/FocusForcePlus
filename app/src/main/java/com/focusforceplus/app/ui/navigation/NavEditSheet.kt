@@ -73,7 +73,6 @@ fun NavEditSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 16.dp),
@@ -95,12 +94,22 @@ fun NavEditSheet(
                 color = colors.textMuted,
             )
             Spacer(Modifier.height(16.dp))
-            NavEditor(
-                config = config,
-                onMove = onMove,
-                onSetShown = onSetShown,
-                onSetModuleOn = onSetModuleOn,
-            )
+            // Only the list scrolls, and only when it does not fit. As one scrolling
+            // page that was a few pixels too tall on some screens, the lightest swipe
+            // moved the page, then the sheet, then the page again: it all jumped.
+            val scroll = rememberScrollState()
+            Box(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(scroll, enabled = scroll.canScrollForward || scroll.canScrollBackward),
+            ) {
+                NavEditor(
+                    config = config,
+                    onMove = onMove,
+                    onSetShown = onSetShown,
+                    onSetModuleOn = onSetModuleOn,
+                )
+            }
         }
     }
 }
