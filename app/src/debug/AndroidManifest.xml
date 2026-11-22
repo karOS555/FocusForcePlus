@@ -17,11 +17,14 @@
             </intent-filter>
         </receiver>
         <!-- Debug builds only: a stand-in for the OpenTasks provider, to try the task
-             sync on an emulator. Exported so adb can change tasks "from outside". -->
+             sync on an emulator. Exported so adb can change tasks "from outside", and
+             behind DUMP like the receiver above, so no other app on the phone gets at
+             it. FocusForce+ itself needs no permission for its own provider. -->
         <provider
             android:name=".debug.FakeTaskProvider"
             android:authorities="com.focusforceplus.app.debug.tasks"
-            android:exported="true" />
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
     </application>
 
 </manifest>
