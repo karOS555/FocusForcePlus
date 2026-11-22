@@ -20,8 +20,10 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -98,6 +100,22 @@ fun BlockerListScreen(
             snackbar.showSnackbar(it)
             viewModel.clearMessage()
         }
+    }
+    // A block was switched on while blocking is paused at the top: said once, with
+    // the switch in reach, because the block's own switch looks as if it worked.
+    val pausedNotice by viewModel.pausedNotice.collectAsState()
+    LaunchedEffect(pausedNotice) {
+        if (!pausedNotice) return@LaunchedEffect
+        // Still true? The page may have been left before this could be shown.
+        if (viewModel.blockingIsPaused()) {
+            val answer = snackbar.showSnackbar(
+                message = "Blocking is paused, so this block does nothing yet",
+                actionLabel = "Switch on",
+                duration = SnackbarDuration.Long,
+            )
+            if (answer == SnackbarResult.ActionPerformed) viewModel.setBlockerEnabled(true)
+        }
+        viewModel.pausedNoticeShown()
     }
 
     val pauseGuard: Guard = guards[GuardSlot.BLOCKER_PAUSE]

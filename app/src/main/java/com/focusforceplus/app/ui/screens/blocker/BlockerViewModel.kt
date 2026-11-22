@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -152,6 +153,22 @@ class BlockerViewModel @Inject constructor(
 
     private val _shortsServiceOn = MutableStateFlow(false)
 
+    /** The day at the last look at this page: on a new one the short-video time starts over. */
+    private val _today = MutableStateFlow(LocalDate.now().toEpochDay())
+
+    private val _pausedNotice = MutableStateFlow(false)
+
+    /**
+     * True right after a block was switched on while blocking as a whole is paused.
+     * Its own switch then says on and nothing happens, which is easy to miss, so
+     * the page says it once.
+     */
+    val pausedNotice: StateFlow<Boolean> = _pausedNotice.asStateFlow()
+
+    fun pausedNoticeShown() = _pausedNotice.update { false }
+
+    suspend fun blockingIsPaused(): Boolean = !settingsRepository.blockerEnabled.first()
+
     private data class ShortSettings(
         val on: Map<ShortFeed, Boolean>,
         val allowance: ShortVideoAllowance,
@@ -164,11 +181,12 @@ class BlockerViewModel @Inject constructor(
             settingsRepository.shortsBlockYouTube,
             settingsRepository.shortVideoAllowance,
             settingsRepository.shortVideoUsage,
-        ) { instagram, youtube, allowance, usage ->
+            _today,
+        ) { instagram, youtube, allowance, usage, today ->
             ShortSettings(
                 on = mapOf(ShortFeed.INSTAGRAM to instagram, ShortFeed.YOUTUBE to youtube),
                 allowance = allowance,
-                usage = usage.on(LocalDate.now().toEpochDay()),
+                usage = usage.on(today),
             )
         },
         combine(_installedApps, _isLoadingApps, ::Pair),
@@ -297,6 +315,29 @@ class BlockerViewModel @Inject constructor(
     init {
         refreshApps()
         refreshPermissions()
+        watchForBlocksSwitchedOnWhilePaused()
+    }
+
+    /**
+     * A block that comes on while blocking is paused sets [pausedNotice]. It looks at
+     * the rules themselves, so it holds for every way a block can come on: its
+     * switch, the editor, a new block, or the row of a short-video app.
+     */
+    private fun watchForBlocksSwitchedOnWhilePaused() {
+        viewModelScope.launch {
+            var before: Set<String>? = null
+            repository.getAllApps().collect { rules ->
+                val on = rules.filter { it.isBlocked }
+                    .map { rule -> rule.groupName?.let { "g:$it" } ?: "a:${rule.packageName}" }
+                    .toSet()
+                val known = before
+                before = on
+                // The first look only notes what is there.
+                if (known != null && (on - known).isNotEmpty() && !settingsRepository.blockerEnabled.first()) {
+                    _pausedNotice.value = true
+                }
+            }
+        }
     }
 
     fun refreshApps() {
@@ -309,6 +350,7 @@ class BlockerViewModel @Inject constructor(
 
     /** Called from the screen's ON_RESUME observer — system settings may have changed. */
     fun refreshPermissions() {
+        _today.value = LocalDate.now().toEpochDay()
         _shortsServiceOn.value = PermissionHelper.isShortFormServiceEnabled(context)
         _permissions.value =
             PermissionHelper.isAccessibilityServiceEnabled(context) to
