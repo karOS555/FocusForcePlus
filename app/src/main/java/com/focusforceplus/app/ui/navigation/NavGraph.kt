@@ -36,9 +36,22 @@ import com.focusforceplus.app.ui.screens.todo.TodoListScreen
  * sliding out. By then the screen below is the current one, and a plain pop would
  * take that one away too, down to an empty stack and a blank page. Asking who
  * wants to leave makes the second call do nothing.
+ *
+ * A screen with nothing below it goes to Home instead. Popping it would empty the
+ * stack while the screen stays on show, and from then on nothing on it could close
+ * it: that is how the first routine's editor, opened straight from the setup guide,
+ * saved the routine and then stayed where it was.
  */
 private fun NavHostController.leave(from: androidx.navigation.NavBackStackEntry) {
-    if (currentBackStackEntry?.id == from.id) popBackStack()
+    if (currentBackStackEntry?.id != from.id) return
+    if (previousBackStackEntry != null) {
+        popBackStack()
+    } else {
+        navigate(AppModule.HOME.route) {
+            popUpTo(from.destination.id) { inclusive = true }
+            launchSingleTop = true
+        }
+    }
 }
 
 @Composable
@@ -90,10 +103,12 @@ fun NavGraph(
         composable(OnboardingRoutes.ONBOARDING) {
             OnboardingScreen(
                 onFinish = { createFirstRoutine ->
-                    val target = if (createFirstRoutine) RoutineRoutes.CREATE else AppModule.HOME.route
-                    navController.navigate(target) {
+                    // Home always comes first, also under the first routine's editor:
+                    // saving or leaving that one needs a page to land on.
+                    navController.navigate(AppModule.HOME.route) {
                         popUpTo(OnboardingRoutes.ONBOARDING) { inclusive = true }
                     }
+                    if (createFirstRoutine) navController.navigate(RoutineRoutes.CREATE)
                 },
                 onOpenDisclosure = { type ->
                     navController.navigate(BlockerRoutes.disclosure(type))

@@ -178,8 +178,15 @@ class CreateFocusViewModel @Inject constructor(
         it.copy(selectedGroups = groups)
     }
 
+    /**
+     * Set once this editor has saved. It is closing then, and a second tap on Save
+     * while it still shows must not save again: for a new one that would be a copy.
+     */
+    private var hasSaved = false
+
     fun save(onSuccess: () -> Unit) {
         val state = _uiState.value
+        if (hasSaved || state.isSaving) return
         if (state.name.isBlank()) {
             _uiState.update { it.copy(nameError = true) }
             return
@@ -227,6 +234,7 @@ class CreateFocusViewModel @Inject constructor(
                     focusAlarmHelper.scheduleSessionAlarms(entity.copy(id = savedId))
                 }
                 _uiState.update { it.copy(isSaving = false) }
+                hasSaved = true
                 onSuccess()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = e.message ?: "Failed to save session") }

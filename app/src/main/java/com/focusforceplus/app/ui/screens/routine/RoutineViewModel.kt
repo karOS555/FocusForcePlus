@@ -315,8 +315,15 @@ class RoutineViewModel @Inject constructor(
     // ── Saving ────────────────────────────────────────────────────────────────
 
     /** [onSuccess] receives the saved routine's id, so callers can link to it. */
+    /**
+     * Set once this editor has saved. It is closing then, and a second tap on Save
+     * while it still shows must not save again: for a new one that would be a copy.
+     */
+    private var hasSaved = false
+
     fun saveRoutine(onSuccess: (Long) -> Unit) {
         val state = _uiState.value
+        if (hasSaved || state.isSaving) return
         var hasError = false
         if (state.name.isBlank()) { _uiState.update { it.copy(nameError = true) }; hasError = true }
         if (state.activeDays.isEmpty()) { _uiState.update { it.copy(daysError = true) }; hasError = true }
@@ -390,6 +397,7 @@ class RoutineViewModel @Inject constructor(
                     alarmHelper.scheduleRoutineAlarms(saved)
                 }
                 _uiState.update { it.copy(isSaving = false) }
+                hasSaved = true
                 onSuccess(savedId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = e.message ?: "Could not save the routine") }

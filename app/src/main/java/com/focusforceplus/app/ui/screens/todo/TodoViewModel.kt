@@ -225,8 +225,15 @@ class TodoViewModel @Inject constructor(
         state.copy(checklistItems = items, checklistKeys = keys)
     }
 
+    /**
+     * Set once this editor has saved. It is closing then, and a second tap on Save
+     * while it still shows must not save again: for a new one that would be a copy.
+     */
+    private var hasSaved = false
+
     fun saveTodo(onSuccess: () -> Unit) {
         val state = _uiState.value
+        if (hasSaved || state.isSaving) return
         if (state.title.isBlank()) {
             _uiState.update { it.copy(titleError = true) }
             return
@@ -264,6 +271,7 @@ class TodoViewModel @Inject constructor(
                 )
                 engine.save(todo)
                 _uiState.update { it.copy(isSaving = false) }
+                hasSaved = true
                 onSuccess()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = e.message ?: "Could not save the todo") }
