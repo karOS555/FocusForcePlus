@@ -88,7 +88,7 @@ class BlockerNotificationHelper @Inject constructor(
         val text = "The short-video service was turned off, so Reels and Shorts stay open again."
         val notification = NotificationCompat.Builder(context, CHANNEL_BLOCKER)
             .applyBrand(context, AppModule.BLOCKER)
-            .setContentTitle("Short videos are no longer left")
+            .setContentTitle("Short videos are no longer closed")
             .setContentText(text)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(

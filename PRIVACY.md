@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-11-18_
+_Last updated: 2026-11-22_
 
 FocusForce+ is built to keep your data on your device. This policy explains what that means in plain terms.
 

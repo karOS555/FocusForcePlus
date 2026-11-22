@@ -89,7 +89,7 @@ object PermissionHelper {
         }
     }
 
-    /** True if the app can schedule exact alarms (needed for the 15-min pre-alarm).
+    /** True if the app can schedule exact alarms (needed for a routine's heads-up).
      *  Always true on Android <12. On Android 13+, USE_EXACT_ALARM auto-grants this.
      *  On Android 12, the user must grant SCHEDULE_EXACT_ALARM manually. */
     fun canScheduleExactAlarms(context: Context): Boolean {

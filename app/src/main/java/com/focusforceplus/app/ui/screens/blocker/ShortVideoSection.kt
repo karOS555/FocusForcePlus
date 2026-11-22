@@ -55,7 +55,7 @@ internal fun ShortVideoSection(
             ShortTrouble.SERVICE_OFF -> add {
                 ListRow(
                     title = "$what stay open right now",
-                    subtitle = "The short-video service is switched off in Android. Without it they cannot be left.",
+                    subtitle = "The short-video service is switched off in Android. Without it they cannot be closed.",
                     subtitleMaxLines = 4,
                     titleColor = colors.error,
                     onClick = onSetUp,
@@ -116,6 +116,8 @@ internal fun ShortVideoSection(
                     title = "Time per day",
                     value = if (time.none) "None" else "${time.minutes} min",
                     subtitle = when {
+                        // Nothing is switched on, so there is nothing a time could hold back.
+                        shorts.feeds.none { it.on } -> "No effect while $what are allowed"
                         time.none -> "$what close at once. Pick a time to allow some."
                         time.each && shorts.feeds.size > 1 -> "Each of them has its own time"
                         shorts.feeds.size > 1 ->
@@ -184,7 +186,7 @@ private fun feedDetail(row: ShortFeedRow, shorts: ShortVideos): String {
     val time = shorts.allowance
     return when {
         !row.on -> "$noun are allowed"
-        shorts.trouble != null -> "Not left right now, see above"
+        shorts.trouble != null -> "Not closed right now, see above"
         time.none -> "$noun close as soon as they open"
         time.each && row.usedMinutes >= time.minutes -> "Today's ${time.minutes} min are used: $noun close again"
         time.each -> "${row.usedMinutes} of ${time.minutes} min today, then $noun close"

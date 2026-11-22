@@ -4,7 +4,7 @@ import androidx.room.TypeConverter
 
 class AppTypeConverters {
 
-    // --- List<String> <-> String (für komma-separierte Felder wie activeDays) ---
+    // --- List<String> <-> String (for comma-separated fields like activeDays) ---
 
     @TypeConverter
     fun fromStringList(list: List<String>?): String? =

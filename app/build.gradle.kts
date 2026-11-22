@@ -89,7 +89,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
 
-    // Compose BOM — steuert alle Compose-Versionen zentral
+    // Compose BOM: sets the version of every Compose library in one place
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

@@ -215,7 +215,7 @@
             android:name=".service.RoutineTaskEndReceiver"
             android:exported="false" />
 
-        <!-- Receives the 15-minute pre-alarm and shows a reminder notification -->
+        <!-- Receives a routine's heads-up alarm and shows its reminder notification -->
         <receiver
             android:name=".service.RoutinePreAlarmReceiver"
             android:exported="false" />

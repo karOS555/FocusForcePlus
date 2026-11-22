@@ -460,7 +460,7 @@ private fun AppContent(
         )
     }
 
-    // SCHEDULE_EXACT_ALARM (Android 12 only) — needed so the 15-min pre-alarm fires on time.
+    // SCHEDULE_EXACT_ALARM (Android 12 only) — needed so a routine's heads-up comes on time.
     // On Android 13+, USE_EXACT_ALARM in the manifest auto-grants this.
     if (showExactAlarmDialog) {
         AlertDialog(
@@ -468,8 +468,8 @@ private fun AppContent(
             title = { Text("Allow precise reminders") },
             text  = {
                 Text(
-                    "FocusForce+ needs permission to set precise alarms so the 15-minute " +
-                    "pre-alarm fires exactly on time.\n\n" +
+                    "FocusForce+ needs permission to set precise alarms, so the heads-up " +
+                    "before a routine comes exactly on time.\n\n" +
                     "Tap \"Open settings\" and enable \"Alarms & reminders\" for FocusForce+.",
                 )
             },
