@@ -14,6 +14,10 @@ Routines, todos, lists, an app blocker, focus and sleep in one Android app.<br/>
 
 <br/>
 
+[![License](https://img.shields.io/badge/license-GPLv3-1d4ed8?style=flat-square)](LICENSE) [![Android 8+](https://img.shields.io/badge/Android_8%2B-152e54?style=flat-square&logo=android&logoColor=white)](#install) [![No internet permission](https://img.shields.io/badge/no_internet_permission-050508?style=flat-square)](PRIVACY.md) [![Website](https://img.shields.io/badge/Website-0f2847?style=flat-square&logo=githubpages&logoColor=white)](https://karos555.github.io/FocusForcePlus/)
+
+<br/>
+
 <a href="https://karos555.github.io/FocusForcePlus/obtainium.html"><img src="https://img.shields.io/badge/Install_with_Obtainium-recommended-16a34a?style=for-the-badge&labelColor=1d4ed8" alt="Install with Obtainium (recommended)"/></a>&nbsp;<a href="https://karos555.github.io/FocusForcePlus/obtainium.html#apk"><img src="https://img.shields.io/badge/Download_the_APK-152e54?style=for-the-badge&logo=android&logoColor=white" alt="Download the APK"/></a>
 
 <!-- Enable once FocusForce+ is listed on F-Droid.
@@ -21,8 +25,6 @@ Routines, todos, lists, an app blocker, focus and sleep in one Android app.<br/>
 <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="75"/>
 </a>
 -->
-
-<sub>Open source · no internet permission · Android 8+ · beta</sub>
 
 </div>
 
