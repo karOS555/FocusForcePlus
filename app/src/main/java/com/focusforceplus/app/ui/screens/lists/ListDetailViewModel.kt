@@ -13,6 +13,7 @@ import com.focusforceplus.app.data.repository.ListRepository
 import com.focusforceplus.app.data.repository.ListText
 import com.focusforceplus.app.data.repository.TodoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -139,7 +140,12 @@ class ListDetailViewModel @Inject constructor(
             parts.forEach { part ->
                 repository.addItem(listId, part, section = section.takeIf { checklist })?.let { last = it }
             }
-            last?.let { _justAdded.value = JustAdded(it.id, it.already && parts.size == 1, ++addCounter) }
+            val added = last?.let { JustAdded(it.id, it.already && parts.size == 1, ++addCounter) } ?: return@launch
+            _justAdded.value = added
+            // The screen clears this once it has shown it. If the list was left
+            // before that, it would point the item out again on the way back.
+            delay(JUST_ADDED_KEPT_MILLIS)
+            addedShown(added)
         }
     }
 
@@ -259,5 +265,10 @@ class ListDetailViewModel @Inject constructor(
 
     fun undoShown(offer: ListUndo) {
         if (_undo.value?.id == offer.id) _undo.value = null
+    }
+
+    private companion object {
+        /** Longer than the screen needs to scroll to a new item and point it out. */
+        const val JUST_ADDED_KEPT_MILLIS = 5_000L
     }
 }

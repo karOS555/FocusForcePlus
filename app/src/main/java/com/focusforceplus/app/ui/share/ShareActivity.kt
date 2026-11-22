@@ -42,6 +42,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focusforceplus.app.data.db.entity.ListEntity
 import com.focusforceplus.app.data.repository.ListRepository
+import com.focusforceplus.app.data.repository.ListText
 import com.focusforceplus.app.data.repository.NavRepository
 import com.focusforceplus.app.ui.common.RoutineIcons
 import com.focusforceplus.app.ui.components.FfCard
@@ -146,11 +147,22 @@ class ShareViewModel @Inject constructor(
         }
     }
 
-    fun addToList(list: ListEntity, items: List<String>, onDone: (String) -> Unit) {
+    /**
+     * Adds what was shared, read the way the list reads what is typed into it: a
+     * shopping list splits at commas too and takes amounts, a checklist keeps each
+     * line as it is.
+     */
+    fun addToList(list: ListEntity, lines: List<String>, onDone: (String) -> Unit) {
         viewModelScope.launch {
+            val text = lines.joinToString("\n")
+            val items = (if (list.isChecklist) ListText.splitLines(text) else ListText.splitItems(text)).take(MAX_SHARED_ITEMS)
             items.forEach { listRepository.addItem(list.id, it) }
             onDone(if (items.size == 1) "Added to ${list.name}" else "${items.size} items added to ${list.name}")
         }
+    }
+
+    private companion object {
+        const val MAX_SHARED_ITEMS = 50
     }
 }
 
@@ -166,11 +178,9 @@ private fun ShareSheet(
     val targets by viewModel.targets.collectAsState()
     var title by remember { mutableStateOf(shared.title) }
     var priority by remember { mutableIntStateOf(1) }
-    // Each line is an item, and so is each part between commas, the same as typing
-    // into a list.
-    val items = remember(shared) {
-        shared.lines.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }.take(50)
-    }
+    // How many items the lines become depends on the list they go to, so the sheet
+    // speaks of the lines.
+    val lines = shared.lines
 
     Box(
         modifier = Modifier
@@ -210,7 +220,7 @@ private fun ShareSheet(
 
             if (targets.lists.isNotEmpty()) {
                 Text(
-                    if (items.size == 1) "Or add \"${items.first().take(40)}\" to a list" else "Or add ${items.size} items to a list",
+                    if (lines.size == 1) "Or add \"${lines.first().take(40)}\" to a list" else "Or add these ${lines.size} lines to a list",
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.textSecondary,
                     modifier = Modifier.padding(top = 6.dp),
@@ -220,7 +230,7 @@ private fun ShareSheet(
                         if (i > 0) RowDivider()
                         ListRow(
                             title = list.name,
-                            onClick = { viewModel.addToList(list, items, onDone) },
+                            onClick = { viewModel.addToList(list, lines, onDone) },
                             leading = {
                                 IconCircle(
                                     icon = RoutineIcons.find(list.iconKey)?.vector
