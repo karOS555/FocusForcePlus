@@ -14,6 +14,7 @@
             <intent-filter>
                 <action android:name="com.focusforceplus.app.DEBUG_SEED" />
                 <action android:name="com.focusforceplus.app.DEBUG_DUE" />
+                <action android:name="com.focusforceplus.app.DEBUG_NOTIFY" />
             </intent-filter>
         </receiver>
         <!-- Debug builds only: a stand-in for the OpenTasks provider, to try the task

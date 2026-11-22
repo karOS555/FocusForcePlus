@@ -5,6 +5,8 @@ import com.focusforceplus.app.data.db.entity.ListKind
 import com.focusforceplus.app.data.db.entity.ListEntity
 import com.focusforceplus.app.data.db.entity.FocusCompletionEntity
 import com.focusforceplus.app.data.db.entity.RoutineCompletionEntity
+import android.app.Notification
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -24,8 +26,16 @@ import com.focusforceplus.app.data.repository.ListRepository
 import com.focusforceplus.app.data.repository.SettingsRepository
 import com.focusforceplus.app.util.AlarmHelper
 import com.focusforceplus.app.util.AlarmRearmer
+import com.focusforceplus.app.util.AutoBackup
+import com.focusforceplus.app.util.BlockerNotificationHelper
 import com.focusforceplus.app.util.FocusAlarmHelper
+import com.focusforceplus.app.util.FocusNotificationHelper
+import com.focusforceplus.app.util.NotificationHelper
+import com.focusforceplus.app.util.NotificationStyle
+import com.focusforceplus.app.util.SleepNotificationHelper
+import com.focusforceplus.app.util.TodoNotifications
 import com.focusforceplus.app.util.TodoReminderEngine
+import com.focusforceplus.app.util.focusNotificationIcon
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -43,9 +53,17 @@ import java.util.Calendar
  *       -a com.focusforceplus.app.DEBUG_SEED
  *   adb shell am broadcast -n com.focusforceplus.app/.debug.DebugSeedReceiver \
  *       -a com.focusforceplus.app.DEBUG_DUE --ei priority 2 --ei seconds 20
+ *   adb shell am broadcast -n com.focusforceplus.app/.debug.DebugSeedReceiver \
+ *       -a com.focusforceplus.app.DEBUG_NOTIFY --es set todo
  *
  * SEED replaces everything in the database with a believable day. DUE adds one
  * todo that becomes due in a few seconds, to watch an alarm from start to end.
+ * NOTIFY posts the app's notifications with made-up content, to look at them side
+ * by side: set is todo, routine, focus, sleep or other, none of them means all,
+ * and clear takes them away again. Add --es shade launcher to see them as a phone
+ * shows them that draws the app's launcher icon on every notification (a Samsung,
+ * a Xiaomi), or --es shade plain for plain Android. That choice stays until the
+ * app's process ends.
  */
 class DebugSeedReceiver : BroadcastReceiver() {
 
@@ -59,6 +77,12 @@ class DebugSeedReceiver : BroadcastReceiver() {
         fun routineAlarms(): AlarmHelper
         fun focusAlarms(): FocusAlarmHelper
         fun rearmer(): AlarmRearmer
+        fun routineNotifications(): NotificationHelper
+        fun todoNotifications(): TodoNotifications
+        fun focusNotifications(): FocusNotificationHelper
+        fun sleepNotifications(): SleepNotificationHelper
+        fun blockerNotifications(): BlockerNotificationHelper
+        fun autoBackup(): AutoBackup
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -73,6 +97,13 @@ class DebugSeedReceiver : BroadcastReceiver() {
                         priority = intent.getIntExtra("priority", 2),
                         seconds = intent.getIntExtra("seconds", 20),
                     )
+                    ACTION_NOTIFY -> {
+                        when (intent.getStringExtra("shade")) {
+                            "launcher" -> NotificationStyle.launcherIconInShade = true
+                            "plain" -> NotificationStyle.launcherIconInShade = false
+                        }
+                        gallery(context.applicationContext, ep, intent.getStringExtra("set"))
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "seeding failed", e)
@@ -101,6 +132,103 @@ class DebugSeedReceiver : BroadcastReceiver() {
             )
         )
         Log.i(TAG, "todo $id due in $seconds s, priority $priority")
+    }
+
+    /**
+     * The notifications of one part of the app, or of all of them, with made-up
+     * content. Their buttons lead nowhere, and the ones that would open an alarm
+     * screen are left out.
+     */
+    private fun gallery(context: Context, ep: SeedEntryPoint, set: String?) {
+        if (set == "clear") {
+            NotificationManagerCompat.from(context).cancelAll()
+            return
+        }
+        fun wanted(name: String) = set == null || set == name
+        val now = System.currentTimeMillis()
+        val minute = 60_000L
+
+        if (wanted("todo")) {
+            val todos = ep.todoNotifications()
+            val manager = context.getSystemService(NotificationManager::class.java)
+            // Into a group and under ids of their own. The app takes the real group
+            // and the real overview away whenever none of its own todos needs them,
+            // and these would go with them.
+            fun moved(notification: Notification): Notification =
+                Notification.Builder.recoverBuilder(context, notification).setGroup(GALLERY_GROUP).build()
+            val withIcon = TodoEntity(
+                id = GALLERY + 1, title = "Call the dentist back", description = "Ask about the Thursday slot",
+                iconKey = "phone", priority = 2, dueDateTime = now - 20 * minute, createdAt = now,
+            )
+            val plain = TodoEntity(
+                id = GALLERY + 2, title = "Send the meter reading", priority = 1,
+                dueDateTime = now - 5 * minute, createdAt = now,
+            )
+            val low = TodoEntity(id = GALLERY + 3, title = "Water the plants", priority = 0, createdAt = now)
+            manager.notify(
+                GALLERY_ID + 1,
+                moved(todos.waiting(withIcon, now + 10 * minute, doneDirect = true, snoozeDirect = true)),
+            )
+            manager.notify(GALLERY_ID + 2, moved(todos.waiting(plain, null, doneDirect = true, snoozeDirect = true)))
+            manager.notify(GALLERY_ID + 3, moved(todos.summary(2)))
+            manager.notify(GALLERY_ID + 4, todos.lowDue(low, doneDirect = true))
+            manager.notify(GALLERY_ID + 5, todos.dailyOverview(listOf("Water the plants", "Renew the library card")))
+        }
+        if (wanted("routine")) {
+            val routines = ep.routineNotifications()
+            routines.showNotification(
+                GALLERY_ID + 10,
+                routines.buildPreAlarmNotification(GALLERY + 10, "Morning routine", 7, 0, iconKey = "wb_sunny"),
+            )
+            routines.showNotification(
+                GALLERY_ID + 11,
+                routines.buildSnoozedNotification(
+                    GALLERY + 11, "Workout", now + 30 * minute,
+                    snoozeCount = 1, maxSnoozeCount = 2, invincibleMode = false,
+                ),
+            )
+            routines.showNotification(
+                GALLERY_ID + 12,
+                routines.buildOngoingNotification(
+                    GALLERY + 12, "Evening routine", "Lay out clothes", now + 4 * minute, overtime = false,
+                    taskIndex = 1, taskDurationsMinutes = listOf(5, 5, 20), elapsedSeconds = 360,
+                    chipSeconds = 240, iconKey = "bedtime",
+                ),
+            )
+            routines.showNotification(GALLERY_ID + 13, routines.buildSessionInterruptedNotification("Workout"))
+        }
+        if (wanted("focus")) {
+            val focus = ep.focusNotifications()
+            focus.showNotification(
+                GALLERY_ID + 20,
+                focus.buildScheduledSessionNotification(GALLERY + 20, "Study", focusNotificationIcon(null, "STUDY")),
+            )
+            focus.showNotification(
+                GALLERY_ID + 21,
+                focus.buildCompletionNotification("Deep work", 50, focusNotificationIcon("laptop", "WORK")),
+            )
+            focus.showNotification(
+                GALLERY_ID + 22,
+                focus.buildOngoingNotification(
+                    GALLERY + 22, "Deep work", remainingSeconds = 1_500, paused = false, invincible = false,
+                    totalSeconds = 3_000, icon = focusNotificationIcon(null, "WORK"),
+                ),
+            )
+        }
+        if (wanted("sleep")) {
+            val sleep = ep.sleepNotifications()
+            sleep.showNotification(GALLERY_ID + 30, sleep.buildWindDownNotification("23:00", 30))
+            sleep.showNotification(
+                GALLERY_ID + 31,
+                sleep.buildSleepActiveNotification("07:00", blocking = true, elapsedMinutes = 120, totalMinutes = 480),
+            )
+        }
+        if (wanted("other")) {
+            ep.blockerNotifications().showServiceLostNotification()
+            ep.blockerNotifications().showShortVideoServiceLostNotification()
+            ep.autoBackup().postFailureNotice("The backup folder can no longer be reached.")
+        }
+        Log.i(TAG, "notifications posted: ${set ?: "all"}")
     }
 
     private suspend fun seed(context: Context, ep: SeedEntryPoint) {
@@ -332,5 +460,11 @@ class DebugSeedReceiver : BroadcastReceiver() {
         const val TAG = "FfpDebugSeed"
         const val ACTION_SEED = "com.focusforceplus.app.DEBUG_SEED"
         const val ACTION_DUE = "com.focusforceplus.app.DEBUG_DUE"
+        const val ACTION_NOTIFY = "com.focusforceplus.app.DEBUG_NOTIFY"
+
+        /** Ids no real routine, todo or notification of the app gets near. */
+        const val GALLERY = 880_000L
+        const val GALLERY_ID = 880_000
+        const val GALLERY_GROUP = "com.focusforceplus.app.DEBUG_GALLERY"
     }
 }
