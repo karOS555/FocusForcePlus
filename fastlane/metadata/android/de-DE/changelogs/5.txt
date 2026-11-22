@@ -1,10 +1,10 @@
-- Home zeigt deinen Tag in einer Liste
+- Die Startseite zeigt deinen Tag in einer Liste
 - Listen zum Einkaufen und Packen, auch in To-dos und Routinen
-- Kalender: Termine auf Home, To-dos darin, Sperren bei Terminen
-- Abgleich mit OpenTasks oder Tasks.org (CalDAV)
-- Widgets: Heute, Schnell-Fokus, eine Liste
-- Speed Bumps vor Erledigt, Snooze und Abbrechen
-- Reels und Shorts überspringen
-- Themes, auch helle, und eigene Farben
-- Sitzungen als Zeitstrahl, auch auf dem Sperrbildschirm
-- Nächtliche Backups, Import rückgängig machbar
+- Kalender: Termine auf der Startseite, To-dos im Kalender, Sperren während Terminen
+- Abgleich mit OpenTasks oder Tasks.org (CalDAV über DAVx5)
+- Widgets: Heute, schneller Fokus, eine Liste
+- Kleine Hürden vor Erledigt, Schlummern und Abbrechen
+- Reels und Shorts schließen, die Apps behalten
+- Designs, auch helle, und eigene Farben
+- Sitzungen als Zeitleiste
+- Sicherung jede Nacht

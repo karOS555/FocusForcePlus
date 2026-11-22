@@ -1,4 +1,4 @@
-- Behoben: Absturz beim Öffnen der Vollbild-Wecker-Berechtigung auf Geräten ohne diesen Dialog
-- Klarere Anleitung, um den Bedienungshilfen-Dienst bei manuell installierten Builds zu aktivieren
-- Behoben: das Symbol in der Statusleiste bei kleinen Größen
-- Wecker und Erinnerungen überstehen strenge Akku-Beschränkungen, statt still zu versagen
+- Behoben: Absturz beim Öffnen der Berechtigung für Vollbild-Wecker auf Handys, die diese Einstellung nicht haben
+- Verständlichere Anleitung für den Bedienungshilfen-Dienst, den Android erst sperrt, wenn die App nicht aus einem Store kommt
+- Behoben: das Symbol in der Statusleiste in kleinen Größen
+- Wecker und Erinnerungen kommen jetzt auch bei strengem Akkusparen, statt unbemerkt auszufallen

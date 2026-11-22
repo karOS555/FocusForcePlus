@@ -1,9 +1,9 @@
 Korrekturen für Checklisten, Tastatur und Kurzvideos.
 
-- Tageszeit für Reels und Shorts, statt sofort zu schließen
-- TikTok und andere Kurzvideo-Apps werden von selbst erkannt
+- Tägliche Zeit für Reels und Shorts, statt sie sofort zu schließen
+- TikTok und andere reine Kurzvideo-Apps werden von selbst gefunden
 - Neue Listeneinträge werden angezeigt und hervorgehoben
-- Die Tastatur schiebt den Bildschirm nicht mehr hoch
-- Das Plus in der Todo-Checkliste geht; lange Einträge sind ganz zu sehen
+- Die Tastatur schiebt den Bildschirm nicht mehr nach oben
+- Das Plus in der To-do-Checkliste funktioniert, lange Einträge sind ganz zu lesen
 - Der Blocker sagt, wenn ein Dienst nicht läuft
 - Reproduzierbarer Build, bereit für F-Droid
