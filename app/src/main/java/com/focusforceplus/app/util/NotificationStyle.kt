@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import java.util.Locale
 
 /**
  * One visual language for every notification this app posts.
@@ -77,24 +78,55 @@ object NotificationStyle {
     const val BADGE_BACKGROUND = 0xFF152E54.toInt()
     const val BADGE_FOREGROUND = 0xFF93C5FD.toInt()
 
+    /** `Notification.EXTRA_PREFER_SMALL_ICON`: new in Android 17, ignored before it. */
+    private const val EXTRA_PREFER_SMALL_ICON = "android.app.preferSmallIcon"
+
     /**
-     * The house style: the module's own glyph in the status bar (the same one as in
+     * Whether this phone's shade draws the app's launcher icon on a notification,
+     * where plain Android draws the small icon (see [drawsLauncherIcon]). Every
+     * notification of the app then carries the same picture, and the badge has to
+     * say which part of the app is talking.
+     *
+     * A var only for the debug tools, which show both looks on one device.
+     */
+    @Volatile
+    var launcherIconInShade: Boolean = drawsLauncherIcon(Build.MANUFACTURER)
+        internal set
+
+    /**
+     * The house style: the module's own glyph as the small icon (the same one as in
      * the app's bar), the accent colour, a sub-text naming the module, and the
-     * item's icon as the large icon when it has one. A glance at a stack of
+     * item's icon as a round badge when it has one. A glance at a stack of
      * notifications tells which part of the app is talking, and about what.
+     *
+     * Where the shade shows the launcher icon in place of the small one, an item
+     * without an icon of its own gets the module's glyph as its badge, so that the
+     * notifications still differ. Anywhere else that badge would only repeat the
+     * small icon beside it and take room from the title, so it is left out, and
+     * Android 17 is asked to go on showing the small icon.
+     *
+     * [badge] is false for the header of a group, which leaves the badge to the
+     * notifications under it.
      */
     fun NotificationCompat.Builder.applyBrand(
         context: Context,
         module: AppModule,
         subText: String = module.label,
         item: AppIcon? = null,
+        badge: Boolean = true,
     ): NotificationCompat.Builder = apply {
-        setSmallIcon(NotificationIcons.small(context, "module_${module.key}", module.icon))
+        val moduleKey = "module_${module.key}"
+        val launcherIcon = launcherIconInShade
+        setSmallIcon(NotificationIcons.small(context, moduleKey, module.icon))
         setColor(ACCENT)
         setSubText(subText)
-        if (item != null) {
-            setLargeIcon(NotificationIcons.badge(context, item.key, item.vector, BADGE_BACKGROUND, BADGE_FOREGROUND))
+        val sign = if (!badge) null else item ?: AppIcon(moduleKey, module.icon, module.label).takeIf { launcherIcon }
+        if (sign != null) {
+            setLargeIcon(
+                NotificationIcons.badge(context, sign.key, sign.vector, BADGE_BACKGROUND, BADGE_FOREGROUND)
+            )
         }
+        if (!launcherIcon) extras.putBoolean(EXTRA_PREFER_SMALL_ICON, true)
     }
 
     /**
@@ -215,3 +247,22 @@ object NotificationStyle {
         }
     }
 }
+
+/**
+ * Makers whose own Android puts the app's launcher icon on every notification and
+ * keeps the small icon for the status bar: Samsung's One UI (a setting there, on
+ * unless the user turns it off), Xiaomi's HyperOS, ColorOS and its relatives,
+ * Funtouch OS, EMUI and MagicOS. Redmi, Poco and iQOO report their parent's name.
+ */
+private val LAUNCHER_ICON_MAKERS = setOf(
+    "samsung", "xiaomi", "oppo", "realme", "oneplus", "vivo", "huawei", "honor",
+)
+
+/**
+ * Whether a phone by [maker] draws the launcher icon on a notification in place of
+ * the small icon. Every other maker is taken to ship plain Android in this respect.
+ * A wrong guess costs little either way: a glyph shown twice, or the badge missing
+ * on a notification that has no icon of its own.
+ */
+internal fun drawsLauncherIcon(maker: String?): Boolean =
+    maker?.lowercase(Locale.ROOT) in LAUNCHER_ICON_MAKERS

@@ -115,7 +115,9 @@ class FocusForcePlusApp : Application() {
                         runCatching {
                             notificationHelper.showNotification(
                                 NotificationHelper.NOTIFICATION_ID_INTERRUPTED,
-                                notificationHelper.buildSessionInterruptedNotification(waiting.routineName),
+                                notificationHelper.buildSessionInterruptedNotification(
+                                    waiting.routineName, waiting.iconKey,
+                                ),
                             )
                         }
                     }

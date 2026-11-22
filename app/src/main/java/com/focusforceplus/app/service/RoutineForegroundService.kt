@@ -507,6 +507,7 @@ class RoutineForegroundService : Service() {
                 taskTotalSeconds = taskTotalSeconds,
                 inOvertime = inOvertime,
                 accumulatedOvertimeSeconds = accumulatedOvertimeSeconds,
+                iconKey = routineIconKey,
             )
         )
     }

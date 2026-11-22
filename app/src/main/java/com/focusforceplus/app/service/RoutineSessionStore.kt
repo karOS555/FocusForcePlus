@@ -16,6 +16,8 @@ data class RoutineSessionSnapshot(
     val taskTotalSeconds: Int,
     val inOvertime: Boolean,
     val accumulatedOvertimeSeconds: Int,
+    /** The routine's own icon, for the notice that it was interrupted. */
+    val iconKey: String? = null,
 )
 
 /**
@@ -41,6 +43,7 @@ class RoutineSessionStore @Inject constructor(
             putInt(KEY_TASK_TOTAL, snapshot.taskTotalSeconds)
             putBoolean(KEY_IN_OVERTIME, snapshot.inOvertime)
             putInt(KEY_ACCUM_OVERTIME, snapshot.accumulatedOvertimeSeconds)
+            putString(KEY_ICON, snapshot.iconKey)
         }
     }
 
@@ -55,6 +58,7 @@ class RoutineSessionStore @Inject constructor(
             taskTotalSeconds = prefs.getInt(KEY_TASK_TOTAL, 0),
             inOvertime = prefs.getBoolean(KEY_IN_OVERTIME, false),
             accumulatedOvertimeSeconds = prefs.getInt(KEY_ACCUM_OVERTIME, 0),
+            iconKey = prefs.getString(KEY_ICON, null),
         )
     }
 
@@ -70,5 +74,6 @@ class RoutineSessionStore @Inject constructor(
         const val KEY_TASK_TOTAL = "taskTotalSeconds"
         const val KEY_IN_OVERTIME = "inOvertime"
         const val KEY_ACCUM_OVERTIME = "accumulatedOvertimeSeconds"
+        const val KEY_ICON = "iconKey"
     }
 }

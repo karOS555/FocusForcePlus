@@ -23,6 +23,7 @@ Checklists, the keyboard and short videos get fixed up, and the app is ready for
 
 ### Changed
 - **A checklist takes what you type as it is.** "Keys, wallet, phone" and "10 min stretching" stay one item with all their words. Only a shopping list splits at commas and reads amounts
+- **Notifications can be told apart on Samsung and Xiaomi phones.** These put the app's logo on every notification, so all of them looked alike. One whose todo or routine has no icon of its own now shows the symbol of its part of the app as a badge, and so do the notices from the blocker, sleep mode and the backup
 - The short-video service only hears from the app whose feed is switched on, and from no app while none is
 - **The build is reproducible.** Whoever builds the tagged source gets this exact APK, byte for byte. That lets F-Droid check the APK against the source and ship it with the same signature as the one here, so the two can be swapped without reinstalling
 - The APK no longer carries the list of its dependencies that only Google Play can read, nor the commit it was built from

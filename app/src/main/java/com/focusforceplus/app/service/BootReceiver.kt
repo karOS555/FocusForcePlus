@@ -52,7 +52,7 @@ class BootReceiver : BroadcastReceiver() {
                                 notificationHelper.showNotification(
                                     NotificationHelper.NOTIFICATION_ID_INTERRUPTED,
                                     notificationHelper.buildSessionInterruptedNotification(
-                                        interrupted.routineName
+                                        interrupted.routineName, interrupted.iconKey,
                                     ),
                                 )
                             }

@@ -8,14 +8,13 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.core.app.NotificationCompat
 import com.focusforceplus.app.MainActivity
 import com.focusforceplus.app.data.db.entity.TodoEntity
 import com.focusforceplus.app.service.TodoActionReceiver
 import com.focusforceplus.app.ui.alarm.TodoAlarmActivity
 import com.focusforceplus.app.ui.common.RoutineIcons
+import com.focusforceplus.app.util.NotificationStyle.applyBrand
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import java.time.LocalDate
@@ -242,12 +241,13 @@ class TodoNotifications @Inject constructor(
         return builder.build()
     }
 
-    /** Header that the medium and high todo notifications collapse under. */
+    /**
+     * Header that the medium and high todo notifications collapse under. It has no
+     * badge: that belongs to the todos below it.
+     */
     fun summary(count: Int): Notification =
         NotificationCompat.Builder(context, CHANNEL_OPEN)
-            .setSmallIcon(moduleIcon())
-            .setColor(NotificationStyle.ACCENT)
-            .setSubText(MODULE)
+            .applyBrand(context, AppModule.TODOS, MODULE, badge = false)
             .setContentTitle(if (count == 1) "1 todo needs you" else "$count todos need you")
             .setContentIntent(listIntent())
             .setGroup(GROUP_KEY)
@@ -261,9 +261,7 @@ class TodoNotifications @Inject constructor(
     fun dailyOverview(titles: List<String>): Notification {
         val lines = titles.take(8).joinToString("\n")
         return NotificationCompat.Builder(context, CHANNEL_DIGEST)
-            .setSmallIcon(moduleIcon())
-            .setColor(NotificationStyle.ACCENT)
-            .setSubText(MODULE)
+            .applyBrand(context, AppModule.TODOS, MODULE)
             .setContentTitle(if (titles.size == 1) "1 open todo" else "${titles.size} open todos")
             .setContentText(titles.first())
             .setStyle(NotificationCompat.BigTextStyle().bigText(lines))
@@ -313,26 +311,16 @@ class TodoNotifications @Inject constructor(
     // ── Pieces ────────────────────────────────────────────────────────────────
 
     private fun base(todo: TodoEntity, channel: String, grouped: Boolean = true): NotificationCompat.Builder {
-        val icon = RoutineIcons.find(todo.iconKey)
         val color = when (todo.priority) {
             2 -> COLOR_HIGH
             1 -> COLOR_MEDIUM
             else -> NotificationStyle.ACCENT
         }
         val builder = NotificationCompat.Builder(context, channel)
-            .setSmallIcon(moduleIcon())
+            .applyBrand(context, AppModule.TODOS, MODULE, RoutineIcons.find(todo.iconKey))
             .setColor(color)
-            .setSubText(MODULE)
         if (grouped) {
             builder.setGroup(GROUP_KEY).setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
-        }
-        if (icon != null) {
-            builder.setLargeIcon(
-                NotificationIcons.badge(
-                    context, icon.key, icon.vector,
-                    NotificationStyle.BADGE_BACKGROUND, NotificationStyle.BADGE_FOREGROUND,
-                )
-            )
         }
         if (!todo.description.isNullOrBlank()) {
             builder.setStyle(
@@ -341,8 +329,6 @@ class TodoNotifications @Inject constructor(
         }
         return builder
     }
-
-    private fun moduleIcon() = NotificationIcons.small(context, "module_${AppModule.TODOS.key}", AppModule.TODOS.icon)
 
     private fun openIntent(todoId: Long): PendingIntent =
         PendingIntent.getActivity(
