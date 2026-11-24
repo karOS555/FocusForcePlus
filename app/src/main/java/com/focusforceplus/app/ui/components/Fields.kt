@@ -250,7 +250,7 @@ fun <T> ChoiceDialog(
         containerColor = colors.surfaceVariant,
         title = { Text(title, style = MaterialTheme.typography.titleLarge, color = colors.text) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.verticalScrollWithHint()) {
                 choices.forEach { choice ->
                     val isSelected = choice.value == selected
                     Row(

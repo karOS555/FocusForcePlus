@@ -37,6 +37,9 @@ Routines, todos, lists, an app blocker, focus and sleep in one Android app.<br/>
 - Everything **stays on your phone**. There is no account, no cloud and no ads, and the app doesn't have the internet permission.
 - It is **free and open source**. There is nothing to buy and no subscription.
 
+> [!NOTE]
+> FocusForce+ is in public beta. If something breaks or feels wrong on your phone, please [open an issue](../../issues).
+
 <br/>
 
 <h2 id="why-i-built-it"><sub><img src="docs/readme/icons/user-round.svg" height="24" width="24" alt=""></sub> Why I built it</h2>

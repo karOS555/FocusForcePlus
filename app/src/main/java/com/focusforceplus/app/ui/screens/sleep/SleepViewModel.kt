@@ -143,7 +143,7 @@ class SleepViewModel @Inject constructor(
                 }
             }
             // Blocking during sleep is bounded like every block window (12h cap).
-            if (desired.enabled && desired.blockedGroups.isNotEmpty()) {
+            if (desired.enabled && desired.blocksApps) {
                 validateBlockWindow(desired.bedtimeMinutes, desired.wakeMinutes)?.let {
                     _uiState.update { st -> st.copy(message = it) }
                     return@launch
@@ -170,7 +170,8 @@ class SleepViewModel @Inject constructor(
     private fun weakensSleep(old: SleepSchedule, new: SleepSchedule): Boolean {
         if (!new.enabled) return true
         if (!new.invincibleMode) return true
-        if (!new.blockedGroups.containsAll(old.blockedGroups)) return true
+        if (old.blockAllApps && !new.blockAllApps) return true
+        if (!new.blockAllApps && !new.blockedGroups.containsAll(old.blockedGroups)) return true
         val oldLen = blockWindowLengthMinutes(old.bedtimeMinutes, old.wakeMinutes)
         val newLen = blockWindowLengthMinutes(new.bedtimeMinutes, new.wakeMinutes)
         return newLen < oldLen

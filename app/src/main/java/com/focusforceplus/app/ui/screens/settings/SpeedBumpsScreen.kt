@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.focusforceplus.app.ui.components.scrollHint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,10 +47,13 @@ fun SpeedBumpsScreen(
     val groups = GuardSlot.entries.groupBy { it.group }
 
     PageScaffold(title = "Speed bumps", onBack = onNavigateBack) { padding ->
+        val listState = rememberLazyListState()
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .scrollHint(listState),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {

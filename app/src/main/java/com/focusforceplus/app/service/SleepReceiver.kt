@@ -84,7 +84,7 @@ class SleepReceiver : BroadcastReceiver() {
             SleepNotificationHelper.NOTIFICATION_ID_SLEEP_ACTIVE,
             notifHelper.buildSleepActiveNotification(
                 wakeText = formatMinutes(schedule.wakeMinutes),
-                blocking = schedule.blockedGroups.isNotEmpty(),
+                blocking = schedule.blocksApps,
                 elapsedMinutes = 0,
                 // Bedtime to wake-up, wrapping past midnight.
                 totalMinutes = (schedule.wakeMinutes - schedule.bedtimeMinutes + 24 * 60) % (24 * 60),

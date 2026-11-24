@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -62,7 +63,7 @@ fun IntegrationsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScrollWithHint()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {

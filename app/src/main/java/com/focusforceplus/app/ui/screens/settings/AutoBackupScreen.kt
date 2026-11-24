@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -136,7 +137,7 @@ fun AutoBackupScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScrollWithHint()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {

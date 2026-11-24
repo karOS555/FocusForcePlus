@@ -301,6 +301,10 @@ fun TextAction(
             fontSize = androidx.compose.ui.unit.TextUnit(13.5f, androidx.compose.ui.unit.TextUnitType.Sp),
         ),
         color = if (enabled) color else FfTheme.colors.textFaint,
+        // One line, always: squeezed into a narrow row it broke after every letter.
+        maxLines = 1,
+        softWrap = false,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)

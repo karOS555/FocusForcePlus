@@ -75,14 +75,24 @@ import com.focusforceplus.app.ui.navigation.NavEditor
 import com.focusforceplus.app.ui.navigation.NavViewModel
 import com.focusforceplus.app.ui.theme.FfTheme
 import com.focusforceplus.app.util.PermissionHelper
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Link
+import com.focusforceplus.app.ui.theme.ThemePresets
+import com.focusforceplus.app.ui.navigation.SettingsRoutes
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import kotlinx.coroutines.launch
 
-private const val PAGE_COUNT = 7
+private const val PAGE_COUNT = 9
 
 /**
- * First launch: what the app is and what stays private, why each permission is
- * asked for and a place to grant them, how updates arrive, a word of thanks, the
- * navigation bar arranged to taste, and an optional first routine.
+ * First launch, in the order someone new needs it: what the app is and what stays
+ * private, why each permission is asked for and a place to grant them, then making
+ * it one's own (the look, the bar), then what is there for later (the optional
+ * links to other apps, how updates arrive), a word of thanks, and an optional
+ * first routine.
  *
  * Accessibility and Usage Access deliberately route through the prominent
  * disclosure screen instead of straight to system settings (Golden Rule #10).
@@ -91,6 +101,8 @@ private const val PAGE_COUNT = 7
 fun OnboardingScreen(
     onFinish: (createFirstRoutine: Boolean) -> Unit,
     onOpenDisclosure: (String) -> Unit,
+    /** Opens one of the settings pages for an optional extra; Back returns here. */
+    onOpenPage: (String) -> Unit = {},
     viewModel: OnboardingViewModel = hiltViewModel(),
     navViewModel: NavViewModel = hiltViewModel(),
 ) {
@@ -124,9 +136,11 @@ fun OnboardingScreen(
                 0 -> WelcomePage(onContinue = ::next)
                 1 -> PermissionsExplainedPage(onContinue = ::next)
                 2 -> PermissionChecklistPage(viewModel, onOpenDisclosure, onContinue = ::next)
-                3 -> UpdatesPage(onContinue = ::next)
-                4 -> ThanksPage(onContinue = ::next)
-                5 -> NavBarPage(navViewModel, onContinue = ::next)
+                3 -> LookPage(onContinue = ::next)
+                4 -> NavBarPage(navViewModel, onContinue = ::next)
+                5 -> ExtrasPage(onOpenPage = onOpenPage, onContinue = ::next)
+                6 -> UpdatesPage(onContinue = ::next)
+                7 -> ThanksPage(onContinue = ::next)
                 else -> FinishPage(
                     navViewModel = navViewModel,
                     onCreateRoutine = { viewModel.completeOnboarding { onFinish(true) } },
@@ -181,7 +195,7 @@ private fun OnboardingPage(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScrollWithHint()
                 .padding(horizontal = 24.dp)
                 .padding(top = 40.dp, bottom = 20.dp),
             horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
@@ -395,6 +409,156 @@ private fun GrantRow(title: String, granted: Boolean, onGrant: () -> Unit) {
             }
         },
     )
+}
+
+// ── The look ──────────────────────────────────────────────────────────────────
+
+@Composable
+private fun LookPage(
+    onContinue: () -> Unit,
+    appearance: com.focusforceplus.app.ui.screens.settings.AppearanceViewModel = hiltViewModel(),
+) {
+    val colors = FfTheme.colors
+    val current by appearance.spec.collectAsState()
+    OnboardingPage(
+        title = "Pick a look",
+        body = "Tap one to try it; it changes right away. Not final: Settings > Theme " +
+            "has these again, and lets you mix your own colours.",
+        primaryLabel = "Continue",
+        onPrimary = onContinue,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ThemePresets.ALL.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { theme ->
+                        val selected = current.name == theme.name
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(theme.background)
+                                .border(
+                                    width = if (selected) 2.dp else 1.dp,
+                                    color = if (selected) colors.accent else colors.outline,
+                                    shape = RoundedCornerShape(16.dp),
+                                )
+                                .clickable(role = Role.RadioButton) { appearance.use(theme) }
+                                .padding(14.dp),
+                        ) {
+                            // A small picture of the theme itself: its card, its
+                            // button colour and its text, on its own background.
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(theme.surface)
+                                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(Modifier.size(16.dp).clip(CircleShape).background(theme.primary))
+                                Spacer(Modifier.width(8.dp))
+                                Box(
+                                    Modifier
+                                        .height(6.dp)
+                                        .weight(1f)
+                                        .clip(CircleShape)
+                                        .background(theme.text.copy(alpha = 0.55f)),
+                                )
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    theme.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = theme.text,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (selected) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = "Selected",
+                                        tint = theme.accent,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Optional extras ───────────────────────────────────────────────────────────
+
+/**
+ * The three links to other apps. Nobody needs them to use the app, so nothing is
+ * asked for here: each card says in a line what it is for and leads to its own
+ * page, which explains it before any permission comes up.
+ */
+@Composable
+private fun ExtrasPage(onOpenPage: (String) -> Unit, onContinue: () -> Unit) {
+    val colors = FfTheme.colors
+    OnboardingPage(
+        title = "Extras, if you want them",
+        body = "You can skip this page. FocusForce+ works fully without these three. They " +
+            "connect it to other apps and are there for when you miss them.",
+        primaryLabel = "Continue",
+        onPrimary = onContinue,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ExtraCard(
+                icon = Icons.Filled.CalendarMonth,
+                title = "Your calendar",
+                body = "Today's events on Home, and todos with a date in a calendar you pick.",
+                action = "Set up",
+                onAction = { onOpenPage(SettingsRoutes.CALENDAR) },
+            )
+            ExtraCard(
+                icon = Icons.Filled.Sync,
+                title = "A tasks app",
+                body = "Keeps your todos in step with one list in OpenTasks or Tasks.org, for " +
+                    "people who sync their tasks with a server of their own.",
+                action = "Set up",
+                onAction = { onOpenPage(SettingsRoutes.TASK_SYNC) },
+            )
+            ExtraCard(
+                icon = Icons.Filled.Link,
+                title = "Start links",
+                body = "Let automation apps, shortcuts or NFC tags start a focus session or " +
+                    "add a todo. Off until you switch it on.",
+                action = "Have a look",
+                onAction = { onOpenPage(SettingsRoutes.INTEGRATIONS) },
+            )
+            Text(
+                "Later you find all three under Settings > Connections.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExtraCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    body: String,
+    action: String,
+    onAction: () -> Unit,
+) {
+    FfCard {
+        ListRow(
+            title = title,
+            subtitle = body,
+            subtitleMaxLines = 4,
+            onClick = onAction,
+            leading = { IconCircle(icon = icon, size = 34.dp) },
+            trailing = { TextAction(action, onClick = onAction) },
+        )
+    }
 }
 
 // ── Updates ───────────────────────────────────────────────────────────────────

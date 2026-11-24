@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.share
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -197,7 +198,7 @@ private fun ShareSheet(
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                 .navigationBarsPadding()
                 .imePadding()
-                .verticalScroll(rememberScrollState())
+                .verticalScrollWithHint()
                 .padding(horizontal = 16.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

@@ -113,6 +113,7 @@ fun NavGraph(
                 onOpenDisclosure = { type ->
                     navController.navigate(BlockerRoutes.disclosure(type))
                 },
+                onOpenPage = { route -> navController.navigate(route) },
             )
         }
 

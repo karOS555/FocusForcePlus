@@ -72,7 +72,7 @@ data class LockState(
             (focus.blockedGroups == null || rule.groupName in focus.blockedGroups)
         ) return "the focus session that is running"
 
-        if (sleepRunning && sleep.invincibleMode && rule.groupName != null && rule.groupName in sleep.blockedGroups) {
+        if (sleepRunning && sleep.invincibleMode && sleep.blocks(rule.groupName)) {
             return "sleep mode"
         }
         return null

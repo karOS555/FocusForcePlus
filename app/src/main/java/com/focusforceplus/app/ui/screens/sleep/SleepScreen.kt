@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.sleep
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import com.focusforceplus.app.ui.theme.ffBar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -85,7 +86,7 @@ fun SleepScreen(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScrollWithHint()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(22.dp),
             ) {
@@ -194,17 +195,49 @@ fun SleepScreen(
                 FormSection(
                     title = "During the night",
                     hint = when {
-                        s.groupNames.isEmpty() -> "Blocks you create in the blocker can be switched on for the night here."
-                        draft.blockedGroups.isNotEmpty() && !s.blockerMasterEnabled ->
+                        draft.blocksApps && !s.blockerMasterEnabled ->
                             "The blocker is paused, so these blocks will not apply until it is on."
                         else -> null
                     },
                 ) {
                     FfCard {
-                        if (s.groupNames.isNotEmpty()) {
-                            Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-                                Text("Block", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
-                                Spacer(Modifier.height(6.dp))
+                        // Always there, like in a routine: all apps that have a block,
+                        // or only some of the blocks. Without it the choice only
+                        // showed once a block with a name existed.
+                        SwitchRow(
+                            title = "Block distracting apps",
+                            subtitle = when {
+                                !draft.blocksApps -> "Apps stay open at night."
+                                draft.blockAllApps -> "Every app with a block in the blocker is closed until wake-up."
+                                else -> "The blocks you pick are closed until wake-up."
+                            },
+                            checked = draft.blocksApps,
+                            onCheckedChange = { on ->
+                                viewModel.updateDraft { it.copy(blockAllApps = on, blockedGroupsCsv = null) }
+                            },
+                        )
+                        if (draft.blocksApps && s.groupNames.isNotEmpty()) {
+                            Column(Modifier.padding(horizontal = 14.dp).padding(bottom = 12.dp)) {
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FfChip(
+                                        label = "All blocked apps",
+                                        selected = draft.blockAllApps,
+                                        onClick = { viewModel.updateDraft { it.copy(blockAllApps = true, blockedGroupsCsv = null) } },
+                                    )
+                                    FfChip(
+                                        label = "Only some blocks",
+                                        selected = !draft.blockAllApps,
+                                        onClick = {
+                                            viewModel.updateDraft {
+                                                it.copy(blockAllApps = false, blockedGroupsCsv = s.groupNames.joinToString("|"))
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        if (draft.blocksApps && !draft.blockAllApps && s.groupNames.isNotEmpty()) {
+                            Column(Modifier.padding(horizontal = 14.dp).padding(bottom = 12.dp)) {
                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     s.groupNames.forEach { name ->
                                         val on = name in draft.blockedGroups
@@ -213,16 +246,17 @@ fun SleepScreen(
                                             selected = on,
                                             onClick = {
                                                 val next = if (on) draft.blockedGroups - name else draft.blockedGroups + name
-                                                viewModel.updateDraft {
-                                                    it.copy(blockedGroupsCsv = next.joinToString("|").ifBlank { null })
+                                                // The last one cannot go: that is what the switch above is for.
+                                                if (next.isNotEmpty()) {
+                                                    viewModel.updateDraft { it.copy(blockedGroupsCsv = next.joinToString("|")) }
                                                 }
                                             },
                                         )
                                     }
                                 }
                             }
-                            RowDivider()
                         }
+                        RowDivider()
                         SwitchRow(
                             title = "Do Not Disturb",
                             subtitle = if (s.dndAccessGranted) "Silences notifications until wake-up." else

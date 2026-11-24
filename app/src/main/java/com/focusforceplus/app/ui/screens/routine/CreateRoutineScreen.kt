@@ -651,12 +651,15 @@ private fun StepCard(
                     value = task.durationMinutes,
                     onChange = { onUpdate(task.copy(durationMinutes = it)) },
                 )
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.weight(0.01f))
                 if (lists.isNotEmpty() || task.listId != null) {
                     TextAction(
                         lists.firstOrNull { it.id == task.listId }?.name ?: "Add a list",
                         onClick = { pickList = true },
                         color = if (task.listId != null) colors.accent else colors.textSecondary,
+                        // A long list name gives way; the note button keeps its room.
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                 }
                 TextAction(

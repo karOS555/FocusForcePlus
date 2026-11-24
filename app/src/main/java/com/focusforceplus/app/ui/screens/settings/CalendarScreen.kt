@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -150,7 +151,7 @@ fun CalendarScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScrollWithHint()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
@@ -280,7 +281,7 @@ private fun CalendarPickerDialog(
         containerColor = colors.surfaceVariant,
         title = { Text("Calendars", style = MaterialTheme.typography.titleLarge, color = colors.text) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.verticalScrollWithHint()) {
                 calendars.forEach { cal ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(

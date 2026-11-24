@@ -32,6 +32,8 @@ data class SleepSchedule(
     val dndEnabled: Boolean = true,
     /** Blocker groups blocked during the sleep window; null/empty = no blocking. */
     val blockedGroupsCsv: String? = null,
+    /** Every app that has a block is closed for the night, whatever its group. */
+    val blockAllApps: Boolean = false,
     /** Locks the schedule against weakening while the sleep window is running. */
     val invincibleMode: Boolean = false,
     /** Routine fired at bedtime (full alarm flow); 0 = none. */
@@ -45,6 +47,12 @@ data class SleepSchedule(
 ) {
     val blockedGroups: Set<String>
         get() = blockedGroupsCsv?.split('|')?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+
+    /** The night closes some apps at all. */
+    val blocksApps: Boolean get() = blockAllApps || blockedGroups.isNotEmpty()
+
+    /** Whether the night closes an app with a block in [groupName] (null = a block of its own). */
+    fun blocks(groupName: String?): Boolean = blockAllApps || (groupName != null && groupName in blockedGroups)
 }
 
 @Singleton
@@ -59,6 +67,7 @@ class SleepRepository @Inject constructor(
         private val WIND_DOWN_KEY        = intPreferencesKey("sleep_wind_down_minutes")
         private val DND_KEY              = booleanPreferencesKey("sleep_dnd_enabled")
         private val BLOCKED_GROUPS_KEY   = stringPreferencesKey("sleep_blocked_groups")
+        private val BLOCK_ALL_KEY        = booleanPreferencesKey("sleep_block_all_apps")
         private val INVINCIBLE_KEY       = booleanPreferencesKey("sleep_invincible")
         private val BEDTIME_ROUTINE_KEY  = longPreferencesKey("sleep_bedtime_routine_id")
         private val MORNING_ROUTINE_KEY  = longPreferencesKey("sleep_morning_routine_id")
@@ -80,6 +89,7 @@ class SleepRepository @Inject constructor(
                 windDownMinutes = prefs[WIND_DOWN_KEY] ?: 30,
                 dndEnabled = prefs[DND_KEY] ?: true,
                 blockedGroupsCsv = prefs[BLOCKED_GROUPS_KEY]?.takeIf { it.isNotBlank() },
+                blockAllApps = prefs[BLOCK_ALL_KEY] ?: false,
                 invincibleMode = prefs[INVINCIBLE_KEY] ?: false,
                 bedtimeRoutineId = prefs[BEDTIME_ROUTINE_KEY] ?: 0L,
                 morningRoutineId = prefs[MORNING_ROUTINE_KEY] ?: 0L,
@@ -97,6 +107,7 @@ class SleepRepository @Inject constructor(
             prefs[WIND_DOWN_KEY] = schedule.windDownMinutes
             prefs[DND_KEY] = schedule.dndEnabled
             prefs[BLOCKED_GROUPS_KEY] = schedule.blockedGroupsCsv ?: ""
+            prefs[BLOCK_ALL_KEY] = schedule.blockAllApps
             prefs[INVINCIBLE_KEY] = schedule.invincibleMode
             prefs[BEDTIME_ROUTINE_KEY] = schedule.bedtimeRoutineId
             prefs[MORNING_ROUTINE_KEY] = schedule.morningRoutineId

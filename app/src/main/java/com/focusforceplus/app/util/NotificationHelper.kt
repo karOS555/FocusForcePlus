@@ -119,8 +119,9 @@ class NotificationHelper @Inject constructor(
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
-            .setContentTitle("Time for your routine")
-            .setContentText(routineName)
+            // The name first: on a lock screen the title is the line that gets read.
+            .setContentTitle(routineName)
+            .setContentText("Time to start your routine")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(tapIntent, true)
@@ -153,8 +154,8 @@ class NotificationHelper @Inject constructor(
 
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
-            .setContentTitle("\"$routineName\" starts at $timeStr")
-            .setContentText(startsIn(startHour, startMinute))
+            .setContentTitle(routineName)
+            .setContentText("Starts at $timeStr \u00b7 ${startsIn(startHour, startMinute)}")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(tapIntent)
@@ -188,8 +189,8 @@ class NotificationHelper @Inject constructor(
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
-            .setContentTitle("\"$routineName\" snoozed")
-            .setContentText("Starts at $timeStr \u00b7 $subText")
+            .setContentTitle(routineName)
+            .setContentText("Snoozed until $timeStr \u00b7 $subText")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(tapIntent)
@@ -345,13 +346,13 @@ class NotificationHelper @Inject constructor(
         val addTimeIntent = sessionActionIntent(routineId, RoutineSessionReceiver.ACTION_ADD_TIME,
                                                 (RC_TASK_END_ADD + routineId).toInt())
         val body = if (overtimeMinutes > 0) {
-            "\"$taskName\" is $overtimeMinutes min over time. Finish it or add time."
+            "$overtimeMinutes min over time \u00b7 $routineName. Finish it or add time."
         } else {
-            "Time is up for \"$taskName\"."
+            "Time is up \u00b7 $routineName"
         }
         return NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
-            .setContentTitle("Time is up: $routineName")
+            .setContentTitle(taskName)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -370,8 +371,8 @@ class NotificationHelper @Inject constructor(
     fun buildSessionInterruptedNotification(routineName: String, iconKey: String? = null): Notification =
         NotificationCompat.Builder(context, CHANNEL_ROUTINE)
             .applyBrand(context, AppModule.ROUTINES, MODULE, RoutineIcons.find(iconKey))
-            .setContentTitle("Routine interrupted")
-            .setContentText("\"$routineName\" was interrupted by a device restart.")
+            .setContentTitle(routineName)
+            .setContentText("Interrupted by a restart of the phone")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setContentIntent(mainActivityIntent(0L, RC_INTERRUPTED_TAP))
@@ -386,9 +387,9 @@ class NotificationHelper @Inject constructor(
         val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
         val left = ((hour * 60 + minute - nowMinutes) + 24 * 60) % (24 * 60)
         return when {
-            left <= 1 -> "Your routine starts now."
-            left < 60 -> "Your routine starts in $left minutes."
-            else -> "Your routine starts at %02d:%02d.".format(hour, minute)
+            left <= 1 -> "now"
+            left < 60 -> "in $left minutes"
+            else -> "not yet"
         }
     }
 

@@ -228,10 +228,10 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             val groupWindowActive = group != null &&
                 isGroupScheduleActive(group, minutesOfDay(), todayCode())
 
-            // Sleep mode blocks the selected groups during the sleep window.
+            // Sleep mode blocks the selected groups, or every app with a block,
+            // during the sleep window.
             val sleepApplies = snap.sleepModuleOn && snap.sleep.enabled &&
-                ruleGroupName != null &&
-                ruleGroupName in snap.sleep.blockedGroups &&
+                snap.sleep.blocks(ruleGroupName) &&
                 isSleepWindowActive(
                     snap.sleep.bedtimeMinutes, snap.sleep.wakeMinutes,
                     snap.sleep.activeDaysCsv, minutesOfDay(), todayCode(),

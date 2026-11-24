@@ -262,8 +262,15 @@ class TodoNotifications @Inject constructor(
         val lines = titles.take(8).joinToString("\n")
         return NotificationCompat.Builder(context, CHANNEL_DIGEST)
             .applyBrand(context, AppModule.TODOS, MODULE)
-            .setContentTitle(if (titles.size == 1) "1 open todo" else "${titles.size} open todos")
-            .setContentText(titles.first())
+            // What is open goes first; how many there are is the smaller line.
+            .setContentTitle(
+                when (titles.size) {
+                    1 -> titles.first()
+                    2 -> "${titles[0]} and ${titles[1]}"
+                    else -> "${titles.first()} and ${titles.size - 1} more"
+                }
+            )
+            .setContentText(if (titles.size == 1) "Open todo" else "${titles.size} open todos")
             .setStyle(NotificationCompat.BigTextStyle().bigText(lines))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

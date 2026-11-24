@@ -126,10 +126,10 @@ class FocusNotificationHelper @Inject constructor(
     fun buildCompletionNotification(sessionName: String, focusedMinutes: Int, icon: AppIcon? = null): Notification =
         NotificationCompat.Builder(context, CHANNEL_FOCUS)
             .applyBrand(context, AppModule.FOCUS, MODULE, icon)
-            .setContentTitle("Focus session complete")
+            .setContentTitle(sessionName)
             .setContentText(
-                if (focusedMinutes == 1) "1 minute of \"$sessionName\" is done."
-                else "$focusedMinutes minutes of \"$sessionName\" are done."
+                if (focusedMinutes == 1) "Focus session complete \u00b7 1 minute"
+                else "Focus session complete \u00b7 $focusedMinutes minutes"
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -149,8 +149,8 @@ class FocusNotificationHelper @Inject constructor(
         )
         return NotificationCompat.Builder(context, CHANNEL_FOCUS)
             .applyBrand(context, AppModule.FOCUS, MODULE, icon)
-            .setContentTitle("Time to focus")
-            .setContentText("\"$sessionName\" is scheduled for now.")
+            .setContentTitle(sessionName)
+            .setContentText("Time to focus \u00b7 scheduled for now")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(mainActivityIntent(RC_SCHEDULED_TAP))

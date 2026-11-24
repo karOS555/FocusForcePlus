@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.trash
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.focusforceplus.app.ui.components.scrollHint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -69,10 +71,13 @@ fun TrashScreen(
             return@PageScaffold
         }
         val now = System.currentTimeMillis()
+        val listState = rememberLazyListState()
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .scrollHint(listState),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {

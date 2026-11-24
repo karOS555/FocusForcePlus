@@ -331,6 +331,7 @@ fun CreateTodoScreen(
                 onToggle = viewModel::toggleChecklistItem,
                 onRemove = viewModel::removeChecklistItem,
                 onAdd = viewModel::addChecklistItem,
+                onDraft = viewModel::updateChecklistDraft,
                 onEdit = viewModel::editChecklistItem,
                 onMove = viewModel::moveChecklistItem,
             )
@@ -453,7 +454,8 @@ private fun PriorityRow(
     ListRow(
         title = title,
         subtitle = detail,
-        subtitleMaxLines = 3,
+        // All of it: this is where the difference between the three is explained.
+        subtitleMaxLines = 6,
         onClick = { onSelect(priority) },
         leading = {
             CompletionRing(
@@ -481,6 +483,8 @@ private fun ChecklistEditor(
     onToggle: (Int) -> Unit,
     onRemove: (Int) -> Unit,
     onAdd: (String) -> Unit,
+    /** What stands in the add field and has not been added yet. */
+    onDraft: (String) -> Unit,
     onEdit: (Int, String) -> Unit,
     onMove: (from: Int, to: Int) -> Unit,
 ) {
@@ -493,6 +497,7 @@ private fun ChecklistEditor(
         // A pasted note with one thing per line becomes one item per line.
         draft.lines().map { it.trim() }.filter { it.isNotEmpty() }.forEach(onAdd)
         draft = ""
+        onDraft("")
         // The new row pushes the field down, with the keyboard open usually out of
         // sight: follow it, so the next item can be typed straight away.
         scope.launch {
@@ -574,7 +579,10 @@ private fun ChecklistEditor(
         ) {
             FfTextField(
                 value = draft,
-                onValueChange = { draft = it },
+                onValueChange = {
+                    draft = it
+                    onDraft(it)
+                },
                 placeholder = "Add an item",
                 // Several lines, so a long item stays readable while it is typed.
                 singleLine = false,

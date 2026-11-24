@@ -1,5 +1,7 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.focusforceplus.app.ui.components.scrollHint
 import com.focusforceplus.app.ui.theme.AeroPhoto
 import android.content.Context
 import android.content.Intent
@@ -155,13 +157,38 @@ fun SettingsScreen(
     }
 
     PageScaffold(title = "Settings", onBack = onNavigateBack, snackbarHostState = snackbar) { padding ->
+        val listState = rememberLazyListState()
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .scrollHint(listState),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
+            // ── Look ──────────────────────────────────────────────────────────
+            item {
+                val theme by com.focusforceplus.app.ui.theme.ThemeStore.spec.collectAsState()
+                FormSection(title = "Look and layout") {
+                    FfCard {
+                        LinkRow(title = "Theme", subtitle = theme.name, onClick = onOpenAppearance)
+                        RowDivider()
+                        LinkRow(
+                            title = "Navigation bar",
+                            subtitle = "Order, what is in the bar, modules that are off",
+                            onClick = { showNavEdit = true },
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Widgets",
+                            subtitle = "Today, quick focus and a list on your home screen",
+                            onClick = { pickingWidget = true },
+                        )
+                    }
+                }
+            }
+
             // ── Alarms ────────────────────────────────────────────────────────
             item {
                 FormSection(title = "Alarms") {
@@ -184,30 +211,6 @@ fun SettingsScreen(
                             title = "A high-priority todo rings for",
                             value = "${state.todoRingSeconds} s",
                             onClick = { dialog = SettingsDialog.RING },
-                        )
-                    }
-                }
-            }
-
-            // ── Speed bumps ───────────────────────────────────────────────────
-            item {
-                FormSection(
-                    title = "Speed bumps",
-                    hint = "Small steps in front of the quick taps, like marking something done " +
-                        "or snoozing, so they stay a decision.",
-                ) {
-                    FfCard {
-                        SwitchRow(
-                            title = "Use speed bumps",
-                            subtitle = "Off means none anywhere, whatever a todo or routine says.",
-                            checked = state.guards.enabled,
-                            onCheckedChange = viewModel::setGuardsEnabled,
-                        )
-                        RowDivider()
-                        LinkRow(
-                            title = "Defaults",
-                            subtitle = "For each priority, routines, focus sessions and the blocker",
-                            onClick = onOpenSpeedBumps,
                         )
                     }
                 }
@@ -289,32 +292,34 @@ fun SettingsScreen(
                 }
             }
 
-            // ── Look ──────────────────────────────────────────────────────────
+            // ── Speed bumps ───────────────────────────────────────────────────
             item {
-                val theme by com.focusforceplus.app.ui.theme.ThemeStore.spec.collectAsState()
-                FormSection(title = "Look") {
+                FormSection(
+                    title = "Speed bumps",
+                    hint = "Small steps in front of the quick taps, like marking something done " +
+                        "or snoozing, so they stay a decision.",
+                ) {
                     FfCard {
-                        LinkRow(title = "Theme", subtitle = theme.name, onClick = onOpenAppearance)
+                        SwitchRow(
+                            title = "Use speed bumps",
+                            subtitle = "Off means none anywhere, whatever a todo or routine says.",
+                            checked = state.guards.enabled,
+                            onCheckedChange = viewModel::setGuardsEnabled,
+                        )
                         RowDivider()
                         LinkRow(
-                            title = "Widgets",
-                            subtitle = "Today, quick focus and a list on your home screen",
-                            onClick = { pickingWidget = true },
+                            title = "Defaults",
+                            subtitle = "For each priority, routines, focus sessions and the blocker",
+                            onClick = onOpenSpeedBumps,
                         )
                     }
                 }
             }
 
-            // ── Navigation and modules ────────────────────────────────────────
+            // ── Blocker and sleep ─────────────────────────────────────────────
             item {
-                FormSection(title = "Navigation and modules") {
+                FormSection(title = "Blocker and sleep") {
                     FfCard {
-                        LinkRow(
-                            title = "Navigation bar",
-                            subtitle = "Order, what is in the bar, modules that are off",
-                            onClick = { showNavEdit = true },
-                        )
-                        RowDivider()
                         LinkRow(
                             title = "App blocker",
                             subtitle = "Master switch, blocking during routines and focus",
@@ -359,6 +364,85 @@ fun SettingsScreen(
                                 "${state.tpWindowDurationMinutes} min",
                             enabled = !state.tpEnabled || state.tpWindowOpenNow,
                             onClick = { dialog = SettingsDialog.TP_WINDOW },
+                        )
+                    }
+                }
+            }
+
+            // ── Connections ───────────────────────────────────────────────────
+            item {
+                FormSection(
+                    title = "Connections",
+                    hint = "Optional. They link FocusForce+ to other apps on this phone; the app itself stays offline.",
+                ) {
+                    FfCard {
+                        LinkRow(
+                            title = "Calendar",
+                            subtitle = "Today's events on Home, todos in a calendar, blocking during events",
+                            onClick = onOpenCalendar,
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Tasks app",
+                            subtitle = "Sync todos with OpenTasks or Tasks.org, and with DAVx5 beyond",
+                            onClick = onOpenTaskSync,
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Other apps",
+                            subtitle = if (state.externalStartsAllowed) "Sharing, start links are on" else "Sharing, start links are off",
+                            onClick = onOpenIntegrations,
+                        )
+                    }
+                }
+            }
+
+            // ── Data ──────────────────────────────────────────────────────────
+            item {
+                FormSection(title = "Backup and data") {
+                    FfCard {
+                        LinkRow(
+                            title = "Export a backup",
+                            subtitle = "Everything in one file, saved where you choose",
+                            onClick = { exportLauncher.launch(BackupManager.SUGGESTED_FILE_NAME) },
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Automatic backup",
+                            subtitle = if (state.autoBackupOn) "Every night into a folder you chose" else "Off",
+                            onClick = onOpenAutoBackup,
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Import a backup",
+                            subtitle = "Replaces everything that is in the app now; what is here now is kept to undo it",
+                            onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
+                        )
+                        if (state.canUndoImport) {
+                            RowDivider()
+                            LinkRow(
+                                title = "Undo the last import",
+                                subtitle = "Puts back what was in the app before it",
+                                onClick = { confirmUndoImport = true },
+                            )
+                        }
+                        RowDivider()
+                        LinkRow(
+                            title = "Trash",
+                            subtitle = "Deleted todos, routines, focus sessions and lists",
+                            onClick = onOpenTrash,
+                        )
+                        RowDivider()
+                        ValueRow(
+                            title = "Keep things in the trash for",
+                            value = "${state.trashRetentionDays} days",
+                            onClick = { dialog = SettingsDialog.RETENTION },
+                        )
+                        RowDivider()
+                        LinkRow(
+                            title = "Reset today's usage counters",
+                            subtitle = "Blocker minutes and exceptions start from zero",
+                            onClick = { confirmResetUsage = true },
                         )
                     }
                 }
@@ -422,75 +506,6 @@ fun SettingsScreen(
                                         "sessions show their full notification, on the lock screen too.",
                             ) { PermissionHelper.openLiveUpdateSettings(context) }
                         }
-                    }
-                }
-            }
-
-            // ── Data ──────────────────────────────────────────────────────────
-            item {
-                FormSection(title = "Data") {
-                    FfCard {
-                        LinkRow(
-                            title = "Trash",
-                            subtitle = "Deleted todos, routines, focus sessions and lists",
-                            onClick = onOpenTrash,
-                        )
-                        RowDivider()
-                        ValueRow(
-                            title = "Keep things in the trash for",
-                            value = "${state.trashRetentionDays} days",
-                            onClick = { dialog = SettingsDialog.RETENTION },
-                        )
-                        RowDivider()
-                        LinkRow(
-                            title = "Export a backup",
-                            subtitle = "Everything in one file, saved where you choose",
-                            onClick = { exportLauncher.launch(BackupManager.SUGGESTED_FILE_NAME) },
-                        )
-                        RowDivider()
-                        LinkRow(
-                            title = "Automatic backup",
-                            subtitle = if (state.autoBackupOn) "Every night into a folder you chose" else "Off",
-                            onClick = onOpenAutoBackup,
-                        )
-                        RowDivider()
-                        LinkRow(
-                            title = "Import a backup",
-                            subtitle = "Replaces everything that is in the app now; what is here now is kept to undo it",
-                            onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
-                        )
-                        if (state.canUndoImport) {
-                            RowDivider()
-                            LinkRow(
-                                title = "Undo the last import",
-                                subtitle = "Puts back what was in the app before it",
-                                onClick = { confirmUndoImport = true },
-                            )
-                        }
-                        RowDivider()
-                        LinkRow(
-                            title = "Calendar",
-                            subtitle = "Today's events on Home, todos in a calendar, blocking during events",
-                            onClick = onOpenCalendar,
-                        )
-                        RowDivider()
-                        LinkRow(
-                            title = "Tasks app",
-                            subtitle = "Sync todos with OpenTasks or Tasks.org, and with DAVx5 beyond",
-                            onClick = onOpenTaskSync,
-                        )
-                        RowDivider()
-                        LinkRow(
-                            title = "Other apps",
-                            subtitle = if (state.externalStartsAllowed) "Sharing, start links are on" else "Sharing, start links are off",
-                            onClick = onOpenIntegrations,
-                        )
-                        RowDivider()
-                        LinkRow(
-                            title = "Reset today's usage counters",
-                            subtitle = "Blocker minutes and exceptions start from zero",
-                            onClick = { confirmResetUsage = true },
-                        )
                     }
                 }
             }

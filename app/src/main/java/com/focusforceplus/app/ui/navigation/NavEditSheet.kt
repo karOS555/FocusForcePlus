@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.navigation
 
+import com.focusforceplus.app.ui.components.scrollHint
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -101,6 +102,7 @@ fun NavEditSheet(
             Box(
                 modifier = Modifier
                     .weight(1f, fill = false)
+                    .scrollHint(scroll)
                     .verticalScroll(scroll, enabled = scroll.canScrollForward || scroll.canScrollBackward),
             ) {
                 NavEditor(

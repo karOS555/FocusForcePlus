@@ -2,18 +2,26 @@
 
 All notable changes to FocusForce+ are recorded here. Dates are ISO (YYYY-MM-DD).
 
-## [0.9.5-beta] - 2026-11-22
+## [0.9.5-beta] - 2026-11-24
 
-Checklists, the keyboard and short videos get fixed up, and the app is ready for F-Droid.
+Checklists, the keyboard and short videos get fixed up, the setup guide grows, and the app is ready for F-Droid.
 
 ### Added
 - **A daily time for Reels and Shorts.** Instead of closing at once, they can stay open for 5 to 120 minutes a day, counted for both together or for each on its own. Allowing more goes through the same speed bump as pausing a block
 - **TikTok and other short-video apps show up on their own.** Apps that are nothing but short videos are listed under "Short videos" once they are installed. There is no rest of the app to keep, so they are blocked as a whole, and the row says so. A tap on it opens the block, for a daily limit or a schedule
+- **Reels and Shorts in your blocks.** In a block's app list they can be picked like an app, next to Instagram and YouTube. The block's daily limit, schedule, routines, focus sessions and the night then count for them too, and their time adds to the block's limit
+- **Pick a look during setup.** The setup guide shows the themes and switches at a tap. A further page names the optional extras (calendar, tasks app, start links) and says where they are later
+- **Sleep mode can block all apps that have a block,** or only the blocks you pick. The choice is there from the start, also before a block with a name exists
+- **An arrow where a menu goes on.** Settings pages, dialogs and sheets show a small arrow at the bottom while there is more below
 - **Sections when adding to a checklist.** A list with sections lets you pick where the next items go
 - An item in a todo's checklist can be reworded in place
 - **A note when a block is switched on while blocking is paused.** The block's own switch says on, but nothing is blocked until the switch at the top is on too. The page now says so, with a button that switches it on
 
 ### Fixed
+- **A tap on a notification on a locked phone did nothing.** The app opened behind the lock screen and the notification was gone. Now the phone asks to be unlocked first and then opens the app. Only the alarm of a running routine still shows over the lock screen
+- **A todo's checklist kept what was typed but not added.** Text still standing in the add field goes onto the list when you save
+- **Speed bumps of a single todo or routine** can be changed straight away. "Use the default" switches itself off when you change something, and brings the default back when you switch it on
+- The description of the priorities in the todo editor was cut off, and "Add a note" on a routine step broke into single letters when a list was offered next to it
 - **The first routine's screen did not close.** Opened straight from the setup guide, the editor saved the routine and then stayed where it was, and Discard did nothing either. Every further tap on Save stored the routine once more. It closes to Home now, and an editor that has saved does not save a second time
 - **Adding to a list looked as if nothing had happened.** A new item often landed below what the keyboard left of the list. The list now scrolls to it and points it out, and says so when it was on the list already
 - **The keyboard pushed the whole screen up.** Buttons jumped far above it and the top bar slid away. The screen now stays where it is and only makes room, and the field being typed into stays in view, also when it grows or a row is added above it
@@ -25,6 +33,9 @@ Checklists, the keyboard and short videos get fixed up, and the app is ready for
 - **Reels or Shorts could be switched off here and stay open all the same.** The blocker now says why and what to do about it: the service is off, Android has it switched on but it is not running (which can happen after an update), or blocking is paused. The same goes for the app blocker itself, and a notification says so when the short-video service is turned off
 
 ### Changed
+- **Notifications lead with the name.** The title is the todo, the routine or the focus session itself; what is going on with it stands below. On a lock screen that is the line that gets read
+- **The time for Reels and Shorts says how it counts.** "Together" or "For each" are two choices that are there from the start, each with a sentence that says what it means
+- **Settings are grouped anew:** look and layout first, then alarms, todos, speed bumps, blocker and sleep, connections to other apps, backup and data, permissions
 - **A checklist takes what you type as it is.** "Keys, wallet, phone" and "10 min stretching" stay one item with all their words. Only a shopping list splits at commas and reads amounts
 - **Notifications can be told apart on Samsung and Xiaomi phones.** These put the app's logo on every notification, so all of them looked alike. One whose todo or routine has no icon of its own now shows the symbol of its part of the app as a badge, and so do the notices from the blocker, sleep mode and the backup
 - The short-video service only hears from the app whose feed is switched on, and from no app while none is

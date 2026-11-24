@@ -49,7 +49,7 @@ fun AssetNoteDialog(title: String, assetPath: String, onDismiss: () -> Unit) {
                 withLinks(text, colors.accent),
                 // On a dialog, not on the picture: no Aero glow behind small print.
                 style = MaterialTheme.typography.bodySmall.copy(shadow = null),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier.verticalScrollWithHint(),
             )
         },
         confirmButton = {

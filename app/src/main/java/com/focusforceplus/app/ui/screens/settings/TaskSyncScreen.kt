@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.settings
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -138,7 +139,7 @@ fun TaskSyncScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScrollWithHint()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {

@@ -90,7 +90,18 @@ class TodoViewModel @Inject constructor(
     private var snapshotState: TodoUiState? = null
 
     val hasUnsavedChanges: Boolean
-        get() = snapshotState?.let { normalized(_uiState.value) != normalized(it) } ?: false
+        get() = checklistDraft.isNotBlank() ||
+            (snapshotState?.let { normalized(_uiState.value) != normalized(it) } ?: false)
+
+    /**
+     * What stands in the checklist's add field without having been added. Saving
+     * takes it along: typing an item and going straight to Save is an easy slip.
+     */
+    private var checklistDraft = ""
+
+    fun updateChecklistDraft(text: String) {
+        checklistDraft = text
+    }
 
     private fun normalized(s: TodoUiState) = s.copy(
         isSaving = false, titleError = false, error = null, guardDefaults = GuardSettings(), lists = emptyList(),
@@ -263,7 +274,7 @@ class TodoViewModel @Inject constructor(
                     maxRescheduleCount = limits.maxRescheduleCount,
                     isRecurring = state.isRecurring,
                     recurringPattern = pattern,
-                    checklistJson = state.checklistItems
+                    checklistJson = (state.checklistItems + pendingChecklistItems())
                         .mapNotNull { item -> item.text.trim().takeIf { it.isNotEmpty() }?.let { item.copy(text = it) } }
                         .takeIf { it.isNotEmpty() }?.toChecklistJson(),
                     guards = state.guardOverrides.encode(),
@@ -278,6 +289,9 @@ class TodoViewModel @Inject constructor(
             }
         }
     }
+
+    private fun pendingChecklistItems(): List<ChecklistItem> =
+        checklistDraft.lines().map { it.trim().take(MAX_CHECKLIST_ITEM) }.filter { it.isNotEmpty() }.map { ChecklistItem(it) }
 
     fun deleteTodo(onDeleted: () -> Unit) {
         if (!isEditMode) return

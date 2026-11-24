@@ -821,6 +821,7 @@ class BackupManager @Inject constructor(
         put("windDownMinutes", s.windDownMinutes)
         put("dndEnabled", s.dndEnabled)
         putNullable("blockedGroupsCsv", s.blockedGroupsCsv)
+        put("blockAllApps", s.blockAllApps)
         put("invincibleMode", s.invincibleMode)
         put("bedtimeRoutineId", s.bedtimeRoutineId)
         put("morningRoutineId", s.morningRoutineId)
@@ -836,6 +837,7 @@ class BackupManager @Inject constructor(
         windDownMinutes = o.optInt("windDownMinutes", 30),
         dndEnabled = o.optBoolean("dndEnabled", true),
         blockedGroupsCsv = o.optStringOrNull("blockedGroupsCsv"),
+        blockAllApps = o.optBoolean("blockAllApps", false),
         invincibleMode = o.optBoolean("invincibleMode", false),
         bedtimeRoutineId = o.optLong("bedtimeRoutineId", 0L),
         morningRoutineId = o.optLong("morningRoutineId", 0L),

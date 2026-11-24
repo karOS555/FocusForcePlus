@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.guards
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -556,14 +557,19 @@ fun GuardEditorDialog(
     var useDefault by remember { mutableStateOf(allowDefault && current == null) }
     var draft by remember { mutableStateOf(current ?: default) }
     val shown = if (useDefault) default else draft
-    val editable = !useDefault
+    // Changing anything below starts from the default and makes it this one's own:
+    // the switch goes off by itself, and switching it on again brings the default back.
+    val change: (Guard.() -> Guard) -> Unit = { edit ->
+        draft = (if (useDefault) default else draft).edit()
+        useDefault = false
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surfaceVariant,
         title = { Text(title, style = MaterialTheme.typography.titleLarge, color = colors.text) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.verticalScrollWithHint()) {
                 if (allowDefault) {
                     EditorSwitch(
                         title = "Use the default",
@@ -580,8 +586,7 @@ fun GuardEditorDialog(
                     title = "Ask again first",
                     detail = "One more tap to say you mean it.",
                     checked = shown.confirm,
-                    enabled = editable,
-                    onChange = { draft = draft.copy(confirm = it) },
+                    onChange = { on -> change { copy(confirm = on) } },
                 )
                 Spacer(Modifier.height(12.dp))
                 Text("Countdown", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
@@ -591,8 +596,7 @@ fun GuardEditorDialog(
                         FfChip(
                             label = if (seconds == 0) "Off" else "$seconds s",
                             selected = shown.waitSeconds == seconds,
-                            enabled = editable,
-                            onClick = { draft = draft.copy(waitSeconds = seconds) },
+                            onClick = { change { copy(waitSeconds = seconds) } },
                         )
                     }
                 }
@@ -604,8 +608,7 @@ fun GuardEditorDialog(
                         FfChip(
                             label = challenge.label,
                             selected = shown.challenge == challenge,
-                            enabled = editable,
-                            onClick = { draft = draft.copy(challenge = challenge) },
+                            onClick = { change { copy(challenge = challenge) } },
                         )
                     }
                 }

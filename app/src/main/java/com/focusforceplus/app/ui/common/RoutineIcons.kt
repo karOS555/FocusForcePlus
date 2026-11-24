@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.common
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -401,7 +402,7 @@ fun IconPickerDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScrollWithHint(),
                 ) {
                     if (shown.isEmpty()) {
                         Text(
