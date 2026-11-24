@@ -131,6 +131,7 @@ class MainActivity : ComponentActivity() {
         // Only on a fresh start. After a rotation the activity is built again with
         // the same intent, and the screens come back from the saved state; following
         // the intent once more would open its screen a second time.
+        showOverLockScreen(intent.routineId() > 0L)
         if (savedInstanceState == null) {
             routineNavRequest.value = intent.routineId() to 0
             openRouteRequest.value = intent.openRoute() to 0
@@ -183,6 +184,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val id = intent.routineId()
+        showOverLockScreen(id > 0L)
         if (id > 0L) {
             routineNavRequest.value = id to routineNavRequest.value.second + 1
         }
@@ -220,6 +222,23 @@ class MainActivity : ComponentActivity() {
             ACTIVE_FOCUS_ROUTE.matches(route) || LIST_ROUTE.matches(route) || route == SettingsRoutes.INTEGRATIONS ||
                 TODO_EDIT_ROUTE.matches(route) || ROUTINE_ACTIVE_ROUTE.matches(route) ||
                 route == SettingsRoutes.AUTO_BACKUP || route == TodoRoutes.CREATE
+    }
+
+    /**
+     * Over the lock screen and with the screen on only for a running routine's
+     * alarm. Everything else waits for the phone to be unlocked: Android asks for
+     * that by itself when the activity does not claim the lock screen.
+     */
+    private fun showOverLockScreen(show: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(show)
+            setTurnScreenOn(show)
+        } else {
+            @Suppress("DEPRECATION")
+            val flags = android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            if (show) window.addFlags(flags) else window.clearFlags(flags)
+        }
     }
 
     private fun Intent.routineId(): Long =

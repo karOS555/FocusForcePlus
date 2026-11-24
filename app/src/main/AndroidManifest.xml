@@ -128,14 +128,15 @@
             android:launchMode="singleTask"
             android:theme="@style/Theme.FocusForce" />
 
-        <!-- Main activity — also the target for alarm full-screen intents -->
+        <!-- Main activity. It shows over the lock screen only when a running routine's
+             alarm opens it, which it switches on itself (see MainActivity). Declared
+             here for all launches, a tap on a notification on a locked phone opened
+             the app behind the lock screen: nothing to see, and the notification gone. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
-            android:showOnLockScreen="true"
-            android:turnScreenOn="true"
             android:theme="@style/Theme.FocusForce.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
