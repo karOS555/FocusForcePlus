@@ -14,7 +14,7 @@ composeBom = "2026.02.01"
 lifecycle = "2.9.0"
 
 # Navigation
-navigationCompose = "2.8.9"
+navigationCompose = "2.10.2"
 
 # Room
 room = "2.8.5"
@@ -72,7 +72,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
-androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.2.0" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.4.0" }
 
 # WorkManager
 androidx-workmanager = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workmanager" }
