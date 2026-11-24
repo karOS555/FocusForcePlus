@@ -9,8 +9,9 @@
         blocking rules stay saved and blocking simply pauses.</string>
     <string name="short_form_service_label">FocusForce+ Short videos</string>
     <string name="short_form_service_description">If you switch Reels or Shorts off in
-        FocusForce+, or give them a daily time, this service leaves them when you open them
-        or when the time is used up: inside Instagram and YouTube only, and only the one you
+        FocusForce+, give them a daily time or put them into one of your blocks, this
+        service leaves them when you open them, when the time is used up or while that
+        block is on: inside Instagram and YouTube only, and only the one you
         switched on, it watches for the Reels and Shorts player and presses Back once, so you
         land on the rest of the app. It reads no text and looks at no other app. With a daily
         time it keeps today\'s minutes in the player; nothing else is stored, and nothing is

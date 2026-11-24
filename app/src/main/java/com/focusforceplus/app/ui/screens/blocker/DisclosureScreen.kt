@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.screens.blocker
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import androidx.compose.material.icons.filled.TaskAlt
 import com.focusforceplus.app.data.tasks.TaskApp
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -120,7 +121,8 @@ private fun disclosureFor(type: String): Disclosure = TaskApp.ofDisclosure(type)
             "switch on in the blocker: it looks at no other app.",
         usedFor = "Noticing the Reels or Shorts player when it opens, and pressing Back " +
             "once, so you land on the rest of the app. If you allow a daily time, it counts " +
-            "the minutes the player is open and presses Back once they are used up.",
+            "the minutes the player is open and presses Back once they are used up. If you " +
+            "put Reels or Shorts into one of your blocks, it presses Back while that block is on.",
         doesNot = "It does not read your messages, posts, comments or anything else: it " +
             "only checks whether the Reels or Shorts player is showing. With a daily time it " +
             "keeps today's minutes in the player, on this phone; nothing else is stored, and " +
@@ -192,7 +194,7 @@ fun DisclosureScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScrollWithHint()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

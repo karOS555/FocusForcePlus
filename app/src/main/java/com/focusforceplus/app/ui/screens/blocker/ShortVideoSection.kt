@@ -1,7 +1,17 @@
 package com.focusforceplus.app.ui.screens.blocker
 
 import android.graphics.drawable.Drawable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.focusforceplus.app.ui.components.FfChip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.runtime.Composable
@@ -49,6 +59,7 @@ internal fun ShortVideoSection(
     val time = shorts.allowance
     // "Reels and Shorts", or only the one that is installed.
     val what = shorts.feeds.joinToString(" and ") { it.feed.noun }
+    val both = shorts.feeds.size > 1
 
     val rows = buildList<@Composable () -> Unit> {
         when (shorts.trouble) {
@@ -117,25 +128,40 @@ internal fun ShortVideoSection(
                     value = if (time.none) "None" else "${time.minutes} min",
                     subtitle = when {
                         // Nothing is switched on, so there is nothing a time could hold back.
-                        shorts.feeds.none { it.on } -> "No effect while $what are allowed"
-                        time.none -> "$what close at once. Pick a time to allow some."
-                        time.each && shorts.feeds.size > 1 -> "Each of them has its own time"
-                        shorts.feeds.size > 1 ->
-                            "${shorts.usedMinutes.coerceAtMost(time.minutes)} of ${time.minutes} min used today, by both together"
+                        shorts.feeds.none { it.on } -> "Counts for what is switched on above"
+                        time.none -> "$what close as soon as they open. Pick a time to allow some."
+                        both && time.each -> "${time.minutes} min for Reels and ${time.minutes} min for Shorts"
+                        both -> "${time.minutes} min for Reels and Shorts together"
                         else -> "${shorts.usedMinutes.coerceAtMost(time.minutes)} of ${time.minutes} min used today"
                     },
                     onClick = onPickTime,
                 )
             }
-            if (!time.none && shorts.feeds.size > 1) {
+            // How the time is shared is there from the start, as the two choices it
+            // is, each saying what it means. As a switch that only showed once a
+            // time was picked, it had to be found and then worked out.
+            if (both) {
                 add {
-                    SwitchRow(
-                        title = "One time for both",
-                        checked = !time.each,
-                        onCheckedChange = onShareTime,
-                        subtitle = if (time.each) "$what each have their own ${time.minutes} min"
-                                   else "$what use up the same ${time.minutes} min",
-                    )
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                        Text("The time counts", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FfChip(label = "Together", selected = !time.each, onClick = { onShareTime(true) })
+                            FfChip(label = "For each", selected = time.each, onClick = { onShareTime(false) })
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = when {
+                                time.none && time.each -> "Each would get its own time, once you pick one."
+                                time.none -> "Both would use up the same time, once you pick one."
+                                time.each -> "Reels and Shorts each have their own ${time.minutes} min a day."
+                                else -> "Reels and Shorts use up the same ${time.minutes} min a day: " +
+                                    "${shorts.usedMinutes.coerceAtMost(time.minutes)} of them are used today."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted,
+                        )
+                    }
                 }
             }
         }
@@ -184,14 +210,20 @@ internal fun ShortVideoSection(
 private fun feedDetail(row: ShortFeedRow, shorts: ShortVideos): String {
     val noun = row.feed.noun
     val time = shorts.allowance
+    val block = when {
+        row.block == null -> null
+        row.block.isEmpty() -> "a block of its own"
+        else -> "your block \"${row.block}\""
+    }
     return when {
+        shorts.trouble != null && row.watched -> "Not closed right now, see above"
+        !row.on && block != null -> "Open, except when $block closes them"
         !row.on -> "$noun are allowed"
-        shorts.trouble != null -> "Not closed right now, see above"
         time.none -> "$noun close as soon as they open"
         time.each && row.usedMinutes >= time.minutes -> "Today's ${time.minutes} min are used: $noun close again"
-        time.each -> "${row.usedMinutes} of ${time.minutes} min today, then $noun close"
-        shorts.usedMinutes >= time.minutes -> "Today's time is used: $noun close again"
-        else -> "Open until today's time is used"
+        time.each -> "${row.usedMinutes} of ${time.minutes} min used today, then $noun close"
+        shorts.usedMinutes >= time.minutes -> "Today's ${time.minutes} min are used: $noun close again"
+        else -> "${row.usedMinutes} min today \u00b7 ${shorts.usedMinutes} of ${time.minutes} min used together"
     }
 }
 

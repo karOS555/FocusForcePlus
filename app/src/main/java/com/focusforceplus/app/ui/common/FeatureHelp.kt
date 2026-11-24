@@ -1,5 +1,6 @@
 package com.focusforceplus.app.ui.common
 
+import com.focusforceplus.app.ui.components.verticalScrollWithHint
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -233,8 +234,11 @@ object FeatureHelpContent {
                 "Short videos",
                 "Instead of blocking Instagram or YouTube completely, a separate optional " +
                     "service can leave just Reels and Shorts: as soon as they open, or after a " +
-                    "daily time you allow. Apps that are nothing but short videos, like TikTok, " +
-                    "show up there too once they are installed; those are blocked as a whole.",
+                    "daily time you allow. Reels and Shorts can also go into a block like an app: " +
+                    "pick them under \"Add or remove apps\", and the block's limit, schedule, " +
+                    "routines and focus sessions count for them too. Apps that are nothing but " +
+                    "short videos, like TikTok, show up there too once they are installed; those " +
+                    "are blocked as a whole.",
             ),
             HelpSection(
                 "Permissions",
@@ -431,7 +435,7 @@ fun FeatureHelpDialog(help: FeatureHelp, onDismiss: () -> Unit) {
         titleContentColor = colors.text,
         title = { Text(help.title, style = MaterialTheme.typography.titleLarge) },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            Column(modifier = Modifier.verticalScrollWithHint()) {
                 Text(help.intro, style = MaterialTheme.typography.bodyMedium, color = colors.text)
                 help.sections.forEach { section ->
                     Spacer(Modifier.height(16.dp))

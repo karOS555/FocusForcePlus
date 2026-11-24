@@ -2,10 +2,23 @@ package com.focusforceplus.app.compliance
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShortVideosTest {
+
+    @Test
+    fun `a feed in a block goes by a name no app can have`() {
+        ShortFeed.entries.forEach { feed ->
+            assertEquals(feed, ShortFeed.fromRuleKey(feed.ruleKey))
+            assertTrue(feed.ruleKey.startsWith(feed.packageName + "/"))
+            // A slash is not allowed in a package name, so the app blocker never meets it.
+            assertNull(ShortFeed.fromRuleKey(feed.packageName))
+        }
+        assertEquals("com.instagram.android/reels", ShortFeed.INSTAGRAM.ruleKey)
+        assertEquals("com.google.android.youtube/shorts", ShortFeed.YOUTUBE.ruleKey)
+    }
 
     private val minute = 60_000L
     private val today = 20_780L

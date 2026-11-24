@@ -75,7 +75,8 @@ class InstalledAppsHelper @Inject constructor(
 
     /** Loads an app icon; null when the package vanished meanwhile. */
     suspend fun loadIcon(packageName: String): Drawable? = withContext(Dispatchers.IO) {
-        runCatching { context.packageManager.getApplicationIcon(packageName) }.getOrNull()
+        // A short-video feed in a block ("com.instagram.android/reels") shows its app's icon.
+        runCatching { context.packageManager.getApplicationIcon(packageName.substringBefore('/')) }.getOrNull()
     }
 
     /** Resolves a display name even for apps without a launcher entry. */

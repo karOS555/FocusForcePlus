@@ -39,6 +39,19 @@ enum class ShortFeed(
             "reel_recycler",
         ),
     ),
+    ;
+
+    /**
+     * The name a feed goes by as a member of a block, where every member is known
+     * by a package name. No real package can be called this (the slash), so the
+     * app blocker never mistakes it for an app: a rule under this key is carried
+     * out by the short-video service alone.
+     */
+    val ruleKey: String get() = "$packageName/${noun.lowercase()}"
+
+    companion object {
+        fun fromRuleKey(key: String): ShortFeed? = entries.firstOrNull { it.ruleKey == key }
+    }
 }
 
 /**

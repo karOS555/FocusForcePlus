@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import com.focusforceplus.app.data.repository.BlockerRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import javax.inject.Inject
@@ -37,6 +38,7 @@ data class ScreenTime(
 class UsageTracker @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val blockerRepository: BlockerRepository,
+    private val settings: com.focusforceplus.app.data.repository.SettingsRepository,
 ) {
 
     /** Foreground minutes per package since local midnight. */
@@ -57,9 +59,13 @@ class UsageTracker @Inject constructor(
      */
     suspend fun syncBlockedAppUsage(): Map<String, Int> {
         val usage = queryUsageMinutesToday()
-        if (usage.isEmpty()) return usage
+        // A short-video feed in a block is no app Android keeps time for. Its
+        // minutes are the ones the short-video service counted in the player.
+        val feeds = settings.shortVideoUsage.first().on(java.time.LocalDate.now().toEpochDay())
         blockerRepository.getAllAppsOnce().forEach { app ->
-            val minutes = usage[app.packageName] ?: 0
+            val feed = com.focusforceplus.app.compliance.ShortFeed.fromRuleKey(app.packageName)
+            if (feed == null && usage.isEmpty()) return@forEach
+            val minutes = if (feed != null) feeds.minutes(feed) else usage[app.packageName] ?: 0
             if (minutes != app.usedTodayMinutes) {
                 blockerRepository.updateUsedTimeByPackage(app.packageName, minutes)
             }

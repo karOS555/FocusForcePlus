@@ -89,7 +89,16 @@ sealed interface BlockItem {
 }
 
 /** One feed inside a bigger app (Reels, Shorts), as the short-video section shows it. */
-data class ShortFeedRow(val feed: ShortFeed, val on: Boolean, val usedMinutes: Int)
+data class ShortFeedRow(
+    val feed: ShortFeed,
+    val on: Boolean,
+    val usedMinutes: Int,
+    /** The block this feed is a member of and that is switched on; "" for a block of its own. */
+    val block: String? = null,
+) {
+    /** The short-video service has something to do for this feed. */
+    val watched: Boolean get() = on || block != null
+}
 
 /** An installed app that is nothing but short videos, with its block if it has one. */
 data class ShortAppRow(val packageName: String, val appName: String, val rule: BlockedAppEntity?) {
@@ -203,7 +212,14 @@ class BlockerViewModel @Inject constructor(
         // A feed whose app is not on this phone is not offered, whatever its switch says.
         val feeds = ShortFeed.entries
             .filter { it.packageName in installedPackages }
-            .map { ShortFeedRow(it, on = settings.on[it] == true, usedMinutes = settings.usage.minutes(it)) }
+            .map { feed ->
+                ShortFeedRow(
+                    feed,
+                    on = settings.on[feed] == true,
+                    usedMinutes = settings.usage.minutes(feed),
+                    block = ruleByPackage[feed.ruleKey]?.takeIf { it.isBlocked }?.let { it.groupName.orEmpty() },
+                )
+            }
         ShortVideos(
             loaded = !loading,
             feeds = feeds,
@@ -214,7 +230,7 @@ class BlockerViewModel @Inject constructor(
             usedMinutes = settings.usage.totalMinutes,
             serviceOn = serviceOn,
             trouble = when {
-                feeds.none { it.on } -> null
+                feeds.none { it.watched } -> null
                 !serviceOn -> ShortTrouble.SERVICE_OFF
                 stalled -> ShortTrouble.SERVICE_NOT_RUNNING
                 !blockingOn -> ShortTrouble.BLOCKING_PAUSED
@@ -343,7 +359,13 @@ class BlockerViewModel @Inject constructor(
     fun refreshApps() {
         viewModelScope.launch {
             _isLoadingApps.value = true
-            _installedApps.value = installedAppsHelper.getInstalledApps()
+            val apps = installedAppsHelper.getInstalledApps()
+            // A feed can be put into a block like an app, next to the app it is part of.
+            val packages = apps.map { it.packageName }.toSet()
+            val feeds = ShortFeed.entries
+                .filter { it.packageName in packages }
+                .map { InstalledApp(it.ruleKey, it.label) }
+            _installedApps.value = apps + feeds
             _isLoadingApps.value = false
         }
     }
